@@ -11,7 +11,7 @@ export default function Home() {
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           <a
             className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://github.com/Crossmint/fintech-starter-app"
+            href="https://github.com/creativeplatform/bank"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -20,31 +20,33 @@ export default function Home() {
           </a>
           <a
             className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://crossmint.com/quickstarts"
+            href="https://app.creativeplatform.xyz"
             target="_blank"
             rel="noopener noreferrer"
           >
             <Image aria-hidden src="/window.svg" alt="Window icon" width={16} height={16} />
-            See all quickstarts
+            See all apps
           </a>
           <a
             className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://crossmint.com"
+            href="https://creativeplatform.xyz"
             target="_blank"
             rel="noopener noreferrer"
           >
             <Image aria-hidden src="/globe.svg" alt="Globe icon" width={16} height={16} />
-            Go to crossmint.com →
+            Go to creativeplatform.xyz →
           </a>
         </div>
         <div className="flex">
-          <Image
-            src="/crossmint-leaf.svg"
-            alt="Powered by Crossmint"
-            priority
-            width={152}
-            height={100}
-          />
+          <a href="https://crossmint.com" target="_blank" rel="noopener noreferrer">
+            <Image
+              src="/crossmint-leaf.svg"
+              alt="Powered by Crossmint"
+              priority
+              width={152}
+              height={100}
+            />
+          </a>
         </div>
       </footer>
     </div>
