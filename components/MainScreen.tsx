@@ -24,7 +24,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
         <div className="relative mb-2 flex h-14 w-full max-w-5xl items-center justify-between px-2">
           <div className="flex items-center gap-2">
             <Image src="/creative.svg" alt="Logo" width={54} height={54} />
-            <h1 className="text-lg" style={{ fontFamily: "ConthraxSb-Regular , sans-serif" }}>
+            <h1 className="text-lg" style={{ fontFamily: "var(--font-conthrax), sans-serif" }}>
               CREATIVE
               <span
                 className="text-md ml-1 font-bold text-red-500"
@@ -38,11 +38,11 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
             <ThemeToggle />
             <button onClick={logout} className="text-secondary flex items-center gap-1 text-base">
               Logout
-              <ArrowRightOnRectangleIcon className="w-6 h-6 text" />
+              <ArrowRightOnRectangleIcon className="text h-6 w-6" />
             </button>
           </div>
         </div>
-        <div className="w-full text-center text-xl font-medium mb-2">Dashboard</div>
+        <div className="mb-2 w-full text-center text-xl font-medium">Dashboard</div>
         <DashboardSummary
           onDepositClick={() => setShowDepositModal(true)}
           onSendClick={() => setShowSendModal(true)}

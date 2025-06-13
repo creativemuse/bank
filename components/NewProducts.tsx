@@ -4,7 +4,7 @@ const newProducts: NewProductProps[] = [
   {
     title: "Get your card",
     description: "Set up a card to start using your funds",
-    image: "/credit-card-pro.png",
+    image: "/creative_platform_card.png",
   },
   {
     title: "Earn yield",
