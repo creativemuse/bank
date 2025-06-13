@@ -19,7 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}>
         <CrossmintAuthProvider
-          authModalTitle="CREATIVE Bank"
+          authModalTitle="Welcome to CREATIVE Bank"
           loginMethods={["email", "google"]}
         >
           <CrossmintWalletProvider

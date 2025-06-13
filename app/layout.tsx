@@ -35,11 +35,11 @@ export default function RootLayout({
           loop
           muted
           playsInline
-          className="fixed left-0 top-0 -z-10 h-full w-full object-cover"
+          className="fixed left-0 top-0 -z-20 h-full w-full object-cover"
           src="/video/background.mp4"
         />
-        {/* Optional overlay for readability */}
-        {/* <div className="fixed top-0 left-0 w-full h-full bg-black/40 -z-10" /> */}
+        {/* Overlay for readability */}
+        <div className="fixed top-0 left-0 w-full h-full bg-black/40 -z-10 pointer-events-none" />
         <Providers>{children}</Providers>
       </body>
     </html>

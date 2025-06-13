@@ -10,7 +10,7 @@ export default function Home() {
       <footer className="row-start-3 mb-4 flex flex-col items-center justify-center gap-4">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+            className="flex items-center gap-2 font-bold hover:underline hover:underline-offset-4"
             href="https://github.com/creativeplatform/bank"
             target="_blank"
             rel="noopener noreferrer"
@@ -19,7 +19,7 @@ export default function Home() {
             View code
           </a>
           <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+            className="flex items-center gap-2 font-bold hover:underline hover:underline-offset-4"
             href="https://app.creativeplatform.xyz"
             target="_blank"
             rel="noopener noreferrer"
@@ -28,7 +28,7 @@ export default function Home() {
             See all apps
           </a>
           <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+            className="flex items-center gap-2 font-bold hover:underline hover:underline-offset-4"
             href="https://creativeplatform.xyz"
             target="_blank"
             rel="noopener noreferrer"
@@ -38,7 +38,7 @@ export default function Home() {
           </a>
         </div>
         <div className="flex">
-          <a href="https://crossmint.com" target="_blank" rel="noopener noreferrer">
+          <a href="https://crossmint.com" target="_blank" rel="noopener noreferrer" >
             <Image
               src="/crossmint-leaf.svg"
               alt="Powered by Crossmint"

@@ -8,6 +8,10 @@ export function Container({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-3xl border bg-white p-6 shadow-sm", className)}>{children}</div>
+    <div className={cn(
+      "rounded-3xl border p-6 shadow-sm",
+      "bg-gray-400",
+      className
+    )}>{children}</div>
   );
 }

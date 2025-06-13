@@ -7,7 +7,6 @@ import {
 import { Checkout } from "./Checkout";
 import { AmountInput } from "../common/AmountInput";
 import { Modal } from "../common/Modal";
-import { TestingCardModal } from "./TestingCardModal";
 import { useActivityFeed } from "../../hooks/useActivityFeed";
 import { cn } from "@/lib/utils";
 import { useBalance } from "@/hooks/useBalance";
@@ -20,7 +19,7 @@ interface DepositModalProps {
 
 const CLIENT_API_KEY_CONSOLE_FUND = process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY;
 
-const MAX_AMOUNT = 50; // Max amount in USD allowed in staging
+const MAX_AMOUNT = 100000; // Max amount in USD allowed in staging
 
 export function DepositModal({ open, onClose, walletAddress }: DepositModalProps) {
   const [step, setStep] = useState<"options" | "processing" | "completed">("options");
@@ -63,7 +62,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
         )}
         title="Deposit"
       >
-        {open && step === "options" && <TestingCardModal />}
+        {open && step === "options"}
         {step === "options" && (
           <div className="mb-6 flex w-full flex-col items-center">
             <AmountInput amount={amount} onChange={setAmount} />

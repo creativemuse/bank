@@ -16,11 +16,11 @@ export function Dropdown({ trigger, options }: DropdownProps) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
-      <DropdownMenu.Content className="rounded-md bg-white p-1 shadow-md" align="end">
+      <DropdownMenu.Content className="rounded-md bg-gray-400 p-1 shadow-md" align="end">
         {options.map((option, index) => (
           <DropdownMenu.Item
             key={index}
-            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-100 focus-visible:outline-none"
+            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-300 focus-visible:outline-none"
             onClick={option.onClick}
           >
             {option.icon}

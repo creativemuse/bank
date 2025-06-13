@@ -2,7 +2,7 @@ import Image from "next/image";
 import { WalletBalance } from "./WalletBallance";
 import { DepositButton } from "../common/DepositButton";
 import { Container } from "../common/Container";
-import { ArrowsRightLeftIcon, WalletIcon } from "@heroicons/react/24/outline";
+import { ArrowsRightLeftIcon, WalletIcon, ArrowUpRightIcon, EllipsisVerticalIcon } from "@heroicons/react/24/outline";
 import { Dropdown } from "../common/Dropdown";
 import { useState } from "react";
 import { WalletDetails } from "./WalletDetails";
@@ -21,7 +21,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
   const [openWarningModal, setOpenWarningModal] = useState(false);
   const dropdownOptions = [
     {
-      icon: <ArrowsRightLeftIcon className="h-4 w-4" />,
+      icon: <ArrowsRightLeftIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
       label: "Withdraw",
       onClick: () => {
         if (process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY?.includes("staging")) {
@@ -38,7 +38,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
       },
     },
     {
-      icon: <WalletIcon className="h-4 w-4" />,
+      icon: <WalletIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
       label: "Wallet Details",
       onClick: () => {
         setShowWalletDetails(true);
@@ -48,7 +48,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
 
   const dropdownTrigger = (
     <button className="bg-secondary hover:bg-secondary/80 rounded-full p-2.5">
-      <Image src="/dots-vertical.svg" alt="Settings" width={24} height={24} />
+      <EllipsisVerticalIcon className="h-5 w-5 text-gray-500" />
     </button>
   );
 
@@ -62,7 +62,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
           className="bg-secondary hover:bg-secondary/80 text-secondary-foreground flex h-12 flex-grow items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition md:w-40"
           onClick={onSendClick}
         >
-          <Image src="/arrow-up-right-icon-white.svg" alt="Add" width={24} height={24} /> Send
+          <ArrowUpRightIcon className="h-4 w-4 text-gray-500" /> Send
         </button>
         <Dropdown trigger={dropdownTrigger} options={dropdownOptions} />
       </div>

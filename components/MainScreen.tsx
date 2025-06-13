@@ -6,6 +6,8 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { useAuth } from "@crossmint/client-sdk-react-ui";
 import { NewProducts } from "./NewProducts";
 import { DashboardSummary } from "./dashboard-summary";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
+import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 
 interface MainScreenProps {
   walletAddress?: string;
@@ -32,14 +34,15 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
               </span>
             </h1>
           </div>
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl font-medium">
-            Dashboard
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button onClick={logout} className="text-secondary flex items-center gap-1 text-base">
+              Logout
+              <ArrowRightOnRectangleIcon className="w-6 h-6 text" />
+            </button>
           </div>
-          <button onClick={logout} className="text-secondary flex items-center gap-1 text-base">
-            Logout
-            <Image src="/logout-icon.svg" alt="Logout" width={24} height={24} />
-          </button>
         </div>
+        <div className="w-full text-center text-xl font-medium mb-2">Dashboard</div>
         <DashboardSummary
           onDepositClick={() => setShowDepositModal(true)}
           onSendClick={() => setShowSendModal(true)}
