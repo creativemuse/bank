@@ -1,15 +1,16 @@
 import Image from "next/image";
-import { HomeContent } from "@/app/home";
+import HomeContentWrapper from "@/components/HomeContentWrapper";
+import Link from "next/link";
 
 export default function Home() {
   return (
     <div className="grid h-screen items-center">
       <main className="row-start-2 flex h-full flex-col items-center gap-8 sm:items-start">
-        <HomeContent />
+        <HomeContentWrapper />
       </main>
       <footer className="row-start-3 mb-4 flex flex-col items-center justify-center gap-4">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          <a
+          <Link
             className="flex items-center gap-2 font-bold hover:underline hover:underline-offset-4"
             href="https://github.com/creativeplatform/bank"
             target="_blank"
@@ -17,8 +18,8 @@ export default function Home() {
           >
             <Image aria-hidden src="/file.svg" alt="File icon" width={16} height={16} />
             View code
-          </a>
-          <a
+          </Link>
+          <Link
             className="flex items-center gap-2 font-bold hover:underline hover:underline-offset-4"
             href="https://app.creativeplatform.xyz"
             target="_blank"
@@ -26,8 +27,8 @@ export default function Home() {
           >
             <Image aria-hidden src="/window.svg" alt="Window icon" width={16} height={16} />
             See all apps
-          </a>
-          <a
+          </Link>
+          <Link
             className="flex items-center gap-2 font-bold hover:underline hover:underline-offset-4"
             href="https://creativeplatform.xyz"
             target="_blank"
@@ -35,10 +36,10 @@ export default function Home() {
           >
             <Image aria-hidden src="/globe.svg" alt="Globe icon" width={16} height={16} />
             Go to creativeplatform.xyz →
-          </a>
+          </Link>
         </div>
         <div className="flex">
-          <a href="https://crossmint.com" target="_blank" rel="noopener noreferrer" >
+          <a href="https://crossmint.com" target="_blank" rel="noopener noreferrer">
             <Image
               src="/crossmint-leaf.svg"
               alt="Powered by Crossmint"

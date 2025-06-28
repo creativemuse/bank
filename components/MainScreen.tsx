@@ -21,7 +21,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
   return (
     <div className="flex h-full w-full items-center justify-center gap-2 px-3 py-8">
       <div className="h-full w-full max-w-5xl">
-        <div className="mb-2 block flex w-full justify-center md:hidden">
+        <div className="mb-2 flex w-full justify-center md:hidden">
           <ThemeToggle />
         </div>
         <div className="relative mb-2 flex h-14 w-full max-w-5xl items-center justify-between px-2">
