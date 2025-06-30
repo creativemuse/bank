@@ -10,7 +10,7 @@ export default function Home() {
       </main>
       <footer className="row-start-3 mb-4 flex flex-col items-center justify-center gap-4">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          <Link
+          <a
             className="flex items-center gap-2 font-bold hover:underline hover:underline-offset-4"
             href="https://github.com/creativeplatform/bank"
             target="_blank"
@@ -18,7 +18,7 @@ export default function Home() {
           >
             <Image aria-hidden src="/file.svg" alt="File icon" width={16} height={16} />
             View code
-          </Link>
+          </a>
           <Link
             className="flex items-center gap-2 font-bold hover:underline hover:underline-offset-4"
             href="https://app.creativeplatform.xyz"
