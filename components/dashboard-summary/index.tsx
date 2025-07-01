@@ -1,8 +1,13 @@
 import Image from "next/image";
-import { WalletBalance } from "./WalletBallance";
+import { WalletBalance } from "./WalletBalance";
 import { DepositButton } from "../common/DepositButton";
 import { Container } from "../common/Container";
-import { ArrowsRightLeftIcon, WalletIcon, ArrowUpRightIcon, EllipsisVerticalIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowsRightLeftIcon,
+  WalletIcon,
+  ArrowUpRightIcon,
+  EllipsisVerticalIcon,
+} from "@heroicons/react/24/outline";
 import { Dropdown } from "../common/Dropdown";
 import { useState } from "react";
 import { WalletDetails } from "./WalletDetails";
@@ -32,7 +37,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
             addresses: JSON.stringify({ [wallet?.address || ""]: [wallet?.chain || ""] }),
             redirectUrl: window.location.origin,
             partnerUserId: user?.id!,
-            assets: JSON.stringify(["USDC"]),
+            assets: JSON.stringify(["USDC", "ETH"]),
           })}`;
         }
       },

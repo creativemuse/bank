@@ -14,6 +14,7 @@ export type WertCheckoutProps = {
   step: "options" | "processing" | "completed";
   goBack: () => void;
   receiptEmail?: string;
+  MAX_AMOUNT: number;
 };
 
 export function WertCheckout({
@@ -25,6 +26,7 @@ export function WertCheckout({
   step,
   goBack,
   receiptEmail,
+  MAX_AMOUNT,
 }: WertCheckoutProps) {
   const wertWidgetRef = useRef<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,8 @@ export function WertCheckout({
         origin: "https://widget.wert.io",
         click_id: uuidv4(),
         theme: "dark" as const,
+        network: "base",
+        commodity: "USDC",
         listeners: {
           loaded: () => {},
           close: () => {
@@ -70,14 +74,17 @@ export function WertCheckout({
     }
   };
 
-  if (!amount || !isAmountValid) return null;
-
   return (
     <div className="flex w-full flex-col items-center justify-center space-y-4">
       {error && <div className="text-red-500">{error}</div>}
-      <PrimaryButton onClick={handleOpenWidget} disabled={loading}>
+      <PrimaryButton onClick={handleOpenWidget} disabled={loading || !isAmountValid}>
         {loading ? "Loading..." : "Deposit Funds"}
       </PrimaryButton>
+      {!isAmountValid && (
+        <div className="text-xs text-red-500">
+          Please enter a valid amount between $1 and ${MAX_AMOUNT}
+        </div>
+      )}
     </div>
   );
 }

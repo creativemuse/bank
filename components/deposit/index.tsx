@@ -77,13 +77,14 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
         <div className="flex w-full flex-grow flex-col">
           <WertCheckout
             amount={amount}
-            isAmountValid={Number(amount) <= MAX_AMOUNT && Number(amount) > 0}
+            isAmountValid={Number(amount) <= MAX_AMOUNT && Number(amount) >= 1}
             walletAddress={walletAddress}
             onPaymentCompleted={handlePaymentCompleted}
             receiptEmail={receiptEmail || ""}
             onProcessingPayment={handleProcessingPayment}
             step={step}
             goBack={restartFlow}
+            MAX_AMOUNT={MAX_AMOUNT}
           />
         </div>
       </Modal>
