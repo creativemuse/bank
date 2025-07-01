@@ -76,7 +76,7 @@ export function WertCheckout({
     <div className="flex w-full flex-col items-center justify-center space-y-4">
       {error && <div className="text-red-500">{error}</div>}
       <PrimaryButton onClick={handleOpenWidget} disabled={loading}>
-        {loading ? "Loading..." : "Deposit"}
+        {loading ? "Loading..." : "Deposit Funds"}
       </PrimaryButton>
     </div>
   );
