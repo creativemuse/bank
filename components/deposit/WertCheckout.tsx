@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import WertWidget from "@wert-io/widget-initializer";
 import { v4 as uuidv4 } from "uuid";
 import { PrimaryButton } from "../common/PrimaryButton";
@@ -26,51 +26,58 @@ export function WertCheckout({
   goBack,
   receiptEmail,
 }: WertCheckoutProps) {
-  // Ref to keep WertWidget instance
   const wertWidgetRef = useRef<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Prepare options for WertWidget
-  const staticOptions = {
-    partner_id: "01HSD48HCYJH2SNT65S5A0JYPP",
-    origin: "https://widget.wert.io",
-    address: walletAddress,
-    commodities: JSON.stringify([
-      { commodity: "USDC", network: "base" },
-      { commodity: "ETH", network: "base" },
-    ]),
-    commodity_amount: amount ? Number.parseFloat(amount) : undefined,
-    ...(receiptEmail ? { email: receiptEmail } : {}),
-    click_id: uuidv4(),
-    theme: "dark" as const,
-    listeners: {
-      loaded: () => {
-        // Widget loaded
-      },
-      close: () => {
-        onProcessingPayment();
-      },
-      "payment-status": (data: any) => {
-        if (data?.status === "success") {
-          onPaymentCompleted();
-        }
-      },
-    },
-  };
-
-  // Handler to open WertWidget
-  const handleOpenWidget = () => {
-    // Only create a new instance if one doesn't exist or is closed
-    if (!wertWidgetRef.current) {
-      wertWidgetRef.current = new WertWidget(staticOptions);
+  const handleOpenWidget = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      // Dynamically import the server action
+      const createWertSession = (await import("../../server-actions/createWertSession")).default;
+      const sessionId = await createWertSession({
+        walletAddress,
+        amount,
+        email: receiptEmail,
+      });
+      const options = {
+        partner_id: "01HSD48HCYJH2SNT65S5A0JYPP",
+        session_id: sessionId,
+        origin: "https://widget.wert.io",
+        click_id: uuidv4(),
+        theme: "dark" as const,
+        listeners: {
+          loaded: () => {},
+          close: () => {
+            onProcessingPayment();
+          },
+          "payment-status": (data: any) => {
+            if (data?.status === "success") {
+              onPaymentCompleted();
+            }
+          },
+        },
+      };
+      if (!wertWidgetRef.current) {
+        wertWidgetRef.current = new WertWidget(options);
+      }
+      wertWidgetRef.current.open();
+    } catch (err: any) {
+      setError("Failed to start Wert session. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    wertWidgetRef.current.open();
   };
 
   if (!amount || !isAmountValid) return null;
 
   return (
     <div className="flex w-full flex-col items-center justify-center space-y-4">
-      <PrimaryButton onClick={handleOpenWidget}>Deposit</PrimaryButton>
+      {error && <div className="text-red-500">{error}</div>}
+      <PrimaryButton onClick={handleOpenWidget} disabled={loading}>
+        {loading ? "Loading..." : "Deposit"}
+      </PrimaryButton>
     </div>
   );
 }
