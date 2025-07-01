@@ -1,3 +1,5 @@
+"use client";
+
 interface BreakdownElementProps {
   label: string;
   value: string | number;

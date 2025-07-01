@@ -1,5 +1,6 @@
+"use client";
 import { CrossmintEmbeddedCheckout, useCrossmintCheckout } from "@crossmint/client-sdk-react-ui";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AmountBreakdown } from "./AmountBreakdown";
 import { cn } from "@/lib/utils";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
@@ -8,15 +9,19 @@ const USDC_MINT = process.env.NEXT_PUBLIC_USDC_MINT;
 const CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID;
 const USDC_LOCATOR = `${CHAIN_ID}:${USDC_MINT}${CHAIN_ID === "solana" ? "" : `:${USDC_MINT}`}`;
 
-// Get CSS variables
-const primaryColor =
-  typeof window !== "undefined"
-    ? window.getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
-    : "#000000"; // fallback color
-const primaryHoverColor =
-  typeof window !== "undefined"
-    ? window.getComputedStyle(document.documentElement).getPropertyValue("--primary-hover").trim()
-    : "#333333"; // fallback color
+const [primaryColor, setPrimaryColor] = useState("#000000");
+const [primaryHoverColor, setPrimaryHoverColor] = useState("#333333");
+
+useEffect(() => {
+  if (typeof window !== "undefined") {
+    setPrimaryColor(
+      window.getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
+    );
+    setPrimaryHoverColor(
+      window.getComputedStyle(document.documentElement).getPropertyValue("--primary-hover").trim()
+    );
+  }
+}, []);
 
 const CHECKOUT_APPEARANCE = {
   rules: {

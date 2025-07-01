@@ -4,7 +4,7 @@ import {
   CrossmintProvider,
   useAuth,
 } from "@crossmint/client-sdk-react-ui";
-import { Checkout } from "./Checkout";
+import { WertCheckout } from "./WertCheckout";
 import { AmountInput } from "../common/AmountInput";
 import { Modal } from "../common/Modal";
 import { useActivityFeed } from "../../hooks/useActivityFeed";
@@ -56,6 +56,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
         onClose={onClose}
         showBackButton={step !== "processing"}
         onBack={step === "options" ? handleDone : restartFlow}
+        showCloseButton={true}
         className={cn(
           "top-[70px] h-[calc(100dvh-174px)] md:max-h-[calc(100dvh-174px)] lg:top-0 lg:max-h-[calc(100dvh-32px)]",
           amount && " lg:min-h-[718px]"
@@ -74,20 +75,16 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
           </div>
         )}
         <div className="flex w-full flex-grow flex-col">
-          <CrossmintProvider apiKey={CLIENT_API_KEY_CONSOLE_FUND as string}>
-            <CrossmintCheckoutProvider>
-              <Checkout
-                amount={amount}
-                isAmountValid={Number(amount) <= MAX_AMOUNT && Number(amount) > 0}
-                walletAddress={walletAddress}
-                onPaymentCompleted={handlePaymentCompleted}
-                receiptEmail={receiptEmail || ""}
-                onProcessingPayment={handleProcessingPayment}
-                step={step}
-                goBack={restartFlow}
-              />
-            </CrossmintCheckoutProvider>
-          </CrossmintProvider>
+          <WertCheckout
+            amount={amount}
+            isAmountValid={Number(amount) <= MAX_AMOUNT && Number(amount) > 0}
+            walletAddress={walletAddress}
+            onPaymentCompleted={handlePaymentCompleted}
+            receiptEmail={receiptEmail || ""}
+            onProcessingPayment={handleProcessingPayment}
+            step={step}
+            goBack={restartFlow}
+          />
         </div>
       </Modal>
     </>
