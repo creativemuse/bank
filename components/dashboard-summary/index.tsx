@@ -35,30 +35,18 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
           setOpenWarningModal(true);
         } else {
           if (!wallet?.address || !wallet?.chain || !user?.id) {
-            console.error("Missing required data:", {
-              address: wallet?.address,
-              chain: wallet?.chain,
-              userId: user?.id,
-            });
+            console.error("Missing wallet or user information for withdrawal");
             alert("Missing wallet or user information. Please try again.");
             return;
           }
 
           setIsWithdrawing(true);
           try {
-            console.log("Requesting session token with:", {
-              address: wallet.address,
-              blockchains: [wallet.chain],
-              assets: ["USDC", "ETH"],
-            });
-
             const token = await createCoinbaseSessionToken({
               address: wallet.address,
               blockchains: [wallet.chain],
               assets: ["USDC", "ETH"],
             });
-
-            console.log("Received session token:", token);
 
             if (!token) {
               throw new Error("No session token received from backend");
@@ -71,13 +59,13 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
             });
 
             const offrampUrl = `https://pay.coinbase.com/v3/sell/input?${params}`;
-            console.log("Redirecting to Offramp URL:", offrampUrl);
-
             window.location.href = offrampUrl;
           } catch (error) {
-            console.error("Withdrawal error:", error);
-            const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-            alert(`Failed to start withdrawal: ${errorMessage}`);
+            console.error(
+              "Withdrawal failed:",
+              error instanceof Error ? error.message : "Unknown error"
+            );
+            alert("Failed to start withdrawal. Please try again.");
           } finally {
             setIsWithdrawing(false);
           }

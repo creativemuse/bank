@@ -11,15 +11,12 @@ export default async function createCoinbaseSessionToken({
   blockchains: string[];
   assets: string[];
 }) {
-  console.log("Creating Coinbase session token for:", { address, blockchains, assets });
-
   const url = "https://api.developer.coinbase.com";
   const method = "POST";
   const request_path = "/onramp/v1/token";
 
   try {
     const jwt = await getCoinbaseJWT(url, method, request_path);
-    console.log("Generated JWT:", jwt ? "✓ JWT created" : "✗ JWT failed");
 
     const requestBody = {
       addresses: [
@@ -31,8 +28,6 @@ export default async function createCoinbaseSessionToken({
       assets,
     };
 
-    console.log("Request body:", JSON.stringify(requestBody, null, 2));
-
     const response = await fetch(`${url}${request_path}`, {
       method: "POST",
       headers: {
@@ -42,24 +37,25 @@ export default async function createCoinbaseSessionToken({
       body: JSON.stringify(requestBody),
     });
 
-    console.log("Response status:", response.status);
-    console.log("Response headers:", Object.fromEntries(response.headers.entries()));
-
     if (!response.ok) {
       const error = await response.text();
-      console.error("Coinbase API error response:", error);
+      console.error("Coinbase session token creation failed with status:", response.status);
       throw new Error(`Coinbase session token creation failed: ${error}`);
     }
 
     const data = await response.json();
-    console.log("Coinbase API response:", JSON.stringify(data, null, 2));
-
     const token = data.data?.token;
-    console.log("Extracted token:", token ? "✓ Token extracted" : "✗ No token in response");
+
+    if (!token) {
+      throw new Error("No session token received from Coinbase API");
+    }
 
     return token;
   } catch (error) {
-    console.error("Session token creation error:", error);
+    console.error(
+      "Session token creation error:",
+      error instanceof Error ? error.message : "Unknown error"
+    );
     throw error;
   }
 }
