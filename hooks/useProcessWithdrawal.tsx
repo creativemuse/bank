@@ -15,7 +15,9 @@ const getProccesedTransactions = (transactionId: string) => {
 const setProccesedTransactions = (transactionId: string) => {
   const processedTransactions = localStorage.getItem("processedTransactions");
   if (processedTransactions) {
-    JSON.parse(processedTransactions)[transactionId] = true;
+    const parsed = JSON.parse(processedTransactions);
+    parsed[transactionId] = true;
+    localStorage.setItem("processedTransactions", JSON.stringify(parsed));
   } else {
     localStorage.setItem("processedTransactions", JSON.stringify({ [transactionId]: true }));
   }
@@ -27,18 +29,30 @@ export function useProcessWithdrawal(userId?: string, wallet?: Wallet<Chain>) {
   useEffect(() => {
     (async () => {
       if (userId && wallet) {
-        const transactions = await getTransactions(userId);
-        const transaction = transactions[0];
-        if (
-          transaction?.status === "TRANSACTION_STATUS_STARTED" &&
-          !getProccesedTransactions(transaction?.transaction_id)
-        ) {
-          setProccesedTransactions(transaction.transaction_id);
-          await wallet.send(transaction.to_address, "usdc", transaction.sell_amount.value);
-          refetchBalance();
-          refetchActivityFeed();
+        try {
+          const transactions = await getTransactions(userId);
+
+          // Add proper null/undefined checks
+          if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+            console.log("No transactions found for user:", userId);
+            return;
+          }
+
+          const transaction = transactions[0];
+          if (
+            transaction?.status === "TRANSACTION_STATUS_STARTED" &&
+            transaction?.transaction_id &&
+            !getProccesedTransactions(transaction.transaction_id)
+          ) {
+            setProccesedTransactions(transaction.transaction_id);
+            await wallet.send(transaction.to_address, "usdc", transaction.sell_amount.value);
+            refetchBalance();
+            refetchActivityFeed();
+          }
+        } catch (error) {
+          console.error("Error processing withdrawal:", error);
         }
       }
     })();
-  }, [userId, wallet]);
+  }, [userId, wallet]); // Removed refetch functions from dependency array
 }

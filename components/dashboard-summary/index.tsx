@@ -34,22 +34,50 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
         if (process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY?.includes("staging")) {
           setOpenWarningModal(true);
         } else {
-          if (!wallet?.address || !wallet?.chain || !user?.id) return;
+          if (!wallet?.address || !wallet?.chain || !user?.id) {
+            console.error("Missing required data:", {
+              address: wallet?.address,
+              chain: wallet?.chain,
+              userId: user?.id,
+            });
+            alert("Missing wallet or user information. Please try again.");
+            return;
+          }
+
           setIsWithdrawing(true);
           try {
+            console.log("Requesting session token with:", {
+              address: wallet.address,
+              blockchains: [wallet.chain],
+              assets: ["USDC", "ETH"],
+            });
+
             const token = await createCoinbaseSessionToken({
               address: wallet.address,
               blockchains: [wallet.chain],
               assets: ["USDC", "ETH"],
             });
+
+            console.log("Received session token:", token);
+
+            if (!token) {
+              throw new Error("No session token received from backend");
+            }
+
             const params = new URLSearchParams({
               sessionToken: token,
               partnerUserId: user.id,
               redirectUrl: window.location.origin,
             });
-            window.location.href = `https://pay.coinbase.com/v3/sell/input?${params}`;
-          } catch (e) {
-            alert("Failed to start withdrawal. Please try again.");
+
+            const offrampUrl = `https://pay.coinbase.com/v3/sell/input?${params}`;
+            console.log("Redirecting to Offramp URL:", offrampUrl);
+
+            window.location.href = offrampUrl;
+          } catch (error) {
+            console.error("Withdrawal error:", error);
+            const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+            alert(`Failed to start withdrawal: ${errorMessage}`);
           } finally {
             setIsWithdrawing(false);
           }
