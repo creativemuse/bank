@@ -13,6 +13,7 @@ import { useState } from "react";
 import { WalletDetails } from "./WalletDetails";
 import { useWallet, useAuth } from "@crossmint/client-sdk-react-ui";
 import { WarningModal } from "./WarningModal";
+import createCoinbaseSessionToken from "@/server-actions/createCoinbaseSessionToken";
 
 interface DashboardSummaryProps {
   onDepositClick: () => void;
@@ -24,21 +25,34 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
   const { wallet } = useWallet();
   const { user } = useAuth();
   const [openWarningModal, setOpenWarningModal] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const dropdownOptions = [
     {
       icon: <ArrowsRightLeftIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
       label: "Withdraw",
-      onClick: () => {
+      onClick: async () => {
         if (process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY?.includes("staging")) {
           setOpenWarningModal(true);
         } else {
-          window.location.href = `https://pay.coinbase.com/v3/sell/input?${new URLSearchParams({
-            appId: process.env.NEXT_PUBLIC_COINBASE_APP_ID!,
-            addresses: JSON.stringify({ [wallet?.address || ""]: [wallet?.chain || ""] }),
-            redirectUrl: window.location.origin,
-            partnerUserId: user?.id!,
-            assets: JSON.stringify(["USDC", "ETH"]),
-          })}`;
+          if (!wallet?.address || !wallet?.chain || !user?.id) return;
+          setIsWithdrawing(true);
+          try {
+            const token = await createCoinbaseSessionToken({
+              address: wallet.address,
+              blockchains: [wallet.chain],
+              assets: ["USDC", "ETH"],
+            });
+            const params = new URLSearchParams({
+              sessionToken: token,
+              partnerUserId: user.id,
+              redirectUrl: window.location.origin,
+            });
+            window.location.href = `https://pay.coinbase.com/v3/sell/input?${params}`;
+          } catch (e) {
+            alert("Failed to start withdrawal. Please try again.");
+          } finally {
+            setIsWithdrawing(false);
+          }
         }
       },
     },
@@ -52,7 +66,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
   ];
 
   const dropdownTrigger = (
-    <button className="bg-secondary hover:bg-secondary/80 rounded-full p-2.5">
+    <button className="rounded-full bg-secondary p-2.5 hover:bg-secondary/80">
       <EllipsisVerticalIcon className="h-5 w-5 text-gray-500" />
     </button>
   );
@@ -64,12 +78,13 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
         <DepositButton onClick={onDepositClick} />
         <button
           type="button"
-          className="bg-secondary hover:bg-secondary/80 text-secondary-foreground flex h-12 flex-grow items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition md:w-40"
+          className="flex h-12 flex-grow items-center justify-center gap-2 rounded-full bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground transition hover:bg-secondary/80 md:w-40"
           onClick={onSendClick}
         >
           <ArrowUpRightIcon className="h-4 w-4 text-gray-500" /> Send
         </button>
         <Dropdown trigger={dropdownTrigger} options={dropdownOptions} />
+        {isWithdrawing && <div className="ml-2 text-sm text-gray-500">Preparing withdrawal...</div>}
       </div>
       <WalletDetails onClose={() => setShowWalletDetails(false)} open={showWalletDetails} />
       <WarningModal open={openWarningModal} onClose={() => setOpenWarningModal(false)} />
