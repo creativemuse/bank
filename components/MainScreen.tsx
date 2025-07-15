@@ -6,6 +6,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { useAuth } from "@crossmint/client-sdk-react-ui";
 import { NewProducts } from "./NewProducts";
 import { DashboardSummary } from "./dashboard-summary";
+import { WithdrawalStatus } from "./dashboard-summary/WithdrawalStatus";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 
@@ -41,7 +42,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
             <div className="hidden md:block">
               <ThemeToggle />
             </div>
-            <button onClick={logout} className="text-secondary flex items-center gap-1 text-base">
+            <button onClick={logout} className="flex items-center gap-1 text-base text-secondary">
               Logout
               <ArrowRightOnRectangleIcon className="text h-6 w-6" />
             </button>
@@ -54,6 +55,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
           onDepositClick={() => setShowDepositModal(true)}
           onSendClick={() => setShowSendModal(true)}
         />
+        <WithdrawalStatus />
         <NewProducts />
         <ActivityFeed onDepositClick={() => setShowDepositModal(true)} />
         <DepositModal

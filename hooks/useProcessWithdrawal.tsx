@@ -26,33 +26,72 @@ const setProccesedTransactions = (transactionId: string) => {
 export function useProcessWithdrawal(userId?: string, wallet?: Wallet<Chain>) {
   const { refetch: refetchBalance } = useBalance();
   const { refetch: refetchActivityFeed } = useActivityFeed();
+
   useEffect(() => {
-    (async () => {
-      if (userId && wallet) {
-        try {
-          const transactions = await getTransactions(userId);
+    if (!userId || !wallet) {
+      return;
+    }
 
-          // Add proper null/undefined checks
-          if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
-            console.log("No transactions found for user:", userId);
-            return;
-          }
+    const processWithdrawal = async () => {
+      try {
+        console.log("Checking for pending withdrawal transactions...");
+        const transactions = await getTransactions(userId);
 
-          const transaction = transactions[0];
-          if (
+        // Add proper null/undefined checks
+        if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+          console.log("No transactions found for user:", userId);
+          return;
+        }
+
+        // Look for the most recent transaction that needs processing
+        const pendingTransaction = transactions.find(
+          (transaction) =>
             transaction?.status === "TRANSACTION_STATUS_STARTED" &&
             transaction?.transaction_id &&
             !getProccesedTransactions(transaction.transaction_id)
-          ) {
-            setProccesedTransactions(transaction.transaction_id);
-            await wallet.send(transaction.to_address, "usdc", transaction.sell_amount.value);
-            refetchBalance();
-            refetchActivityFeed();
+        );
+
+        if (pendingTransaction) {
+          console.log("Processing withdrawal transaction:", pendingTransaction.transaction_id);
+
+          // Mark as processed to prevent duplicate processing
+          setProccesedTransactions(pendingTransaction.transaction_id);
+
+          try {
+            // Send the transaction using the wallet
+            await wallet.send(
+              pendingTransaction.to_address,
+              "usdc",
+              pendingTransaction.sell_amount.value
+            );
+
+            console.log("Withdrawal transaction sent successfully");
+
+            // Refresh data after successful transaction
+            await Promise.all([refetchBalance(), refetchActivityFeed()]);
+          } catch (sendError) {
+            console.error("Failed to send withdrawal transaction:", sendError);
+            // Could implement retry logic here if needed
+            throw sendError;
           }
-        } catch (error) {
-          console.error("Error processing withdrawal:", error);
+        } else {
+          console.log("No pending withdrawal transactions found");
+        }
+      } catch (error) {
+        console.error("Error processing withdrawal:", error);
+
+        // Show user-friendly error message
+        if (error instanceof Error) {
+          if (error.message.includes("credentials")) {
+            console.error("Coinbase API credentials issue - withdrawal may not work");
+          } else if (error.message.includes("network") || error.message.includes("fetch")) {
+            console.error("Network error while processing withdrawal");
+          }
         }
       }
-    })();
-  }, [userId, wallet]); // Removed refetch functions from dependency array
+    };
+
+    // Run the withdrawal processing
+    processWithdrawal();
+  }, [userId, wallet, refetchBalance, refetchActivityFeed]);
 }

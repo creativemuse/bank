@@ -127,9 +127,41 @@ This starter app is designed for rapid prototyping and testing in a staging envi
 
 ### Enabling Withdrawals
 
-Withdrawals are powered by [Coinbase](https://www.coinbase.com/en-es/developer-platform) and only work in production. For enabling withdrawals you'll need to:
+Withdrawals are powered by [Coinbase](https://www.coinbase.com/en-es/developer-platform) and require proper API configuration. For enabling withdrawals you'll need to:
 
 1. [Create a Coinbase developer account](https://www.coinbase.com/en-es/developer-platform)
-2. Create a Server API Key
-3. Add the `NEXT_PUBLIC_COINBASE_APP_ID`, `COINBASE_API_KEY_ID`, and `API_KEY_SECRET` to the `.env` file.
+2. Create a Server API Key with the following permissions:
+   - `wallet:addresses:read`
+   - `wallet:withdrawals:create`
+   - `wallet:transactions:read`
+3. Add the following environment variables to your `.env` file:
+   ```
+   COINBASE_API_KEY_ID=your_coinbase_api_key_id_here
+   COINBASE_API_KEY_SECRET=your_coinbase_api_key_secret_here
+   ```
 4. In the [Onramp configuration](https://portal.cdp.coinbase.com/products/onramp) add your domain to the domain allowlist
+
+### Environment Variables
+
+Create a `.env` file in your project root with the following variables:
+
+```env
+# Crossmint Configuration (Required)
+NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY=your_crossmint_client_api_key_here
+NEXT_PUBLIC_CHAIN_ID=ethereum # or solana, polygon, base, etc.
+NEXT_PUBLIC_USDC_MINT=your_usdc_mint_address_here
+
+# Coinbase Offramp Configuration (Required for Withdrawals)
+COINBASE_API_KEY_ID=your_coinbase_api_key_id_here
+COINBASE_API_KEY_SECRET=your_coinbase_api_key_secret_here
+
+# Wert Onramp Configuration (Optional)
+WERT_API_KEY=your_wert_api_key_here
+```
+
+**USDC Contract Addresses by Chain:**
+
+- Ethereum: `0xA0b86a33E6A12A5e5F6F1Da4Ca7b4Ca87D5e33b8`
+- Solana: `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`
+- Base: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
+- Polygon: `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`

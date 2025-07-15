@@ -11,6 +11,22 @@ export default async function createCoinbaseSessionToken({
   blockchains: string[];
   assets: string[];
 }) {
+  // Validate environment variables
+  if (!process.env.COINBASE_API_KEY_ID || !process.env.COINBASE_API_KEY_SECRET) {
+    throw new Error(
+      "Coinbase API keys are not configured. Please check your environment variables."
+    );
+  }
+
+  // Validate input parameters
+  if (!address || !blockchains.length || !assets.length) {
+    throw new Error("Missing required parameters: address, blockchains, or assets");
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    throw new Error("Withdrawals are only enabled in production.");
+  }
+
   const url = "https://api.developer.coinbase.com";
   const method = "POST";
   const request_path = "/onramp/v1/token";
@@ -38,24 +54,46 @@ export default async function createCoinbaseSessionToken({
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("Coinbase session token creation failed with status:", response.status);
-      throw new Error(`Coinbase session token creation failed: ${error}`);
+      const errorText = await response.text();
+      console.error("Coinbase session token creation failed:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+      });
+
+      // Provide more specific error messages based on status codes
+      if (response.status === 401) {
+        throw new Error("Invalid Coinbase API credentials. Please check your API keys.");
+      } else if (response.status === 403) {
+        throw new Error("Insufficient permissions. Please check your API key permissions.");
+      } else if (response.status === 429) {
+        throw new Error("Too many requests. Please try again later.");
+      } else if (response.status >= 500) {
+        throw new Error("Coinbase service is temporarily unavailable. Please try again later.");
+      } else {
+        throw new Error(`Coinbase API error (${response.status}): ${errorText}`);
+      }
     }
 
     const data = await response.json();
     const token = data.data?.token;
 
     if (!token) {
+      console.error("No token in response:", data);
       throw new Error("No session token received from Coinbase API");
     }
 
     return token;
   } catch (error) {
-    console.error(
-      "Session token creation error:",
-      error instanceof Error ? error.message : "Unknown error"
-    );
+    console.error("Session token creation error:", error);
+
+    // Re-throw with a more user-friendly message if it's a network error
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      throw new Error(
+        "Network error: Unable to connect to Coinbase API. Please check your connection."
+      );
+    }
+
     throw error;
   }
 }

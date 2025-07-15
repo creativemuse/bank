@@ -14,6 +14,7 @@ import { WalletDetails } from "./WalletDetails";
 import { useWallet, useAuth } from "@crossmint/client-sdk-react-ui";
 import { WarningModal } from "./WarningModal";
 import createCoinbaseSessionToken from "@/server-actions/createCoinbaseSessionToken";
+import { checkCoinbaseConfig } from "@/server-actions/checkCoinbaseConfig";
 
 interface DashboardSummaryProps {
   onDepositClick: () => void;
@@ -26,51 +27,90 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
   const { user } = useAuth();
   const [openWarningModal, setOpenWarningModal] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [withdrawalStatus, setWithdrawalStatus] = useState<string | null>(null);
+  const isProd =
+    typeof window !== "undefined" && window.location.origin === "https://bank.creativeplatform.xyz";
   const dropdownOptions = [
     {
       icon: <ArrowsRightLeftIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
       label: "Withdraw",
       onClick: async () => {
-        if (process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY?.includes("staging")) {
+        if (!isProd) {
           setOpenWarningModal(true);
-        } else {
-          if (!wallet?.address || !wallet?.chain || !user?.id) {
-            console.error("Missing wallet or user information for withdrawal");
-            alert("Missing wallet or user information. Please try again.");
+          return;
+        }
+        setWithdrawalStatus("Checking configuration...");
+
+        // Check if Coinbase API keys are configured
+        try {
+          const config = await checkCoinbaseConfig();
+          if (!config.isConfigured) {
+            setOpenWarningModal(true);
+            setWithdrawalStatus(null);
             return;
           }
+        } catch (error) {
+          console.error("Failed to check Coinbase configuration:", error);
+          setWithdrawalStatus("Failed to check configuration");
+          setTimeout(() => setWithdrawalStatus(null), 3000);
+          return;
+        }
 
-          setIsWithdrawing(true);
-          try {
-            const token = await createCoinbaseSessionToken({
-              address: wallet.address,
-              blockchains: [wallet.chain],
-              assets: ["USDC", "ETH"],
-            });
+        if (!wallet?.address || !wallet?.chain || !user?.id) {
+          console.error("Missing wallet or user information for withdrawal");
+          setWithdrawalStatus("Missing wallet information");
+          setTimeout(() => setWithdrawalStatus(null), 3000);
+          return;
+        }
 
-            if (!token) {
-              throw new Error("No session token received from backend");
-            }
+        setIsWithdrawing(true);
+        setWithdrawalStatus("Creating secure session...");
 
-            const params = new URLSearchParams({
-              sessionToken: token,
-              partnerUserId: user.id,
-              redirectUrl: window.location.origin,
-            });
+        try {
+          const token = await createCoinbaseSessionToken({
+            address: wallet.address,
+            blockchains: [wallet.chain],
+            assets: ["USDC", "ETH"],
+          });
 
-            const offrampUrl = `https://pay.coinbase.com/v3/sell/input?${params}`;
-            window.location.href = offrampUrl;
-          } catch (error) {
-            console.error(
-              "Withdrawal failed:",
-              error instanceof Error ? error.message : "Unknown error"
-            );
-            alert("Failed to start withdrawal. Please try again.");
-          } finally {
-            setIsWithdrawing(false);
+          if (!token) {
+            throw new Error("No session token received from backend");
           }
+
+          setWithdrawalStatus("Redirecting to withdrawal...");
+
+          const params = new URLSearchParams({
+            sessionToken: token,
+            partnerUserId: user.id,
+            redirectUrl: window.location.origin,
+            addresses: JSON.stringify([
+              {
+                address: wallet.address,
+                blockchains: [wallet.chain],
+              },
+            ]),
+          });
+
+          const offrampUrl = `https://pay.coinbase.com/v3/sell/input?${params}`;
+
+          // Small delay to show the "redirecting" message
+          setTimeout(() => {
+            window.location.href = offrampUrl;
+          }, 500);
+        } catch (error) {
+          console.error(
+            "Withdrawal failed:",
+            error instanceof Error ? error.message : "Unknown error"
+          );
+
+          const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+          setWithdrawalStatus(`Error: ${errorMessage}`);
+          setTimeout(() => setWithdrawalStatus(null), 5000);
+        } finally {
+          setIsWithdrawing(false);
         }
       },
+      disabled: !isProd,
     },
     {
       icon: <WalletIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
@@ -100,7 +140,23 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
           <ArrowUpRightIcon className="h-4 w-4 text-gray-500" /> Send
         </button>
         <Dropdown trigger={dropdownTrigger} options={dropdownOptions} />
-        {isWithdrawing && <div className="ml-2 text-sm text-gray-500">Preparing withdrawal...</div>}
+        {!isProd && (
+          <div className="mt-2 text-sm text-red-600">
+            Withdrawals are only enabled on the production site.
+          </div>
+        )}
+        {(isWithdrawing || withdrawalStatus) && (
+          <div className="ml-2 flex items-center space-x-2 text-sm">
+            {isWithdrawing && (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+            )}
+            <span
+              className={`${withdrawalStatus?.startsWith("Error:") ? "text-red-600" : "text-gray-500"}`}
+            >
+              {withdrawalStatus || "Preparing withdrawal..."}
+            </span>
+          </div>
+        )}
       </div>
       <WalletDetails onClose={() => setShowWalletDetails(false)} open={showWalletDetails} />
       <WarningModal open={openWarningModal} onClose={() => setOpenWarningModal(false)} />
