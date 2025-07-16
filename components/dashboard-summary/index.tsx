@@ -83,12 +83,6 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
             sessionToken: token,
             partnerUserId: user.id,
             redirectUrl: window.location.origin,
-            addresses: JSON.stringify([
-              {
-                address: wallet.address,
-                blockchains: [wallet.chain],
-              },
-            ]),
           });
 
           const offrampUrl = `https://pay.coinbase.com/v3/sell/input?${params}`;
