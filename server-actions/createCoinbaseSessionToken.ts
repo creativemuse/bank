@@ -13,6 +13,11 @@ export default async function createCoinbaseSessionToken({
 }) {
   // Validate environment variables
   if (!process.env.COINBASE_API_KEY_ID || !process.env.COINBASE_API_KEY_SECRET) {
+    console.error("Missing Coinbase API keys:", {
+      hasKeyId: !!process.env.COINBASE_API_KEY_ID,
+      hasKeySecret: !!process.env.COINBASE_API_KEY_SECRET,
+      nodeEnv: process.env.NODE_ENV,
+    });
     throw new Error(
       "Coinbase API keys are not configured. Please check your environment variables."
     );
@@ -23,7 +28,8 @@ export default async function createCoinbaseSessionToken({
     throw new Error("Missing required parameters: address, blockchains, or assets");
   }
 
-  if (process.env.NODE_ENV !== "production") {
+  // More flexible production check - allow if we're not in development
+  if (process.env.NODE_ENV === "development") {
     throw new Error("Withdrawals are only enabled in production.");
   }
 
@@ -43,6 +49,13 @@ export default async function createCoinbaseSessionToken({
       ],
       assets,
     };
+
+    console.log("Creating session token with:", {
+      address,
+      blockchains,
+      assets,
+      hasJWT: !!jwt,
+    });
 
     const response = await fetch(`${url}${request_path}`, {
       method: "POST",
@@ -83,6 +96,7 @@ export default async function createCoinbaseSessionToken({
       throw new Error("No session token received from Coinbase API");
     }
 
+    console.log("Session token created successfully");
     return token;
   } catch (error) {
     console.error("Session token creation error:", error);
