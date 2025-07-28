@@ -15,6 +15,7 @@ import { useWallet, useAuth } from "@crossmint/client-sdk-react-ui";
 import { WarningModal } from "./WarningModal";
 import createCoinbaseSessionToken from "@/server-actions/createCoinbaseSessionToken";
 import { checkCoinbaseConfig } from "@/server-actions/checkCoinbaseConfig";
+import { debugCoinbaseConfig } from "@/server-actions/debugCoinbaseConfig";
 
 interface DashboardSummaryProps {
   onDepositClick: () => void;
@@ -103,7 +104,25 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
             error instanceof Error ? error.message : "Unknown error"
           );
 
-          const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+          // Provide more specific error messages
+          let errorMessage = "Unknown error occurred";
+          if (error instanceof Error) {
+            if (error.message.includes("credentials")) {
+              errorMessage = "Invalid API credentials. Please check your Coinbase configuration.";
+            } else if (error.message.includes("production")) {
+              errorMessage = "Withdrawals are only available in production environment.";
+            } else if (error.message.includes("network")) {
+              errorMessage = "Network error. Please check your connection and try again.";
+            } else if (error.message.includes("permissions")) {
+              errorMessage =
+                "Insufficient API permissions. Please check your Coinbase API key settings.";
+            } else if (error.message.includes("temporarily unavailable")) {
+              errorMessage = "Coinbase service is temporarily unavailable. Please try again later.";
+            } else {
+              errorMessage = error.message;
+            }
+          }
+
           setWithdrawalStatus(`Error: ${errorMessage}`);
           setTimeout(() => setWithdrawalStatus(null), 5000);
         } finally {
@@ -117,6 +136,20 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
       label: "Wallet Details",
       onClick: () => {
         setShowWalletDetails(true);
+      },
+    },
+    {
+      icon: <ArrowsRightLeftIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
+      label: "Debug Config",
+      onClick: async () => {
+        try {
+          const debugInfo = await debugCoinbaseConfig();
+          console.log("Debug info:", debugInfo);
+          alert(`Debug Info: ${JSON.stringify(debugInfo, null, 2)}`);
+        } catch (error) {
+          console.error("Debug failed:", error);
+          alert(`Debug failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+        }
       },
     },
   ];
