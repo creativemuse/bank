@@ -86,6 +86,8 @@ export function useProcessWithdrawal(userId?: string, wallet?: Wallet<Chain>) {
             console.error("Coinbase API credentials issue - withdrawal may not work");
           } else if (error.message.includes("network") || error.message.includes("fetch")) {
             console.error("Network error while processing withdrawal");
+          } else if (error.message.includes("production")) {
+            console.error("Withdrawal processing is only available in production");
           }
         }
       }

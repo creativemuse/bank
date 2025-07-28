@@ -49,6 +49,12 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
             setWithdrawalStatus(null);
             return;
           }
+
+          if (!config.isProduction) {
+            setWithdrawalStatus("Withdrawals are only available in production");
+            setTimeout(() => setWithdrawalStatus(null), 3000);
+            return;
+          }
         } catch (error) {
           console.error("Failed to check Coinbase configuration:", error);
           setWithdrawalStatus("Failed to check configuration");

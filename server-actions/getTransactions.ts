@@ -23,6 +23,7 @@ export async function getTransactions(userId: string) {
   const request_path = `/onramp/v1/sell/user/${userId}/transactions`;
 
   try {
+    console.log(`Fetching transactions for user: ${userId}`);
     const jwt = await getCoinbaseJWT(url, method, request_path);
 
     const response = await fetch(`https://${url}${request_path}`, {
@@ -39,6 +40,7 @@ export async function getTransactions(userId: string) {
         status: response.status,
         statusText: response.statusText,
         error: errorText,
+        userId,
       });
 
       // Handle specific error cases
@@ -48,6 +50,7 @@ export async function getTransactions(userId: string) {
         throw new Error("Insufficient permissions to fetch transactions");
       } else if (response.status === 404) {
         // User might not have any transactions yet
+        console.log(`No transactions found for user: ${userId}`);
         return [];
       } else if (response.status >= 500) {
         throw new Error("Coinbase service temporarily unavailable");
