@@ -1,6 +1,6 @@
 "use server";
 
-import { getCoinbaseJWT } from "@/utils/coinbase";
+import { generateJWT } from "@/utils/coinbase-sdk";
 
 export async function getTransactions(userId: string) {
   // Validate environment variables
@@ -24,7 +24,12 @@ export async function getTransactions(userId: string) {
 
   try {
     console.log(`Fetching transactions for user: ${userId}`);
-    const jwt = await getCoinbaseJWT(url, method, request_path);
+
+    // Use the new CDP SDK to generate JWT
+    const jwt = await generateJWT(
+      process.env.COINBASE_API_KEY_ID,
+      process.env.COINBASE_API_KEY_SECRET
+    );
 
     const response = await fetch(`https://${url}${request_path}`, {
       method,
