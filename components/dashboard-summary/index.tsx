@@ -69,12 +69,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
         try {
           // Validate wallet chain format for Coinbase compatibility
           const chainMapping: Record<string, string> = {
-            ethereum: "ethereum",
             base: "base",
-            polygon: "polygon",
-            optimism: "optimism",
-            arbitrum: "arbitrum",
-            solana: "solana",
           };
 
           const normalizedChain = chainMapping[wallet.chain.toLowerCase()] || wallet.chain;
