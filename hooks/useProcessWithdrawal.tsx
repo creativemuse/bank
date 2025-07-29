@@ -88,11 +88,7 @@ export function useProcessWithdrawal(userId?: string, wallet?: Wallet<Chain>) {
             console.error("Network error while processing withdrawal");
           } else if (error.message.includes("production")) {
             console.error("Withdrawal processing is only available in production");
-          } else {
-            console.error("Unexpected error during withdrawal processing:", error.message);
           }
-        } else {
-          console.error("Unknown error during withdrawal processing:", error);
         }
       }
     };

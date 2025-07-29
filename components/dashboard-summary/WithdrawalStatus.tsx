@@ -3,11 +3,6 @@ import { useAuth } from "@crossmint/client-sdk-react-ui";
 import { getTransactions } from "@/server-actions/getTransactions";
 
 export function WithdrawalStatus() {
-  // Only render in production
-  if (process.env.NODE_ENV !== "production") {
-    return null;
-  }
-
   const { user } = useAuth();
   const [pendingTransaction, setPendingTransaction] = useState<any>(null);
   const [isChecking, setIsChecking] = useState(false);

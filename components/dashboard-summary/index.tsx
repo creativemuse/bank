@@ -15,7 +15,6 @@ import { useWallet, useAuth } from "@crossmint/client-sdk-react-ui";
 import { WarningModal } from "./WarningModal";
 import createCoinbaseSessionToken from "@/server-actions/createCoinbaseSessionToken";
 import { checkCoinbaseConfig } from "@/server-actions/checkCoinbaseConfig";
-import { debugCoinbaseConfig } from "@/server-actions/debugCoinbaseConfig";
 
 interface DashboardSummaryProps {
   onDepositClick: () => void;
@@ -29,17 +28,11 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
   const [openWarningModal, setOpenWarningModal] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawalStatus, setWithdrawalStatus] = useState<string | null>(null);
-  const isProd =
-    typeof window !== "undefined" && window.location.origin === "https://bank.creativeplatform.xyz";
   const dropdownOptions = [
     {
       icon: <ArrowsRightLeftIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
       label: "Withdraw",
       onClick: async () => {
-        if (!isProd) {
-          setOpenWarningModal(true);
-          return;
-        }
         setWithdrawalStatus("Checking configuration...");
 
         // Check if Coinbase API keys are configured
@@ -104,52 +97,20 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
             error instanceof Error ? error.message : "Unknown error"
           );
 
-          // Provide more specific error messages
-          let errorMessage = "Unknown error occurred";
-          if (error instanceof Error) {
-            if (error.message.includes("credentials")) {
-              errorMessage = "Invalid API credentials. Please check your Coinbase configuration.";
-            } else if (error.message.includes("production")) {
-              errorMessage = "Withdrawals are only available in production environment.";
-            } else if (error.message.includes("network")) {
-              errorMessage = "Network error. Please check your connection and try again.";
-            } else if (error.message.includes("permissions")) {
-              errorMessage =
-                "Insufficient API permissions. Please check your Coinbase API key settings.";
-            } else if (error.message.includes("temporarily unavailable")) {
-              errorMessage = "Coinbase service is temporarily unavailable. Please try again later.";
-            } else {
-              errorMessage = error.message;
-            }
-          }
-
+          const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
           setWithdrawalStatus(`Error: ${errorMessage}`);
           setTimeout(() => setWithdrawalStatus(null), 5000);
         } finally {
           setIsWithdrawing(false);
         }
       },
-      disabled: !isProd,
+      disabled: false,
     },
     {
       icon: <WalletIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
       label: "Wallet Details",
       onClick: () => {
         setShowWalletDetails(true);
-      },
-    },
-    {
-      icon: <ArrowsRightLeftIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
-      label: "Debug Config",
-      onClick: async () => {
-        try {
-          const debugInfo = await debugCoinbaseConfig();
-          console.log("Debug info:", debugInfo);
-          alert(`Debug Info: ${JSON.stringify(debugInfo, null, 2)}`);
-        } catch (error) {
-          console.error("Debug failed:", error);
-          alert(`Debug failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-        }
       },
     },
   ];
@@ -173,11 +134,6 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
           <ArrowUpRightIcon className="h-4 w-4 text-gray-500" /> Send
         </button>
         <Dropdown trigger={dropdownTrigger} options={dropdownOptions} />
-        {!isProd && (
-          <div className="mt-2 text-sm text-red-600">
-            Withdrawals are only enabled on the production site.
-          </div>
-        )}
         {(isWithdrawing || withdrawalStatus) && (
           <div className="ml-2 flex items-center space-x-2 text-sm">
             {isWithdrawing && (

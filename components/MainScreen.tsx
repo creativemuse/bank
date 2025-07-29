@@ -8,7 +8,6 @@ import { NewProducts } from "./NewProducts";
 import { DashboardSummary } from "./dashboard-summary";
 import { WithdrawalStatus } from "./dashboard-summary/WithdrawalStatus";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
-import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 
 interface MainScreenProps {
@@ -56,13 +55,9 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
           onDepositClick={() => setShowDepositModal(true)}
           onSendClick={() => setShowSendModal(true)}
         />
-        <ErrorBoundary>
-          <WithdrawalStatus />
-        </ErrorBoundary>
+        <WithdrawalStatus />
         <NewProducts />
-        <ErrorBoundary>
-          <ActivityFeed onDepositClick={() => setShowDepositModal(true)} />
-        </ErrorBoundary>
+        <ActivityFeed onDepositClick={() => setShowDepositModal(true)} />
         <DepositModal
           open={showDepositModal}
           onClose={() => setShowDepositModal(false)}

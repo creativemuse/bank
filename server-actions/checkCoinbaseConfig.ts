@@ -14,11 +14,6 @@ export async function checkCoinbaseConfig() {
     nodeEnv: process.env.NODE_ENV,
   });
 
-  // Additional validation for production environment
-  if (isProduction && !isConfigured) {
-    console.error("Production environment detected but Coinbase API keys are not configured");
-  }
-
   return {
     isConfigured,
     isProduction,

@@ -30,18 +30,6 @@ export const getCoinbaseJWT = async (url: string, method: string, request_path: 
     return `${headerAndPayloadBase64URL}.${signatureBase64url}`;
   } catch (error) {
     console.error("Error generating Coinbase JWT:", error);
-
-    // Provide more specific error messages
-    if (error instanceof Error) {
-      if (error.message.includes("sodium")) {
-        throw new Error("Failed to initialize encryption library");
-      } else if (error.message.includes("base64")) {
-        throw new Error("Invalid API key format");
-      } else {
-        throw new Error(`Authentication error: ${error.message}`);
-      }
-    }
-
     throw new Error("Failed to generate authentication token");
   }
 };
@@ -61,18 +49,6 @@ const encode = (payload: any, key: any, alg: any, key_name: string) => {
     return { headerAndPayloadBase64URL, keyBuf };
   } catch (error) {
     console.error("Error encoding JWT:", error);
-
-    // Provide more specific error messages
-    if (error instanceof Error) {
-      if (error.message.includes("randomBytes")) {
-        throw new Error("Failed to generate secure random data");
-      } else if (error.message.includes("base64")) {
-        throw new Error("Invalid key format");
-      } else {
-        throw new Error(`Encoding error: ${error.message}`);
-      }
-    }
-
     throw new Error("Failed to encode authentication token");
   }
 };

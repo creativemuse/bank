@@ -73,15 +73,6 @@ export async function getTransactions(userId: string) {
     }
 
     // For other errors, return empty array to allow app to continue
-    // But log the error for debugging
-    if (error instanceof Error) {
-      console.error("Transaction fetch error details:", {
-        message: error.message,
-        stack: error.stack,
-        userId,
-      });
-    }
-
     return [];
   }
 }
