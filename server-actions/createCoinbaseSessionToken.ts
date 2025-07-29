@@ -58,8 +58,8 @@ export default async function createCoinbaseSessionToken({
 
     // More flexible production check - allow if we're not in development
     if (process.env.NODE_ENV === "development") {
-      console.error("Blocking withdrawal in development environment");
-      throw new Error("Withdrawals are only enabled in production.");
+      console.log("Withdrawal session creation disabled in development environment");
+      return null;
     }
 
     console.log("Environment checks passed, generating JWT...");

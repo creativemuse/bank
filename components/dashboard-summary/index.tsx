@@ -88,7 +88,9 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
           });
 
           if (!token) {
-            throw new Error("No session token received from backend");
+            setWithdrawalStatus("Withdrawals are only available in production");
+            setTimeout(() => setWithdrawalStatus(null), 3000);
+            return;
           }
 
           setWithdrawalStatus("Redirecting to withdrawal...");

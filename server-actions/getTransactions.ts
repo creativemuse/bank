@@ -14,8 +14,10 @@ export async function getTransactions(userId: string) {
     throw new Error("User ID is required to fetch transactions");
   }
 
+  // More graceful production check - return empty array instead of throwing
   if (process.env.NODE_ENV !== "production") {
-    throw new Error("Withdrawals are only enabled in production.");
+    console.log("Transaction fetching disabled in non-production environment");
+    return [];
   }
 
   const url = "api.developer.coinbase.com";
