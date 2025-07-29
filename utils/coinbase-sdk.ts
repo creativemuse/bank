@@ -2,6 +2,7 @@
  * Session Token API utilities for secure initialization
  */
 import { generateJwt } from "@coinbase/cdp-sdk/auth";
+import { generateJWTFallback } from "./coinbase-fallback";
 
 interface SessionTokenRequest {
   addresses: Array<{
@@ -50,20 +51,33 @@ export async function generateJWT(keyName: string, keySecret: string): Promise<s
     console.log("JWT generated successfully with CDP SDK");
     return token;
   } catch (error) {
-    console.error("Error generating JWT with CDP SDK:", error);
+    console.error("CDP SDK JWT generation failed, trying fallback method:", error);
 
-    // Provide more specific error messages
-    if (error instanceof Error) {
-      if (error.message.includes("key") || error.message.includes("API")) {
-        throw new Error("Invalid Coinbase API key format or credentials");
-      } else if (error.message.includes("network") || error.message.includes("fetch")) {
-        throw new Error("Network error while generating authentication token");
-      } else {
-        throw new Error(`JWT generation failed: ${error.message}`);
+    try {
+      // Try the fallback method
+      const token = await generateJWTFallback(keyName, keySecret);
+      console.log("JWT generated successfully with fallback method");
+      return token;
+    } catch (fallbackError) {
+      console.error("Both CDP SDK and fallback JWT generation failed:", {
+        cdpError: error instanceof Error ? error.message : "Unknown CDP error",
+        fallbackError:
+          fallbackError instanceof Error ? fallbackError.message : "Unknown fallback error",
+      });
+
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes("key") || error.message.includes("API")) {
+          throw new Error("Invalid Coinbase API key format or credentials");
+        } else if (error.message.includes("network") || error.message.includes("fetch")) {
+          throw new Error("Network error while generating authentication token");
+        } else {
+          throw new Error(`JWT generation failed: ${error.message}`);
+        }
       }
-    }
 
-    throw new Error("Failed to generate authentication token");
+      throw new Error("Failed to generate authentication token");
+    }
   }
 }
 

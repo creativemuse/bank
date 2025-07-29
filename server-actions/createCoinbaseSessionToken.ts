@@ -12,6 +12,15 @@ export default async function createCoinbaseSessionToken({
   assets: string[];
 }) {
   try {
+    console.log("=== createCoinbaseSessionToken called ===", {
+      address,
+      blockchains,
+      assets,
+      nodeEnv: process.env.NODE_ENV,
+      hasKeyId: !!process.env.COINBASE_API_KEY_ID,
+      hasKeySecret: !!process.env.COINBASE_API_KEY_SECRET,
+    });
+
     // Validate environment variables
     if (!process.env.COINBASE_API_KEY_ID || !process.env.COINBASE_API_KEY_SECRET) {
       console.error("Missing Coinbase API keys:", {
@@ -26,13 +35,17 @@ export default async function createCoinbaseSessionToken({
 
     // Validate input parameters
     if (!address || !blockchains.length || !assets.length) {
+      console.error("Invalid input parameters:", { address, blockchains, assets });
       throw new Error("Missing required parameters: address, blockchains, or assets");
     }
 
     // More flexible production check - allow if we're not in development
     if (process.env.NODE_ENV === "development") {
+      console.error("Blocking withdrawal in development environment");
       throw new Error("Withdrawals are only enabled in production.");
     }
+
+    console.log("Environment checks passed, generating JWT...");
 
     const url = "https://api.developer.coinbase.com";
     const method = "POST";
@@ -44,6 +57,8 @@ export default async function createCoinbaseSessionToken({
         process.env.COINBASE_API_KEY_ID,
         process.env.COINBASE_API_KEY_SECRET
       );
+
+      console.log("JWT generated successfully, making API request...");
 
       const requestBody = {
         addresses: [
@@ -116,7 +131,11 @@ export default async function createCoinbaseSessionToken({
       throw error;
     }
   } catch (error) {
-    console.error("Error in createCoinbaseSessionToken:", error);
+    console.error("=== createCoinbaseSessionToken ERROR ===", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      nodeEnv: process.env.NODE_ENV,
+    });
     throw error;
   }
 }
