@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
     try {
       // Generate JWT using CDP SDK
       const jwt = await generateJWT(
-        process.env.COINBASE_API_KEY_ID,
-        process.env.COINBASE_API_KEY_SECRET
+        process.env.COINBASE_API_KEY_ID!,
+        process.env.COINBASE_API_KEY_SECRET!
       );
 
       const requestBody = {

@@ -39,6 +39,23 @@ export default async function createCoinbaseSessionToken({
       throw new Error("Missing required parameters: address, blockchains, or assets");
     }
 
+    // Validate blockchain format for Coinbase compatibility
+    const validBlockchains = ["base"];
+    const invalidBlockchains = blockchains.filter(
+      (chain) => !validBlockchains.includes(chain.toLowerCase())
+    );
+
+    if (invalidBlockchains.length > 0) {
+      console.error("Invalid blockchain names:", {
+        provided: blockchains,
+        invalid: invalidBlockchains,
+        valid: validBlockchains,
+      });
+      throw new Error(
+        `Invalid blockchain names: ${invalidBlockchains.join(", ")}. Valid options: ${validBlockchains.join(", ")}`
+      );
+    }
+
     // More flexible production check - allow if we're not in development
     if (process.env.NODE_ENV === "development") {
       console.error("Blocking withdrawal in development environment");
@@ -54,8 +71,8 @@ export default async function createCoinbaseSessionToken({
     try {
       // Use the new CDP SDK to generate JWT
       const jwt = await generateJWT(
-        process.env.COINBASE_API_KEY_ID,
-        process.env.COINBASE_API_KEY_SECRET
+        process.env.COINBASE_API_KEY_ID!,
+        process.env.COINBASE_API_KEY_SECRET!
       );
 
       console.log("JWT generated successfully, making API request...");

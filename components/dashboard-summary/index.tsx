@@ -67,9 +67,28 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
         setWithdrawalStatus("Creating secure session...");
 
         try {
+          // Validate wallet chain format for Coinbase compatibility
+          const chainMapping: Record<string, string> = {
+            ethereum: "ethereum",
+            base: "base",
+            polygon: "polygon",
+            optimism: "optimism",
+            arbitrum: "arbitrum",
+            solana: "solana",
+          };
+
+          const normalizedChain = chainMapping[wallet.chain.toLowerCase()] || wallet.chain;
+
+          console.log("=== Withdrawal Debug Info ===", {
+            originalChain: wallet.chain,
+            normalizedChain,
+            address: wallet.address,
+            assets: ["USDC", "ETH"],
+          });
+
           const token = await createCoinbaseSessionToken({
             address: wallet.address,
-            blockchains: [wallet.chain],
+            blockchains: [normalizedChain],
             assets: ["USDC", "ETH"],
           });
 
