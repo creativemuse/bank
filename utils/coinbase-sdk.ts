@@ -28,6 +28,15 @@ export async function generateJWT(keyName: string, keySecret: string): Promise<s
   const requestPath = "/onramp/v1/token";
 
   try {
+    console.log("Generating JWT with CDP SDK...", {
+      hasKeyName: !!keyName,
+      hasKeySecret: !!keySecret,
+      keyNameLength: keyName?.length,
+      requestMethod,
+      requestHost,
+      requestPath,
+    });
+
     // Use the CDP SDK to generate the JWT
     const token = await generateJwt({
       apiKeyId: keyName,
@@ -38,10 +47,23 @@ export async function generateJWT(keyName: string, keySecret: string): Promise<s
       expiresIn: 120, // optional (defaults to 120 seconds)
     });
 
+    console.log("JWT generated successfully with CDP SDK");
     return token;
   } catch (error) {
-    console.error("Error generating JWT:", error);
-    throw error;
+    console.error("Error generating JWT with CDP SDK:", error);
+
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes("key") || error.message.includes("API")) {
+        throw new Error("Invalid Coinbase API key format or credentials");
+      } else if (error.message.includes("network") || error.message.includes("fetch")) {
+        throw new Error("Network error while generating authentication token");
+      } else {
+        throw new Error(`JWT generation failed: ${error.message}`);
+      }
+    }
+
+    throw new Error("Failed to generate authentication token");
   }
 }
 

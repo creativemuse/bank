@@ -80,16 +80,22 @@ export function useProcessWithdrawal(userId?: string, wallet?: Wallet<Chain>) {
       } catch (error) {
         console.error("Error processing withdrawal:", error);
 
-        // Show user-friendly error message
+        // Handle specific error cases more gracefully
         if (error instanceof Error) {
-          if (error.message.includes("credentials")) {
-            console.error("Coinbase API credentials issue - withdrawal may not work");
+          if (error.message.includes("credentials") || error.message.includes("API keys")) {
+            console.log("Coinbase API not configured - withdrawal processing disabled");
+            return; // Silently return, don't throw
+          } else if (error.message.includes("production") || error.message.includes("enabled")) {
+            console.log("Withdrawal processing not available in current environment");
+            return; // Silently return, don't throw
           } else if (error.message.includes("network") || error.message.includes("fetch")) {
-            console.error("Network error while processing withdrawal");
-          } else if (error.message.includes("production")) {
-            console.error("Withdrawal processing is only available in production");
+            console.warn("Network error while processing withdrawal - will retry later");
+            return; // Silently return, don't throw
           }
         }
+
+        // For other unexpected errors, log but don't crash the app
+        console.warn("Unexpected error in withdrawal processing:", error);
       }
     };
 

@@ -20,7 +20,23 @@ export function WithdrawalStatus() {
         setPendingTransaction(pending);
       } catch (error) {
         console.error("Error checking pending transactions:", error);
-        setError(error instanceof Error ? error.message : "Failed to check withdrawal status");
+
+        // Handle specific error cases gracefully
+        if (error instanceof Error) {
+          if (error.message.includes("credentials") || error.message.includes("API keys")) {
+            console.log("Coinbase API not configured - withdrawal status disabled");
+            return; // Don't show error to user
+          } else if (error.message.includes("production") || error.message.includes("enabled")) {
+            console.log("Withdrawal status not available in current environment");
+            return; // Don't show error to user
+          } else if (error.message.includes("network") || error.message.includes("fetch")) {
+            setError("Network error - unable to check withdrawal status");
+          } else {
+            setError("Unable to check withdrawal status");
+          }
+        } else {
+          setError("Failed to check withdrawal status");
+        }
       } finally {
         setIsChecking(false);
       }
