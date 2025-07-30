@@ -88,7 +88,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
           });
 
           if (!token) {
-            setWithdrawalStatus("Withdrawals are only available in production");
+            setWithdrawalStatus("Withdrawals require Coinbase API keys to be configured");
             setTimeout(() => setWithdrawalStatus(null), 3000);
             return;
           }

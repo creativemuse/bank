@@ -56,9 +56,14 @@ export default async function createCoinbaseSessionToken({
       );
     }
 
-    // More flexible production check - allow if we're not in development
-    if (process.env.NODE_ENV === "development") {
-      console.log("Withdrawal session creation disabled in development environment");
+    // More flexible production check - allow testing if API keys are configured
+    if (
+      process.env.NODE_ENV === "development" &&
+      (!process.env.COINBASE_API_KEY_ID || !process.env.COINBASE_API_KEY_SECRET)
+    ) {
+      console.log(
+        "Withdrawal session creation disabled in development environment - no API keys configured"
+      );
       return null;
     }
 
@@ -70,6 +75,7 @@ export default async function createCoinbaseSessionToken({
 
     try {
       // Use the new CDP SDK to generate JWT
+      console.log("Attempting to generate JWT...");
       const jwt = await generateJWT(
         process.env.COINBASE_API_KEY_ID!,
         process.env.COINBASE_API_KEY_SECRET!
@@ -152,7 +158,11 @@ export default async function createCoinbaseSessionToken({
       error: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
       nodeEnv: process.env.NODE_ENV,
+      hasKeyId: !!process.env.COINBASE_API_KEY_ID,
+      hasKeySecret: !!process.env.COINBASE_API_KEY_SECRET,
     });
-    throw error;
+
+    // Return null instead of throwing to prevent 500 errors
+    return null;
   }
 }

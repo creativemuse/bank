@@ -8,10 +8,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Coinbase API keys are not configured" }, { status: 500 });
     }
 
-    // Validate production environment
-    if (process.env.NODE_ENV !== "production") {
+    // Validate production environment - allow if API keys are configured
+    if (
+      process.env.NODE_ENV !== "production" &&
+      (!process.env.COINBASE_API_KEY_ID || !process.env.COINBASE_API_KEY_SECRET)
+    ) {
       return NextResponse.json(
-        { error: "Session tokens are only available in production" },
+        { error: "Session tokens require Coinbase API keys to be configured" },
         { status: 403 }
       );
     }
