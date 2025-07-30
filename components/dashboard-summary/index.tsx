@@ -44,6 +44,12 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
             return;
           }
 
+          if (!config.isConfigured) {
+            setOpenWarningModal(true);
+            setWithdrawalStatus(null);
+            return;
+          }
+
           if (!config.isProduction) {
             setWithdrawalStatus("Withdrawals are only available in production");
             setTimeout(() => setWithdrawalStatus(null), 3000);
@@ -78,13 +84,13 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
             originalChain: wallet.chain,
             normalizedChain,
             address: wallet.address,
-            assets: ["USDC", "ETH"],
+            assets: ["USDC"],
           });
 
           const token = await createCoinbaseSessionToken({
             address: wallet.address,
             blockchains: [normalizedChain],
-            assets: ["USDC", "ETH"],
+            assets: ["USDC"],
           });
 
           if (!token) {
