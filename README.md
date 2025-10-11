@@ -5,7 +5,7 @@
 <h1>Fintech Starter App</h1>
 
 <div align="center">
-<a href="https://fintech-starter-app.demos-crossmint.com/">Live Demo</a>  | <a href="https://docs.crossmint.com/">Docs</a> | <a href="https://crossmint.com/quickstarts">See all quickstarts</a>  | <a href="https://t.me/fintechstarterapp">Join our Telegram</a> 
+<a href="https://fintech-starter-app.demos-crossmint.com/">Live Demo</a>  | <a href="https://docs.crossmint.com/">Docs</a> | <a href="https://crossmint.com/quickstarts">See all quickstarts</a>  | <a href="https://t.me/crossmintdevs">Join our Telegram</a> 
 </div>
 
 <br>
@@ -45,13 +45,13 @@ Create your own Fintech app in minutes using **[Crossmint](https://crossmint.com
 
 Get in touch with us to get early access to these features!
 
-Join our [Telegram community](https://t.me/fintechstarterapp) to stay updated on the latest features and announcements.
+Join our [Telegram community](https://t.me/crossmintdevs) to stay updated on the latest features and announcements.
 
 ## Deploy
 
 Easily deploy the template to Vercel with the button below. You will need to set the required environment variables in the Vercel dashboard.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Ffintech-starter-app&env=NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Ffintech-starter-app&env=NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY,NEXT_PUBLIC_CHAIN_ID,NEXT_PUBLIC_USDC_MINT)
 
 ## Setup
 
@@ -120,7 +120,7 @@ This starter app is designed for rapid prototyping and testing in a staging envi
 
 1. Login to the [Crossmint production console](https://www.crossmint.com/console) and [create a client side API key](https://www.crossmint.com/console/projects/apiKeys) with the following scopes: `users.create`, `users.read`, `wallets.read`, `wallets.create`, `wallets:transactions.create`, `wallets:transactions.sign`, `wallets:transactions.read`, `wallets:balance.read`, `wallets.fund`.
 2. Update the chain environment variable to a mainnet chain.
-   - **Note ⚠️**: Non custodial signers for solana are not available in production yet since they are undergoing a security audit. Reach out to us on [Telegram](https://t.me/fintechstarterapp) to be the first to know when they are available.
+   - **Note ⚠️**: Non custodial signers for solana are not available in production yet since they are undergoing a security audit. Reach out to us on [Telegram](https://t.me/crossmintdevs) to be the first to know when they are available.
 3. Update the USDC locator to the USDC of the mainnet chain you want to use.
 4. Customize your email template for login and signup in the [Crossmint console](https://www.crossmint.com/console) under the Settings tab in the Branding section.
 5. For using onramp in production reach out to us on [Telegram](https://t.me/fintechstarterapp).

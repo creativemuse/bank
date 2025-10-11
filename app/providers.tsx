@@ -21,12 +21,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <CrossmintAuthProvider
           authModalTitle="Welcome to CREATIVE Bank"
           loginMethods={["email", "google"]}
+          termsOfServiceText={
+            <p>
+              By continuing, you accept the{" "}
+              <a href="https://www.crossmint.com/legal/terms-of-service" target="_blank">
+                Wallet's Terms of Service
+              </a>
+              , and to recieve marketing communications from Crossmint.
+            </p>
+          }
         >
           <CrossmintWalletProvider
             showPasskeyHelpers={chain !== "solana"}
             createOnLogin={{
-              chain: process.env.NEXT_PUBLIC_CHAIN_ID as any,
-              signer: { type: chain === "solana" ? "email" : "passkey" },
+              chain,
+              signer: { type: "email" },
             }}
           >
             {children}
