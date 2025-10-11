@@ -27,7 +27,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
         </div>
         <div className="relative mb-2 flex h-14 w-full max-w-5xl items-center justify-between px-2">
           <div className="flex items-center gap-2">
-            <Image src="/creative.svg" alt="Logo" width={54} height={54} />
+            <Image src="/creative.svg" alt="Logo" width={54} height={54} style={{ height: "auto" }} />
             <h1 className="text-lg" style={{ fontFamily: "var(--font-conthrax), sans-serif" }}>
               CREATIVE
               <span

@@ -74,8 +74,10 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
 
         try {
           // Validate wallet chain format for Coinbase compatibility
+          // Coinbase only supports mainnet chains for withdrawals
           const chainMapping: Record<string, string> = {
             base: "base",
+            "base-sepolia": "base", // Map testnet to mainnet for Coinbase
           };
 
           const normalizedChain = chainMapping[wallet.chain.toLowerCase()] || wallet.chain;

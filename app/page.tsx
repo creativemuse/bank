@@ -44,6 +44,7 @@ export default function Home() {
             priority
             width={152}
             height={100}
+            style={{ height: "auto" }}
           />
         </div>
       </footer>
