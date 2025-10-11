@@ -23,7 +23,8 @@ interface JWTPayload {
  * Base64 URL encode (without padding)
  */
 function base64UrlEncode(data: string | Buffer): string {
-  return Buffer.from(data)
+  const buffer = typeof data === 'string' ? Buffer.from(data) : data;
+  return buffer
     .toString("base64")
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
