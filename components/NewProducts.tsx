@@ -1,3 +1,8 @@
+"use client";
+
+import { KeyboardEvent, MouseEvent } from "react";
+import { useRouter } from "next/navigation";
+
 import { Container } from "./common/Container";
 
 const newProducts: NewProductProps[] = [
@@ -8,8 +13,10 @@ const newProducts: NewProductProps[] = [
   },
   {
     title: "Earn yield",
-    description: "Get up to 3.15% APY",
+    description: "Get up to 5% APY",
     image: "/earn-yield.png",
+    ctaLabel: "Go to vaults",
+    ctaHref: "/strategies",
   },
 ];
 
@@ -17,9 +24,31 @@ interface NewProductProps {
   title: string;
   description: string;
   image: string;
+  ctaLabel?: string;
+  ctaHref?: string;
 }
 
-const NewProduct = ({ title, description, image }: NewProductProps) => {
+const NewProduct = ({ title, description, image, ctaLabel, ctaHref }: NewProductProps) => {
+  const router = useRouter();
+
+  const handleNavigate = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (!ctaHref) {
+      return;
+    }
+    router.push(ctaHref);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (!ctaHref) {
+      return;
+    }
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      router.push(ctaHref);
+    }
+  };
+
   return (
     <Container className="flex flex-1 justify-between">
       <div className="flex flex-col gap-4 md:flex-row">
@@ -32,9 +61,22 @@ const NewProduct = ({ title, description, image }: NewProductProps) => {
         </div>
       </div>
       <div className="flex flex-col items-end justify-start md:justify-center">
-        <div className="bg-muted text-muted-foreground min-w-[92px] rounded-3xl px-2 py-1 text-xs font-medium">
-          Coming soon
-        </div>
+        {ctaHref ? (
+          <button
+            type="button"
+            className="bg-primary text-primary-foreground rounded-full px-4 py-2 text-xs font-semibold transition hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            tabIndex={0}
+            aria-label={`Navigate to ${title}`}
+            onClick={handleNavigate}
+            onKeyDown={handleKeyDown}
+          >
+            {ctaLabel}
+          </button>
+        ) : (
+          <div className="bg-muted text-muted-foreground min-w-[92px] rounded-3xl px-2 py-1 text-xs font-medium">
+            Coming soon
+          </div>
+        )}
       </div>
     </Container>
   );
