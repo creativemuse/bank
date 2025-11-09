@@ -6,12 +6,38 @@ import {
   CrossmintWalletProvider,
 } from "@crossmint/client-sdk-react-ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider } from "wagmi";
+import { AaveProvider, AaveClient, production } from "@aave/react";
+
+import { wagmiConfig } from "@/lib/wagmiConfig";
+import { MembershipProvider } from "@/context/MembershipContext";
+
+const aaveClient = AaveClient.create({
+  environment: production,
+});
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+const walletConnectMissing =
+  !process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID &&
+  process.env.NODE_ENV !== "production";
+
+if (walletConnectMissing) {
+  console.warn(
+    "⚠️ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set. WalletConnect will be disabled.",
+  );
+}
 
 if (!process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY) {
   throw new Error("NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY is not set");
 }
-
-const queryClient = new QueryClient();
 
 // Supported chains: base (mainnet) and base-sepolia (testnet)
 const VALID_CHAINS = ["base", "base-sepolia"] as const;
@@ -39,31 +65,39 @@ if (isProduction) {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}>
-        <CrossmintAuthProvider
-          authModalTitle="Welcome to CREATIVE Bank"
-          loginMethods={["email", "google"]}
-          termsOfServiceText={
-            <p>
-              By continuing, you accept the{" "}
-              <a href="https://www.crossmint.com/legal/terms-of-service" target="_blank">
-                Wallet's Terms of Service
-              </a>
-              , and to recieve marketing communications from Creative Org DAO.
-            </p>
-          }
-        >
-          <CrossmintWalletProvider
-            showPasskeyHelpers={true}
-            createOnLogin={{
-              chain,
-              signer: { type: "passkey" },
-            }}
-          >
-            {children}
-          </CrossmintWalletProvider>
-        </CrossmintAuthProvider>
-      </CrossmintProvider>
+      <WagmiProvider config={wagmiConfig}>
+        <AaveProvider client={aaveClient}>
+          <MembershipProvider>
+            <CrossmintProvider
+              apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}
+            >
+              <CrossmintAuthProvider
+                authModalTitle="Welcome to CREATIVE Bank"
+                loginMethods={["email", "google"]}
+                termsOfServiceText={
+                  <p>
+                    By continuing, you accept the{" "}
+                    <a href="https://www.crossmint.com/legal/terms-of-service" target="_blank">
+                      Wallet&apos;s Terms of Service
+                    </a>
+                    , and to recieve marketing communications from Creative Org DAO.
+                  </p>
+                }
+              >
+                <CrossmintWalletProvider
+                  showPasskeyHelpers={true}
+                  createOnLogin={{
+                    chain,
+                    signer: { type: "passkey" },
+                  }}
+                >
+                  {children}
+                </CrossmintWalletProvider>
+              </CrossmintAuthProvider>
+            </CrossmintProvider>
+          </MembershipProvider>
+        </AaveProvider>
+      </WagmiProvider>
     </QueryClientProvider>
   );
 }
