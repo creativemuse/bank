@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useAccount } from "wagmi";
+import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { PremiumGuard } from "@/components/access/PremiumGuard";
@@ -12,14 +12,33 @@ import { useKalaniApr } from "@/hooks/useKalaniApr";
 import { formatPercent, formatUsd } from "@/lib/formatters";
 import { KALANI_VAULT_ADDRESSES } from "@/lib/config/kalani";
 import { useMembership } from "@/context/MembershipContext";
+import { shortenAddress } from "@/utils/shortenAddress";
 
 export default function StrategiesPage() {
   const [deployModalOpen, setDeployModalOpen] = useState(false);
-  const { address } = useAccount();
+  const { wallet, status: walletStatus } = useWallet();
+  const { status: authStatus } = useAuth();
   const membership = useMembership();
 
   const baseReserve = useBaseUsdcReserve();
   const kalani = useKalaniApr();
+
+  const walletStatusLabel = useMemo(() => {
+    if (walletStatus === "in-progress" || authStatus === "initializing") {
+      return "Connecting...";
+    }
+
+    if (!wallet || authStatus !== "logged-in") {
+      return "Not connected";
+    }
+
+    const crossmintAddress = wallet.address;
+    if (!crossmintAddress) {
+      return "Not connected";
+    }
+
+    return shortenAddress(crossmintAddress);
+  }, [authStatus, wallet, walletStatus]);
 
   const baseApr = baseReserve.loading
     ? "Loading..."
@@ -79,21 +98,30 @@ export default function StrategiesPage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
       <header className="flex flex-col gap-6">
-        <div className="flex flex-col gap-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Creative Bank DeFi Suite
-          </p>
-          <h1 className="text-3xl font-semibold text-slate-900 md:text-4xl">
-            Deploy & Manage Programmatic Yield Strategies
-          </h1>
-          <p className="max-w-2xl text-sm leading-6 text-slate-600">
-            Launch an Aave Earn Vault backed by the Base USDC reserve and unlock our token-gated
-            Kalani premium strategies for high-touch treasury automation.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-col gap-3 rounded-3xl border border-white/40 bg-white/80 p-6 shadow-lg shadow-slate-900/10 backdrop-blur">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Creative Bank DeFi Suite
+            </p>
+            <h1 className="text-3xl font-semibold text-slate-900 md:text-4xl">
+              Deploy & Manage Programmatic Yield Strategies
+            </h1>
+            <p className="max-w-2xl text-sm leading-6 text-slate-600">
+              Launch an Aave Earn Vault backed by the Base USDC reserve and unlock our token-gated
+              Kalani premium strategies for high-touch treasury automation.
+            </p>
+          </div>
+          <Link
+            href="/"
+            aria-label="Return to Creative Bank home"
+            className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+          >
+            Back to Home
+          </Link>
         </div>
         <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-            Connected wallet: {address ?? "Not connected"}
+            Connected wallet: {walletStatusLabel}
           </span>
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
             Membership tier: {membership.isLoading ? "Checking..." : membership.tier ?? "None"}

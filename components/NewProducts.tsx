@@ -13,7 +13,7 @@ const newProducts: NewProductProps[] = [
   },
   {
     title: "Earn yield",
-    description: "Get up to 3.15% APY",
+    description: "Get up to 5% APY",
     image: "/earn-yield.png",
     ctaLabel: "Go to vaults",
     ctaHref: "/strategies",

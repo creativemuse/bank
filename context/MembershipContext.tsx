@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Address } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
+import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 
 import {
   MEMBERSHIP_LOCKS,
@@ -76,6 +77,8 @@ const initialLockState = MEMBERSHIP_LOCKS.reduce<Record<MembershipTier, Membersh
 
 export function MembershipProvider({ children }: { children: React.ReactNode }) {
   const { address } = useAccount();
+  const { wallet, status: walletStatus } = useWallet();
+  const { status: authStatus } = useAuth();
   const publicClient = usePublicClient({ chainId: appChain.id });
   const [state, setState] = useState<Omit<MembershipContextValue, "refresh">>({
     tier: null,
@@ -83,6 +86,18 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
     locks: initialLockState,
   });
   const currentAddressRef = useRef<Address | null>(null);
+
+  const activeAddress = useMemo(() => {
+    if (wallet && authStatus === "logged-in" && walletStatus !== "in-progress" && wallet.address) {
+      return wallet.address as Address;
+    }
+
+    if (address) {
+      return address;
+    }
+
+    return null;
+  }, [address, authStatus, wallet, walletStatus]);
 
   const applyResults = useCallback(
     (locks: Record<MembershipTier, MembershipLockState>) => {
@@ -176,7 +191,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
   );
 
   const refresh = useCallback(async () => {
-    if (!address) {
+    if (!activeAddress) {
       resetState();
       return;
     }
@@ -194,7 +209,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       isLoading: true,
     }));
 
-    const walletAddress = address as Address;
+    const walletAddress = activeAddress;
     currentAddressRef.current = walletAddress;
 
     const results = await Promise.all(
@@ -214,7 +229,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
     );
 
     applyResults(locksState);
-  }, [address, evaluateLock, applyResults, publicClient, resetState]);
+  }, [activeAddress, evaluateLock, applyResults, publicClient, resetState]);
 
   useEffect(() => {
     void refresh();

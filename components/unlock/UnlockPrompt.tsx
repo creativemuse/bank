@@ -7,7 +7,7 @@ import {
   type MembershipLock,
   type MembershipTier,
 } from "@/lib/config/memberships";
-import { appChain, isBaseMainnet } from "@/lib/wagmiConfig";
+import { unlockChainId, unlockChainLabel, unlockClientId } from "@/lib/config/unlock";
 import { useMembership } from "@/context/MembershipContext";
 import { formatDateMs } from "@/lib/formatters";
 
@@ -16,16 +16,35 @@ type UnlockPromptProps = {
   currentTier?: MembershipTier | null;
 };
 
-const chainLabel = isBaseMainnet ? "Base" : "Base Sepolia";
-
 function buildCheckoutUrl(lock: MembershipLock) {
-  const params = new URLSearchParams({
-    client: "creative-bank",
+  const baseParams = {
+    client: unlockClientId,
     lock: lock.address,
-    network: String(appChain.id),
-  });
+    network: String(unlockChainId),
+  };
 
-  return `https://app.unlock-protocol.com/locks/${lock.address}/checkout?${params.toString()}`;
+  const params = new URLSearchParams(baseParams);
+
+  const paywallConfig = {
+    title: `${lock.tier} Membership`,
+    locks: {
+      [lock.address]: {
+        network: unlockChainId,
+      },
+    },
+  };
+
+  try {
+    params.set("paywallConfig", btoa(JSON.stringify(paywallConfig)));
+  } catch (error) {
+    console.error("Failed to encode Unlock paywallConfig", error);
+  }
+
+  if (typeof window !== "undefined") {
+    params.set("redirectUri", window.location.href);
+  }
+
+  return `https://app.unlock-protocol.com/checkout?${params.toString()}`;
 }
 
 export function UnlockPrompt({ requiredTier, currentTier }: UnlockPromptProps) {
@@ -51,7 +70,7 @@ export function UnlockPrompt({ requiredTier, currentTier }: UnlockPromptProps) {
         <h3 className="text-xl font-semibold text-emerald-900">Premium Access Required</h3>
         <p className="text-sm text-emerald-800">
           Access to this strategy requires the <strong>{requiredTier}</strong> membership NFT on{" "}
-          {chainLabel}. Mint a membership below to continue.
+          {unlockChainLabel}. Mint a membership below to continue.
         </p>
       </header>
 
