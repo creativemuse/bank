@@ -69,47 +69,64 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
   const currentAddressRef = useRef<Address | null>(null);
 
   const activeAddress = useMemo(() => {
-    console.log("[MembershipContext] Computing activeAddress:", {
-      address,
-      wallet: wallet?.address,
-      authStatus,
-      walletStatus,
-      hasWallet: !!wallet,
-    });
+    console.log("[MembershipContext] ========================================");
+    console.log("[MembershipContext] Computing active address");
+    console.log("[MembershipContext] Wagmi address:", address);
+    console.log("[MembershipContext] Crossmint wallet address:", wallet?.address);
+    console.log("[MembershipContext] Auth status:", authStatus);
+    console.log("[MembershipContext] Wallet status:", walletStatus);
+    console.log("[MembershipContext] Has wallet object:", !!wallet);
 
     // Crossmint wallet takes priority
     if (wallet?.address) {
-      console.log("[MembershipContext] Using Crossmint wallet address:", wallet.address);
+      console.log("[MembershipContext] ✓ Using Crossmint wallet address:", wallet.address);
+      console.log("[MembershipContext] ========================================");
       return wallet.address as Address;
     }
 
     // Fallback to wagmi address (for browser wallet connections)
     if (address) {
-      console.log("[MembershipContext] Using wagmi address:", address);
+      console.log("[MembershipContext] ✓ Using wagmi address:", address);
+      console.log("[MembershipContext] ========================================");
       return address;
     }
 
     // Only wait if Crossmint is still initializing and we don't have any address yet
     if (authStatus === "initializing" || walletStatus === "not-loaded") {
-      console.log("[MembershipContext] Wallet still loading, waiting...");
+      console.log("[MembershipContext] ⏳ Wallet still loading, waiting...");
     } else {
-      console.log("[MembershipContext] No active address detected");
+      console.log("[MembershipContext] ✗ No active address detected");
     }
+    console.log("[MembershipContext] ========================================");
 
     return null;
   }, [address, authStatus, wallet, walletStatus]);
 
   const applyResults = useCallback(
     (locks: Record<MembershipTier, MembershipLockState>) => {
-      console.log("[MembershipContext] Applying results:", locks);
+      console.log("[MembershipContext] ========================================");
+      console.log("[MembershipContext] Applying membership results");
+      console.log("[MembershipContext] Raw locks data:", locks);
 
-      const sorted = MEMBERSHIP_LOCKS.filter((lock) => locks[lock.tier]?.hasValidKey).sort(
-        (a, b) => b.priority - a.priority,
-      );
+      const validLocks = MEMBERSHIP_LOCKS.filter((lock) => {
+        const isValid = locks[lock.tier]?.hasValidKey;
+        console.log(`[MembershipContext] ${lock.tier}:`, {
+          hasValidKey: isValid,
+          priority: lock.priority,
+          expiresAtMs: locks[lock.tier]?.expiresAtMs,
+          expiresAt: locks[lock.tier]?.expiresAtMs 
+            ? new Date(locks[lock.tier].expiresAtMs!).toISOString() 
+            : "N/A",
+        });
+        return isValid;
+      });
+
+      const sorted = validLocks.sort((a, b) => b.priority - a.priority);
       const tier = sorted.length > 0 ? sorted[0].tier : null;
 
-      console.log("[MembershipContext] Sorted valid locks:", sorted);
-      console.log("[MembershipContext] Selected tier:", tier);
+      console.log("[MembershipContext] Valid locks found:", validLocks.map(l => l.tier));
+      console.log("[MembershipContext] Selected highest priority tier:", tier);
+      console.log("[MembershipContext] ========================================");
 
       setState({
         tier,

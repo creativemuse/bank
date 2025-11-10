@@ -4,43 +4,14 @@ import { useMemo } from "react";
 
 import {
   MEMBERSHIP_LOCKS,
-  type MembershipLock,
   type MembershipTier,
 } from "@/lib/config/memberships";
-import { unlockChainId, unlockChainLabel, unlockClientId } from "@/lib/config/unlock";
+import { unlockChainLabel } from "@/lib/config/unlock";
 import { useMembership } from "@/context/MembershipContext";
 import { formatDateMs } from "@/lib/formatters";
 
-function buildCheckoutUrl(lock: MembershipLock) {
-  const baseParams = {
-    client: unlockClientId,
-    lock: lock.address,
-    network: String(unlockChainId),
-  };
-
-  const params = new URLSearchParams(baseParams);
-
-  const paywallConfig = {
-    title: `${lock.tier} Membership`,
-    locks: {
-      [lock.address]: {
-        network: unlockChainId,
-      },
-    },
-  };
-
-  try {
-    params.set("paywallConfig", btoa(JSON.stringify(paywallConfig)));
-  } catch (error) {
-    console.error("Failed to encode Unlock paywallConfig", error);
-  }
-
-  if (typeof window !== "undefined") {
-    params.set("redirectUri", window.location.href);
-  }
-
-  return `https://app.unlock-protocol.com/checkout?${params.toString()}`;
-}
+// Unlock checkout configuration URL with all three Creative membership locks
+const UNLOCK_CHECKOUT_URL = "https://app.unlock-protocol.com/checkout?id=fce0c0fb-2c39-4912-807f-e5f64a9276e0";
 
 const formatLockAddress = (address: string) => {
   if (!address) {
@@ -68,6 +39,8 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
     [],
   );
 
+  const hasAnyKey = sortedLocks.some((lock) => membership.locks[lock.tier]?.hasValidKey);
+
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
       <header className="flex flex-col gap-2">
@@ -76,8 +49,8 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
         </p>
         <h3 className="text-xl font-semibold text-emerald-900">Premium Access Required</h3>
         <p className="text-sm text-emerald-800">
-          Access to this strategy requires a Creative membership NFT on {unlockChainLabel}. Mint any
-          membership below to continue.
+          Access to this strategy requires a Creative membership NFT on {unlockChainLabel}. Choose from
+          three membership tiers to unlock premium features.
         </p>
       </header>
 
@@ -90,53 +63,57 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
           return (
             <div
               key={lock.address}
-              className="flex flex-col justify-between gap-3 rounded-xl border border-emerald-200 bg-white/80 p-4 md:flex-row md:items-center"
+              className="flex flex-col justify-between gap-2 rounded-xl border border-emerald-200 bg-white/80 p-4"
             >
-              <div className="flex flex-col gap-1 text-sm">
-                <span className="text-base font-semibold text-slate-900">{lock.tier}</span>
-                <span
-                  className="text-xs text-slate-500"
-                  title={lock.address}
-                  aria-label={`Membership contract address ${lock.address}`}
-                >
-                  {formatLockAddress(lock.address)}
-                </span>
-                {hasKey ? (
-                  <span className="text-xs text-emerald-600">
-                    Active key {expiresAt ? `until ${expiresAt}` : ""}
+              <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-1 text-sm">
+                  <span className="text-base font-semibold text-slate-900">{lock.tier}</span>
+                  <span
+                    className="text-xs text-slate-500"
+                    title={lock.address}
+                    aria-label={`Membership contract address ${lock.address}`}
+                  >
+                    {formatLockAddress(lock.address)}
                   </span>
-                ) : (
-                  <span className="text-xs text-slate-500">No active key found</span>
+                </div>
+                {hasKey && (
+                  <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
+                    Active
+                  </span>
                 )}
               </div>
-              <button
-                type="button"
-                className="w-full rounded-lg border border-emerald-700 bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:border-emerald-800 hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 md:w-auto"
-                tabIndex={0}
-                aria-label={`Open Unlock checkout for ${lock.tier}`}
-                onClick={() => {
-                  window.open(buildCheckoutUrl(lock), "_blank", "noopener,noreferrer");
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    window.open(buildCheckoutUrl(lock), "_blank", "noopener,noreferrer");
-                  }
-                }}
-              >
-                {hasKey ? "Manage Key" : "Mint Key"}
-              </button>
+              {hasKey && expiresAt && (
+                <span className="text-xs text-emerald-600">Valid until {expiresAt}</span>
+              )}
             </div>
           );
         })}
       </div>
 
-      {currentTier ? (
+      <button
+        type="button"
+        className="w-full rounded-lg border border-emerald-700 bg-emerald-700 px-6 py-3 text-base font-semibold text-white transition hover:border-emerald-800 hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+        tabIndex={0}
+        aria-label="Open Creative membership checkout"
+        onClick={() => {
+          window.open(UNLOCK_CHECKOUT_URL, "_blank", "noopener,noreferrer");
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            window.open(UNLOCK_CHECKOUT_URL, "_blank", "noopener,noreferrer");
+          }
+        }}
+      >
+        {hasAnyKey ? "Manage Membership" : "Get Creative Membership"}
+      </button>
+
+      {currentTier && (
         <p className="text-xs text-emerald-700">
           Current tier: <strong>{currentTier}</strong>. Maintain an active membership to retain
           access.
         </p>
-      ) : null}
+      )}
     </section>
   );
 }

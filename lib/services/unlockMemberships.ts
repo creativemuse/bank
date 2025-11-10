@@ -33,10 +33,34 @@ let cachedService: Web3Service | null = null;
 
 const getWeb3Service = () => {
   if (!cachedService) {
+    console.log("[unlockMemberships] Initializing Web3Service with config:", {
+      chainId: unlockChainId,
+      unlockAddress,
+      providerUrl: unlockProviderUrl,
+      networkConfig,
+    });
     cachedService = new Web3Service(networkConfig);
   }
 
   return cachedService;
+};
+
+// Validate network configuration
+const validateNetworkConfig = () => {
+  const BASE_MAINNET_CHAIN_ID = 8453;
+  const isBaseMainnet = unlockChainId === BASE_MAINNET_CHAIN_ID;
+  
+  console.log("[unlockMemberships] Network Configuration Check:", {
+    unlockChainId,
+    expectedChainId: BASE_MAINNET_CHAIN_ID,
+    isBaseMainnet,
+    membershipLocksNetwork: "Base Mainnet (8453)",
+    warning: !isBaseMainnet 
+      ? "⚠️ WARNING: Unlock chain ID does not match Base Mainnet! Memberships may not be detected."
+      : "✓ Network configuration correct",
+  });
+
+  return isBaseMainnet;
 };
 
 const parseMembershipState = (key: unknown): UnlockMembershipState => {
@@ -96,14 +120,33 @@ const createEmptyState = () =>
   );
 
 export const fetchUnlockMembershipStates = async (walletAddress: Address) => {
-  console.log("[unlockMemberships] Fetching memberships for wallet:", walletAddress);
+  console.log("[unlockMemberships] ========================================");
+  console.log("[unlockMemberships] Starting membership check");
+  console.log("[unlockMemberships] Wallet address:", walletAddress);
   console.log("[unlockMemberships] Network config:", networkConfig);
+  console.log("[unlockMemberships] ========================================");
+
+  // Validate network configuration
+  const isCorrectNetwork = validateNetworkConfig();
+  
+  if (!isCorrectNetwork) {
+    console.error(
+      "[unlockMemberships] ❌ CRITICAL: Network mismatch detected!",
+      "\nUnlock Protocol is configured for chain:", unlockChainId,
+      "\nMembership locks are deployed on Base Mainnet (8453)",
+      "\n\nTo fix: Set NEXT_PUBLIC_UNLOCK_CHAIN_ID=8453 or NEXT_PUBLIC_CHAIN_ID=base in your environment variables"
+    );
+  }
 
   const service = getWeb3Service();
 
   const results = await Promise.all(
     MEMBERSHIP_LOCKS.map(async (lock) => {
-      console.log("[unlockMemberships] Checking lock:", lock.tier, lock.address);
+      console.log(`[unlockMemberships] ----------------------------------------`);
+      console.log(`[unlockMemberships] Checking ${lock.tier} membership`);
+      console.log(`[unlockMemberships] Lock address: ${lock.address}`);
+      console.log(`[unlockMemberships] Chain ID: ${unlockChainId}`);
+      
       try {
         const key = await service.getKeyByLockForOwner(
           lock.address,
@@ -111,15 +154,30 @@ export const fetchUnlockMembershipStates = async (walletAddress: Address) => {
           unlockChainId,
         );
 
-        console.log("[unlockMemberships] Received key for", lock.tier, ":", key);
+        console.log(`[unlockMemberships] ✓ Key data received for ${lock.tier}:`, {
+          keyExists: !!key,
+          keyData: key,
+        });
 
         const state = parseMembershipState(key);
 
-        console.log("[unlockMemberships] Parsed state for", lock.tier, ":", state);
+        console.log(`[unlockMemberships] ${state.hasValidKey ? "✓" : "✗"} ${lock.tier} status:`, {
+          hasValidKey: state.hasValidKey,
+          expiresAtMs: state.expiresAtMs,
+          expiresAt: state.expiresAtMs ? new Date(state.expiresAtMs).toISOString() : "N/A",
+          isExpired: state.expiresAtMs ? state.expiresAtMs < Date.now() : "N/A",
+        });
 
         return { lock, state };
       } catch (error) {
-        console.error("[unlockMemberships] Failed to fetch membership via Unlock", lock.address, error);
+        console.error(`[unlockMemberships] ✗ Failed to fetch ${lock.tier} membership:`, {
+          lockAddress: lock.address,
+          walletAddress,
+          chainId: unlockChainId,
+          error: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined,
+        });
+        
         return {
           lock,
           state: {
@@ -141,7 +199,16 @@ export const fetchUnlockMembershipStates = async (walletAddress: Address) => {
     createEmptyState(),
   );
 
-  console.log("[unlockMemberships] Final membership states:", finalState);
+  console.log("[unlockMemberships] ========================================");
+  console.log("[unlockMemberships] FINAL MEMBERSHIP SUMMARY:");
+  Object.entries(finalState).forEach(([tier, state]) => {
+    console.log(`  ${state.hasValidKey ? "✓" : "✗"} ${tier}:`, {
+      hasValidKey: state.hasValidKey,
+      expiresAt: state.expiresAtMs ? new Date(state.expiresAtMs).toISOString() : "None",
+      error: state.error || "None",
+    });
+  });
+  console.log("[unlockMemberships] ========================================");
 
   return finalState;
 };
