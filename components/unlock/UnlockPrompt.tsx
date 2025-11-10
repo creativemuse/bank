@@ -47,6 +47,14 @@ function buildCheckoutUrl(lock: MembershipLock) {
   return `https://app.unlock-protocol.com/checkout?${params.toString()}`;
 }
 
+const formatLockAddress = (address: string) => {
+  if (!address) {
+    return "";
+  }
+
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
 export function UnlockPrompt({ requiredTier, currentTier }: UnlockPromptProps) {
   const membership = useMembership();
 
@@ -87,7 +95,13 @@ export function UnlockPrompt({ requiredTier, currentTier }: UnlockPromptProps) {
             >
               <div className="flex flex-col gap-1 text-sm">
                 <span className="text-base font-semibold text-slate-900">{lock.tier}</span>
-                <span className="text-xs text-slate-500">{lock.address}</span>
+                <span
+                  className="text-xs text-slate-500"
+                  title={lock.address}
+                  aria-label={`Membership contract address ${lock.address}`}
+                >
+                  {formatLockAddress(lock.address)}
+                </span>
                 {hasKey ? (
                   <span className="text-xs text-emerald-600">
                     Active key {expiresAt ? `until ${expiresAt}` : ""}
