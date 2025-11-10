@@ -19,6 +19,7 @@ import {
   MembershipTier,
 } from "@/lib/config/memberships";
 import { appChain } from "@/lib/wagmiConfig";
+import { unlockChainId } from "@/lib/config/unlock";
 
 type MembershipLockState = {
   hasValidKey: boolean;
@@ -79,7 +80,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
   const { address } = useAccount();
   const { wallet, status: walletStatus } = useWallet();
   const { status: authStatus } = useAuth();
-  const publicClient = usePublicClient({ chainId: appChain.id });
+  const publicClient = usePublicClient({ chainId: unlockChainId });
   const [state, setState] = useState<Omit<MembershipContextValue, "refresh">>({
     tier: null,
     isLoading: true,
@@ -154,25 +155,35 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
           };
         }
 
-        const expiry = await publicClient.readContract({
-          abi: PUBLIC_LOCK_ABI,
-          address: lock.address,
-          functionName: "keyExpirationTimestampFor",
-          args: [walletAddress],
-        });
+        let expiresAtMs: number | null = null;
 
-        const expiresAt =
-          typeof expiry === "bigint"
-            ? Number(expiry) * 1000
-            : typeof expiry === "number"
-              ? expiry * 1000
-              : null;
+        try {
+          const expiry = await publicClient.readContract({
+            abi: PUBLIC_LOCK_ABI,
+            address: lock.address,
+            functionName: "keyExpirationTimestampFor",
+            args: [walletAddress],
+          });
+
+          expiresAtMs =
+            typeof expiry === "bigint"
+              ? Number(expiry) * 1000
+              : typeof expiry === "number"
+                ? expiry * 1000
+                : null;
+        } catch (expiryError) {
+          console.warn(
+            "Unlock membership expiry lookup failed; continuing without expiry",
+            lock.address,
+            expiryError,
+          );
+        }
 
         return {
           lock,
           state: {
             hasValidKey: true,
-            expiresAtMs: expiresAt,
+            expiresAtMs,
           },
         };
       } catch (error) {
@@ -233,6 +244,18 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     void refresh();
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refresh();
+    }, 30000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [refresh]);
 
   const value = useMemo(
