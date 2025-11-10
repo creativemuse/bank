@@ -123,10 +123,10 @@ export default function StrategiesPage() {
         </div>
         <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-            Connected wallet: {walletStatusLabel}
+            Connected Wallet: {walletStatusLabel}
           </span>
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-            Membership tier: {membership.isLoading ? "Checking..." : membership.tier ?? "None"}
+            Membership Tier: {membership.isLoading ? "Checking..." : membership.tier ?? "None"}
           </span>
         </div>
       </header>
@@ -182,7 +182,7 @@ export default function StrategiesPage() {
             title="Kalani Vault Automation"
             subtitle="Modular Yearn v3 vault deployed on Base with Unlock-gated membership."
             apr={kalaniAprDisplay}
-            tvl="Coming soon"
+            tvl="Coming Soon"
             description="Automatically allocate treasury assets into Kalani strategies that orchestrate Yearn v3 vault modules, with bespoke role management for Creative Bank members."
             actions={[
               {

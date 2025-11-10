@@ -7,16 +7,16 @@ import { Container } from "./common/Container";
 
 const newProducts: NewProductProps[] = [
   {
-    title: "Get your card",
-    description: "Set up a card to start using your funds",
-    image: "/creative_platform_card.png",
+    title: "Earn Yield",
+    description: "Earn up to 8% APR",
+    image: "/earn-yield.png",
+    ctaLabel: "Go to Vaults",
+    ctaHref: "/strategies",
   },
   {
-    title: "Earn yield",
-    description: "Get up to 5% APY",
-    image: "/earn-yield.png",
-    ctaLabel: "Go to vaults",
-    ctaHref: "/strategies",
+    title: "Get Your Card",
+    description: "Set up a card to start using your funds",
+    image: "/creative_platform_card.png",
   },
 ];
 
@@ -74,7 +74,7 @@ const NewProduct = ({ title, description, image, ctaLabel, ctaHref }: NewProduct
           </button>
         ) : (
           <div className="bg-muted text-muted-foreground min-w-[92px] rounded-3xl px-2 py-1 text-xs font-medium">
-            Coming soon
+            Coming Soon
           </div>
         )}
       </div>

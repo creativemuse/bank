@@ -31,16 +31,13 @@ export function PremiumGuard({ requiredTier, children }: PremiumGuardProps) {
     );
   }
 
-  if (!membership.tier) {
-    return <UnlockPrompt requiredTier={requiredTier} />;
-  }
+  const hasAnyValidMembership = MEMBERSHIP_LOCKS.some((lock) => {
+    const state = membership.locks[lock.tier];
+    return Boolean(state?.hasValidKey);
+  });
 
-  const hasAccess =
-    PRIORITY_TABLE[membership.tier] >= PRIORITY_TABLE[requiredTier] &&
-    membership.locks[membership.tier]?.hasValidKey;
-
-  if (!hasAccess) {
-    return <UnlockPrompt requiredTier={requiredTier} currentTier={membership.tier} />;
+  if (!hasAnyValidMembership) {
+    return <UnlockPrompt />;
   }
 
   return <>{children}</>;
