@@ -137,7 +137,7 @@ export default function StrategiesPage() {
             high-touch treasury automation.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
             Connected Wallet: {walletStatusLabel}
           </span>

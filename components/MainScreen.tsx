@@ -27,7 +27,8 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
         <div className="mb-2 flex w-full justify-center md:hidden">
           <ThemeToggle />
         </div>
-        <div className="relative mb-2 flex h-14 w-full max-w-5xl items-center justify-between px-2">
+        {/* Row 1: Logo and Creative Bank text */}
+        <div className="relative mb-3 flex h-14 w-full max-w-5xl items-center justify-center px-2">
           <div className="flex items-center gap-2">
             <Image src="/creative.svg" alt="Logo" width={54} height={54} style={{ height: "auto" }} />
             <h1 className="text-lg" style={{ fontFamily: "var(--font-conthrax), sans-serif" }}>
@@ -40,22 +41,24 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
               </span>
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            {tier && (
-              <div className="rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-100">
-                {tier}
-              </div>
-            )}
-            <div className="hidden md:block">
-              <ThemeToggle />
-            </div>
-            <button onClick={logout} className="flex items-center gap-1 text-base text-secondary">
-              Logout
-              <ArrowRightOnRectangleIcon className="text h-6 w-6" />
-            </button>
-          </div>
         </div>
-        <div className="relative mb-2 flex w-full max-w-4xl items-center justify-center">
+        {/* Row 2: Membership badge and Logout button */}
+        <div className="relative mb-3 flex w-full max-w-5xl items-center justify-center gap-2 px-2">
+          {tier && (
+            <div className="rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-100">
+              {tier}
+            </div>
+          )}
+          <div className="hidden md:block">
+            <ThemeToggle />
+          </div>
+          <button onClick={logout} className="flex items-center gap-1 text-base text-secondary">
+            Logout
+            <ArrowRightOnRectangleIcon className="text h-6 w-6" />
+          </button>
+        </div>
+        {/* Row 3: Dashboard title */}
+        <div className="relative mb-2 flex w-full max-w-5xl items-center justify-center">
           <div className="w-full text-center text-xl font-medium">Dashboard</div>
         </div>
         <DashboardSummary
