@@ -18,6 +18,7 @@
 - [Introduction](#introduction)
 - [Deploy](#deploy)
 - [Setup](#setup)
+- [DeFi Strategies](#defi-strategies)
 - [Using another chain](#using-another-chain)
 - [Using in production](#using-in-production)
   - [Enabling Withdrawals](#enabling-withdrawals)
@@ -38,10 +39,19 @@ Create your own Fintech app in minutes using **[Crossmint](https://crossmint.com
 - Passkey-based wallet security
 - Leverage more than +200 onchain tools integrating [GOAT](https://github.com/goat-sdk/goat)
 
+**DeFi Strategies** 🚀
+
+- **Aave V3 Vault Deployment**: Deploy custom ERC-4626 vaults backed by Aave's Base USDC reserve
+- **Yearn V3 Integration**: Full ERC-4626 compliant vault interactions with deposit/withdrawal flows
+- **MaxLoss Protection**: Configurable slippage protection for safe withdrawals
+- **Token-Gated Access**: Premium strategies unlocked with Unlock Protocol memberships
+- **Multi-Strategy Support**: Deploy and manage multiple yield strategies
+
+See the [Yearn V3 Integration Guide](./docs/YEARN_V3_INTEGRATION.md) and [Quick Start](./docs/QUICKSTART.md) for details.
+
 **Coming soon**
 
 - Currency conversion
-- Earn interest on your USDC
 - Issue a debit card linked to your wallet
 
 Get in touch with us to get early access to these features!
@@ -97,6 +107,56 @@ pnpm dev
 # or
 bun dev
 ```
+
+## DeFi Strategies
+
+This app includes a comprehensive DeFi strategies integration featuring:
+
+### Yearn V3 Vaults
+
+Deploy and interact with Yearn V3 vaults following the ERC-4626 standard:
+
+```bash
+# Query available Yearn V3 vaults on Base
+pnpm yearn:query
+```
+
+**Features:**
+- ✅ **ERC-4626 Compliant**: Standardized deposit/withdrawal functions
+- ✅ **MaxLoss Protection**: Configurable slippage protection (default 1%)
+- ✅ **Real-time Pricing**: Transparent on-chain share conversion
+- ✅ **User Balance Tracking**: Live vault position monitoring
+- ✅ **Transaction Management**: Full state tracking with Basescan links
+
+**Quick Start:**
+1. Run `pnpm yearn:query` to find available vaults
+2. Copy vault address from output
+3. Update `app/strategies/page.tsx` with vault address
+4. Users can now deposit/withdraw directly from the UI
+
+**Documentation:**
+- [Quick Start Guide](./docs/QUICKSTART.md) - Get started in 3 steps
+- [Integration Guide](./docs/YEARN_V3_INTEGRATION.md) - Complete technical reference
+- [Deployment Checklist](./DEPLOYMENT_CHECKLIST.md) - Production activation guide
+
+### Aave V3 Vaults
+
+Deploy custom ERC-4626 vaults backed by Aave's Base USDC reserve:
+
+- Configure performance fees
+- Set revenue sharing with partners
+- Automated yield routing
+- Transparent on-chain reporting
+
+### Token-Gated Strategies
+
+Premium strategies protected by Unlock Protocol NFT memberships:
+
+- **Kalani Vault Automation**: Multi-strategy orchestration for Creative Bank members
+- **Role-based Access**: Different tiers unlock different strategies
+- **Membership Management**: Integrated NFT-based authentication
+
+Visit `/strategies` in your app to see all available DeFi products.
 
 ## Using another chain
 

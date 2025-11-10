@@ -10,15 +10,11 @@ import {
   useState,
 } from "react";
 import { Address } from "viem";
-import { useAccount, usePublicClient } from "wagmi";
+import { useAccount } from "wagmi";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 
-import {
-  MEMBERSHIP_LOCKS,
-  MembershipLock,
-  MembershipTier,
-} from "@/lib/config/memberships";
-import { appChain } from "@/lib/wagmiConfig";
+import { MEMBERSHIP_LOCKS, MembershipTier } from "@/lib/config/memberships";
+import { fetchUnlockMembershipStates } from "@/lib/services/unlockMemberships";
 
 type MembershipLockState = {
   hasValidKey: boolean;
@@ -46,54 +42,58 @@ const defaultState: MembershipContextValue = {
 
 const MembershipContext = createContext<MembershipContextValue>(defaultState);
 
-const PUBLIC_LOCK_ABI = [
-  {
-    inputs: [{ internalType: "address", name: "_keyOwner", type: "address" }],
-    name: "getHasValidKey",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "address", name: "_keyOwner", type: "address" }],
-    name: "keyExpirationTimestampFor",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+const createInitialLockState = () =>
+  MEMBERSHIP_LOCKS.reduce<Record<MembershipTier, MembershipLockState>>(
+    (accumulator, lock) => {
+      accumulator[lock.tier] = { hasValidKey: false, expiresAtMs: null };
+      return accumulator;
+    },
+    {
+      "Creative Brand": { hasValidKey: false, expiresAtMs: null },
+      "Creative Investor": { hasValidKey: false, expiresAtMs: null },
+      "Creative Creator": { hasValidKey: false, expiresAtMs: null },
+    },
+  );
 
-const initialLockState = MEMBERSHIP_LOCKS.reduce<Record<MembershipTier, MembershipLockState>>(
-  (accumulator, lock) => {
-    accumulator[lock.tier] = { hasValidKey: false, expiresAtMs: null };
-    return accumulator;
-  },
-  {
-    "Creative Brand": { hasValidKey: false, expiresAtMs: null },
-    "Creative Investor": { hasValidKey: false, expiresAtMs: null },
-    "Creative Creator": { hasValidKey: false, expiresAtMs: null },
-  },
-);
+const initialLockState = createInitialLockState();
 
 export function MembershipProvider({ children }: { children: React.ReactNode }) {
   const { address } = useAccount();
   const { wallet, status: walletStatus } = useWallet();
   const { status: authStatus } = useAuth();
-  const publicClient = usePublicClient({ chainId: appChain.id });
   const [state, setState] = useState<Omit<MembershipContextValue, "refresh">>({
     tier: null,
     isLoading: true,
-    locks: initialLockState,
+    locks: createInitialLockState(),
   });
   const currentAddressRef = useRef<Address | null>(null);
 
   const activeAddress = useMemo(() => {
-    if (wallet && authStatus === "logged-in" && walletStatus !== "in-progress" && wallet.address) {
+    console.log("[MembershipContext] Computing activeAddress:", {
+      address,
+      wallet: wallet?.address,
+      authStatus,
+      walletStatus,
+      hasWallet: !!wallet,
+    });
+
+    // Crossmint wallet takes priority
+    if (wallet?.address) {
+      console.log("[MembershipContext] Using Crossmint wallet address:", wallet.address);
       return wallet.address as Address;
     }
 
+    // Fallback to wagmi address (for browser wallet connections)
     if (address) {
+      console.log("[MembershipContext] Using wagmi address:", address);
       return address;
+    }
+
+    // Only wait if Crossmint is still initializing and we don't have any address yet
+    if (authStatus === "initializing" || walletStatus === "not-loaded") {
+      console.log("[MembershipContext] Wallet still loading, waiting...");
+    } else {
+      console.log("[MembershipContext] No active address detected");
     }
 
     return null;
@@ -101,10 +101,15 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
 
   const applyResults = useCallback(
     (locks: Record<MembershipTier, MembershipLockState>) => {
+      console.log("[MembershipContext] Applying results:", locks);
+
       const sorted = MEMBERSHIP_LOCKS.filter((lock) => locks[lock.tier]?.hasValidKey).sort(
         (a, b) => b.priority - a.priority,
       );
       const tier = sorted.length > 0 ? sorted[0].tier : null;
+
+      console.log("[MembershipContext] Sorted valid locks:", sorted);
+      console.log("[MembershipContext] Selected tier:", tier);
 
       setState({
         tier,
@@ -119,88 +124,16 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
     setState({
       tier: null,
       isLoading: false,
-      locks: initialLockState,
+      locks: createInitialLockState(),
     });
   }, []);
 
-  const evaluateLock = useCallback(
-    async (lock: MembershipLock, walletAddress: Address) => {
-      if (!publicClient) {
-        return {
-          lock,
-          state: {
-            hasValidKey: false,
-            expiresAtMs: null,
-            error: "Missing public client",
-          } satisfies MembershipLockState,
-        };
-      }
-
-      try {
-        const hasValidKey = await publicClient.readContract({
-          abi: PUBLIC_LOCK_ABI,
-          address: lock.address,
-          functionName: "getHasValidKey",
-          args: [walletAddress],
-        });
-
-        if (!hasValidKey) {
-          return {
-            lock,
-            state: {
-              hasValidKey: false,
-              expiresAtMs: null,
-            },
-          };
-        }
-
-        const expiry = await publicClient.readContract({
-          abi: PUBLIC_LOCK_ABI,
-          address: lock.address,
-          functionName: "keyExpirationTimestampFor",
-          args: [walletAddress],
-        });
-
-        const expiresAt =
-          typeof expiry === "bigint"
-            ? Number(expiry) * 1000
-            : typeof expiry === "number"
-              ? expiry * 1000
-              : null;
-
-        return {
-          lock,
-          state: {
-            hasValidKey: true,
-            expiresAtMs: expiresAt,
-          },
-        };
-      } catch (error) {
-        console.error("Unlock membership check failed", lock.address, error);
-        return {
-          lock,
-          state: {
-            hasValidKey: false,
-            expiresAtMs: null,
-            error: error instanceof Error ? error.message : "Unknown error",
-          },
-        };
-      }
-    },
-    [publicClient],
-  );
-
   const refresh = useCallback(async () => {
-    if (!activeAddress) {
-      resetState();
-      return;
-    }
+    console.log("[MembershipContext] Refresh called, activeAddress:", activeAddress);
 
-    if (!publicClient) {
-      setState((previous) => ({
-        ...previous,
-        isLoading: true,
-      }));
+    if (!activeAddress) {
+      console.log("[MembershipContext] No active address, resetting state");
+      resetState();
       return;
     }
 
@@ -212,24 +145,29 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
     const walletAddress = activeAddress;
     currentAddressRef.current = walletAddress;
 
-    const results = await Promise.all(
-      MEMBERSHIP_LOCKS.map(async (lock) => evaluateLock(lock, walletAddress)),
-    );
+    console.log("[MembershipContext] Starting membership fetch for:", walletAddress);
 
-    if (currentAddressRef.current !== walletAddress) {
-      return;
+    try {
+      const locksState = await fetchUnlockMembershipStates(walletAddress);
+
+      console.log("[MembershipContext] Received locks state:", locksState);
+
+      if (currentAddressRef.current !== walletAddress) {
+        console.log("[MembershipContext] Address changed during fetch, ignoring results");
+        return;
+      }
+
+      applyResults(locksState);
+    } catch (error) {
+      console.error("[MembershipContext] Unlock membership refresh failed", error);
+
+      if (currentAddressRef.current !== walletAddress) {
+        return;
+      }
+
+      applyResults(createInitialLockState());
     }
-
-    const locksState = results.reduce<Record<MembershipTier, MembershipLockState>>(
-      (accumulator, result) => {
-        accumulator[result.lock.tier] = result.state;
-        return accumulator;
-      },
-      { ...initialLockState },
-    );
-
-    applyResults(locksState);
-  }, [activeAddress, evaluateLock, applyResults, publicClient, resetState]);
+  }, [activeAddress, applyResults, resetState]);
 
   useEffect(() => {
     void refresh();

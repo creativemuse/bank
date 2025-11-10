@@ -78,35 +78,35 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <WagmiProvider config={wagmiConfig}>
         <AaveProvider client={aaveClient}>
-          <MembershipProvider>
-            <CrossmintProvider
-              apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}
+          <CrossmintProvider
+            apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}
+          >
+            <CrossmintAuthProvider
+              authModalTitle="Welcome to CREATIVE Bank"
+              loginMethods={["email", "google"]}
+              termsOfServiceText={
+                <p>
+                  By continuing, you accept the{" "}
+                  <a href="https://www.crossmint.com/legal/terms-of-service" target="_blank">
+                    Wallet&apos;s Terms of Service
+                  </a>
+                  , and to recieve marketing communications from Creative Org DAO.
+                </p>
+              }
             >
-              <CrossmintAuthProvider
-                authModalTitle="Welcome to CREATIVE Bank"
-                loginMethods={["email", "google"]}
-                termsOfServiceText={
-                  <p>
-                    By continuing, you accept the{" "}
-                    <a href="https://www.crossmint.com/legal/terms-of-service" target="_blank">
-                      Wallet&apos;s Terms of Service
-                    </a>
-                    , and to recieve marketing communications from Creative Org DAO.
-                  </p>
-                }
+              <CrossmintWalletProvider
+                showPasskeyHelpers={true}
+                createOnLogin={{
+                  chain,
+                  signer: { type: "passkey" },
+                }}
               >
-                <CrossmintWalletProvider
-                  showPasskeyHelpers={true}
-                  createOnLogin={{
-                    chain,
-                    signer: { type: "passkey" },
-                  }}
-                >
+                <MembershipProvider>
                   {children}
-                </CrossmintWalletProvider>
-              </CrossmintAuthProvider>
-            </CrossmintProvider>
-          </MembershipProvider>
+                </MembershipProvider>
+              </CrossmintWalletProvider>
+            </CrossmintAuthProvider>
+          </CrossmintProvider>
         </AaveProvider>
       </WagmiProvider>
     </QueryClientProvider>

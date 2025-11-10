@@ -9,6 +9,7 @@ import { DashboardSummary } from "./dashboard-summary";
 import { WithdrawalStatus } from "./dashboard-summary/WithdrawalStatus";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
+import { useMembership } from "@/context/MembershipContext";
 
 interface MainScreenProps {
   walletAddress?: string;
@@ -18,6 +19,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const { logout } = useAuth();
+  const { tier } = useMembership();
 
   return (
     <div className="flex h-full w-full items-center justify-center gap-2 px-3 py-8">
@@ -39,6 +41,11 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            {tier && (
+              <div className="rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-100">
+                {tier}
+              </div>
+            )}
             <div className="hidden md:block">
               <ThemeToggle />
             </div>
