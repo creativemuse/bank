@@ -34,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${conthrax.variable} relative box-content overflow-hidden antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${conthrax.variable} relative box-content overflow-x-hidden antialiased`}
       >
         {/* Video Background */}
         <video
