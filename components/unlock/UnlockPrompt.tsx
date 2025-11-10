@@ -11,11 +11,6 @@ import { unlockChainId, unlockChainLabel, unlockClientId } from "@/lib/config/un
 import { useMembership } from "@/context/MembershipContext";
 import { formatDateMs } from "@/lib/formatters";
 
-type UnlockPromptProps = {
-  requiredTier: MembershipTier;
-  currentTier?: MembershipTier | null;
-};
-
 function buildCheckoutUrl(lock: MembershipLock) {
   const baseParams = {
     client: unlockClientId,
@@ -55,7 +50,11 @@ const formatLockAddress = (address: string) => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
-export function UnlockPrompt({ requiredTier, currentTier }: UnlockPromptProps) {
+type UnlockPromptProps = {
+  currentTier?: MembershipTier | null;
+};
+
+export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
   const membership = useMembership();
 
   const sortedLocks = useMemo(
@@ -73,12 +72,12 @@ export function UnlockPrompt({ requiredTier, currentTier }: UnlockPromptProps) {
     <section className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
       <header className="flex flex-col gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-          Unlock Membership
+          Creative Membership
         </p>
         <h3 className="text-xl font-semibold text-emerald-900">Premium Access Required</h3>
         <p className="text-sm text-emerald-800">
-          Access to this strategy requires the <strong>{requiredTier}</strong> membership NFT on{" "}
-          {unlockChainLabel}. Mint a membership below to continue.
+          Access to this strategy requires a Creative membership NFT on {unlockChainLabel}. Mint any
+          membership below to continue.
         </p>
       </header>
 
@@ -134,8 +133,8 @@ export function UnlockPrompt({ requiredTier, currentTier }: UnlockPromptProps) {
 
       {currentTier ? (
         <p className="text-xs text-emerald-700">
-          Current tier: <strong>{currentTier}</strong>. Upgrade to {requiredTier} to unlock this
-          feature.
+          Current tier: <strong>{currentTier}</strong>. Maintain an active membership to retain
+          access.
         </p>
       ) : null}
     </section>
