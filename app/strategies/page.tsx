@@ -47,9 +47,11 @@ export default function StrategiesPage() {
 
   const kalaniAprDisplay = kalani.loading
     ? "Loading..."
-    : kalani.apr !== undefined
-      ? formatPercent(kalani.apr, "Pending oracle update")
-      : "Pending oracle update";
+    : kalani.error
+      ? "Unavailable"
+      : kalani.apr !== undefined
+        ? formatPercent(kalani.apr, "Pending oracle update")
+        : "Pending oracle update";
 
   const kalaniFootnote = useMemo(
     () => (
@@ -132,6 +134,12 @@ export default function StrategiesPage() {
       {baseReserve.error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Unable to load Aave market data: {baseReserve.error.message}
+        </div>
+      ) : null}
+
+      {kalani.error ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Kalani APR unavailable: {kalani.error}
         </div>
       ) : null}
 

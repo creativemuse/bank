@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import { Address } from "viem";
-import { usePublicClient } from "wagmi";
 
 import { isBaseMainnet } from "@/lib/wagmiConfig";
-import { KALANI_VAULT_ADDRESSES } from "@/lib/config/kalani";
 
-const KALANI_ORACLE_ABI = [
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [{ internalType: "int256", name: "", type: "int256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+type KalaniAprResponse =
+  | {
+      aprPercent: number;
+      error?: undefined;
+    }
+  | {
+      aprPercent?: undefined;
+      error: string;
+    };
 
 type KalaniAprState = {
   loading: boolean;
@@ -23,9 +20,6 @@ type KalaniAprState = {
 
 export function useKalaniApr() {
   const [state, setState] = useState<KalaniAprState>({ loading: true });
-  const publicClient = usePublicClient({
-    chainId: isBaseMainnet ? 8453 : 84532,
-  });
 
   const fetchApr = useCallback(async () => {
     if (!isBaseMainnet) {
@@ -36,35 +30,31 @@ export function useKalaniApr() {
       return;
     }
 
-    if (!publicClient) {
-      setState({ loading: true });
-      return;
-    }
-
     setState({ loading: true });
 
     try {
-      const raw = await publicClient.readContract({
-        abi: KALANI_ORACLE_ABI,
-        address: KALANI_VAULT_ADDRESSES.aprOracle as Address,
-        functionName: "latestAnswer",
-      });
+      const response = await fetch("/api/kalani-apr", { cache: "no-store" });
 
-      const value =
-        typeof raw === "bigint"
-          ? Number(raw) / 1e18
-          : typeof raw === "number"
-            ? raw
-            : Number.parseFloat(String(raw));
+      if (!response.ok) {
+        const errorPayload = (await response.json().catch(() => ({}))) as KalaniAprResponse;
+        const message = errorPayload?.error ?? "Unable to load Kalani APR.";
+        setState({ loading: false, error: message });
+        return;
+      }
 
-      if (Number.isNaN(value)) {
-        setState({ loading: false, error: "APR oracle returned an invalid value." });
+      const data = (await response.json()) as KalaniAprResponse;
+
+      if (typeof data.aprPercent !== "number") {
+        setState({
+          loading: false,
+          error: data.error ?? "APR oracle returned an invalid response.",
+        });
         return;
       }
 
       setState({
         loading: false,
-        aprPercent: value * 100,
+        aprPercent: data.aprPercent,
       });
     } catch (error) {
       console.error("Kalani APR oracle read failed", error);
@@ -73,7 +63,7 @@ export function useKalaniApr() {
         error: error instanceof Error ? error.message : "Unknown oracle error",
       });
     }
-  }, [publicClient]);
+  }, []);
 
   useEffect(() => {
     void fetchApr();
