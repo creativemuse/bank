@@ -33,14 +33,24 @@ function base64UrlEncode(data: string | Buffer): string {
 
 /**
  * Generate JWT using Node.js crypto (fallback method)
+ * @param apiKeyId - The CDP API key ID
+ * @param apiKeySecret - The CDP API key secret
+ * @param requestMethod - HTTP method (GET, POST, etc.)
+ * @param requestPath - API endpoint path
  */
-export async function generateJWTFallback(apiKeyId: string, apiKeySecret: string): Promise<string> {
+export async function generateJWTFallback(
+  apiKeyId: string, 
+  apiKeySecret: string,
+  requestMethod: string = "POST",
+  requestPath: string = "/onramp/v1/token"
+): Promise<string> {
   try {
-    console.log("Using fallback JWT generation method...");
+    console.log("Using fallback JWT generation method...", {
+      requestMethod,
+      requestPath,
+    });
 
-    const requestMethod = "POST";
     const requestHost = "api.developer.coinbase.com";
-    const requestPath = "/onramp/v1/token";
     const uri = `${requestMethod} ${requestHost}${requestPath}`;
 
     // Create JWT header

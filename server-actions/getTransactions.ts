@@ -14,11 +14,8 @@ export async function getTransactions(userId: string) {
     throw new Error("User ID is required to fetch transactions");
   }
 
-  // More graceful production check - return empty array instead of throwing
-  if (process.env.NODE_ENV !== "production") {
-    console.log("Transaction fetching disabled in non-production environment");
-    return [];
-  }
+  // Allow transaction fetching in any environment if API keys are configured
+  // This enables testing withdrawals in development/staging environments
 
   const url = "api.developer.coinbase.com";
   const method = "GET";
@@ -26,12 +23,21 @@ export async function getTransactions(userId: string) {
 
   try {
     console.log(`Fetching transactions for user: ${userId}`);
+    console.log("Request details:", {
+      method,
+      url: `https://${url}${request_path}`,
+      requestPath: request_path,
+    });
 
-    // Use the new CDP SDK to generate JWT
+    // Use the new CDP SDK to generate JWT with correct request parameters
     const jwt = await generateJWT(
       process.env.COINBASE_API_KEY_ID,
-      process.env.COINBASE_API_KEY_SECRET
+      process.env.COINBASE_API_KEY_SECRET,
+      method,
+      request_path
     );
+
+    console.log("JWT generated, making request...");
 
     const response = await fetch(`https://${url}${request_path}`, {
       method,
@@ -48,6 +54,8 @@ export async function getTransactions(userId: string) {
         statusText: response.statusText,
         error: errorText,
         userId,
+        requestPath: request_path,
+        method,
       });
 
       // Handle specific error cases

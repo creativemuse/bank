@@ -36,10 +36,12 @@ export async function POST(request: NextRequest) {
     const request_path = "/onramp/v1/token";
 
     try {
-      // Generate JWT using CDP SDK
+      // Generate JWT using CDP SDK with correct request parameters
       const jwt = await generateJWT(
         process.env.COINBASE_API_KEY_ID!,
-        process.env.COINBASE_API_KEY_SECRET!
+        process.env.COINBASE_API_KEY_SECRET!,
+        method,
+        request_path
       );
 
       const requestBody = {

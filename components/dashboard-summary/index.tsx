@@ -43,18 +43,9 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
             setWithdrawalStatus(null);
             return;
           }
-
-          if (!config.isConfigured) {
-            setOpenWarningModal(true);
-            setWithdrawalStatus(null);
-            return;
-          }
-
-          if (!config.isProduction) {
-            setWithdrawalStatus("Withdrawals are only available in production");
-            setTimeout(() => setWithdrawalStatus(null), 3000);
-            return;
-          }
+          
+          // Allow withdrawals in any environment if API keys are configured
+          // This enables testing in development/staging environments
         } catch (error) {
           console.error("Failed to check Coinbase configuration:", error);
           setWithdrawalStatus("Failed to check configuration");
@@ -69,6 +60,17 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
           return;
         }
 
+        // Check if wallet is on a testnet - Coinbase Offramp only works with mainnet
+        const testnetChains = ["base-sepolia", "sepolia", "goerli", "mumbai"];
+        const isTestnet = testnetChains.includes(wallet.chain.toLowerCase());
+
+        if (isTestnet) {
+          console.warn("Withdrawal attempted on testnet:", wallet.chain);
+          setWithdrawalStatus("Withdrawals only work on mainnet. Please switch to Base mainnet.");
+          setTimeout(() => setWithdrawalStatus(null), 5000);
+          return;
+        }
+
         setIsWithdrawing(true);
         setWithdrawalStatus("Creating secure session...");
 
@@ -77,10 +79,21 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
           // Coinbase only supports mainnet chains for withdrawals
           const chainMapping: Record<string, string> = {
             base: "base",
-            "base-sepolia": "base", // Map testnet to mainnet for Coinbase
+            ethereum: "ethereum",
+            polygon: "polygon",
+            arbitrum: "arbitrum",
+            optimism: "optimism",
           };
 
-          const normalizedChain = chainMapping[wallet.chain.toLowerCase()] || wallet.chain;
+          const normalizedChain = chainMapping[wallet.chain.toLowerCase()];
+
+          if (!normalizedChain) {
+            console.error("Unsupported chain for withdrawal:", wallet.chain);
+            setWithdrawalStatus(`Withdrawals not supported on ${wallet.chain}`);
+            setTimeout(() => setWithdrawalStatus(null), 5000);
+            setIsWithdrawing(false);
+            return;
+          }
 
           console.log("=== Withdrawal Debug Info ===", {
             originalChain: wallet.chain,

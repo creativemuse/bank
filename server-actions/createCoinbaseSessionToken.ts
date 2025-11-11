@@ -56,17 +56,8 @@ export default async function createCoinbaseSessionToken({
       );
     }
 
-    // More flexible production check - allow testing if API keys are configured
-    if (
-      process.env.NODE_ENV === "development" &&
-      (!process.env.COINBASE_API_KEY_ID || !process.env.COINBASE_API_KEY_SECRET)
-    ) {
-      console.log(
-        "Withdrawal session creation disabled in development environment - no API keys configured"
-      );
-      return null;
-    }
-
+    // Allow session token creation in any environment if API keys are configured
+    // This enables testing withdrawals in development/staging environments
     console.log("Environment checks passed, generating JWT...");
 
     const url = "https://api.developer.coinbase.com";
@@ -74,11 +65,13 @@ export default async function createCoinbaseSessionToken({
     const request_path = "/onramp/v1/token";
 
     try {
-      // Use the new CDP SDK to generate JWT
+      // Use the new CDP SDK to generate JWT with correct request parameters
       console.log("Attempting to generate JWT...");
       const jwt = await generateJWT(
         process.env.COINBASE_API_KEY_ID!,
-        process.env.COINBASE_API_KEY_SECRET!
+        process.env.COINBASE_API_KEY_SECRET!,
+        method,
+        request_path
       );
 
       console.log("JWT generated successfully, making API request...");

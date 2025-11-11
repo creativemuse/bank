@@ -26,11 +26,13 @@ export async function GET() {
       );
     }
 
-    // Test JWT generation
+    // Test JWT generation (using default POST /onramp/v1/token parameters)
     console.log("Attempting to generate JWT...");
     const jwt = await generateJWT(
       process.env.COINBASE_API_KEY_ID,
-      process.env.COINBASE_API_KEY_SECRET
+      process.env.COINBASE_API_KEY_SECRET,
+      "POST",
+      "/onramp/v1/token"
     );
 
     console.log("JWT generated successfully in test endpoint");

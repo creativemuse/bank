@@ -21,12 +21,17 @@ interface SessionTokenResponse {
  * Generates a JWT token for CDP API authentication using the CDP SDK
  * @param keyName - The CDP API key name
  * @param keySecret - The CDP API private key
+ * @param requestMethod - HTTP method (GET, POST, etc.)
+ * @param requestPath - API endpoint path
  * @returns Promise of signed JWT token
  */
-export async function generateJWT(keyName: string, keySecret: string): Promise<string> {
-  const requestMethod = "POST";
+export async function generateJWT(
+  keyName: string, 
+  keySecret: string,
+  requestMethod: string = "POST",
+  requestPath: string = "/onramp/v1/token"
+): Promise<string> {
   const requestHost = "api.developer.coinbase.com";
-  const requestPath = "/onramp/v1/token";
 
   try {
     console.log("Generating JWT with CDP SDK...", {
@@ -54,8 +59,8 @@ export async function generateJWT(keyName: string, keySecret: string): Promise<s
     console.error("CDP SDK JWT generation failed, trying fallback method:", error);
 
     try {
-      // Try the fallback method
-      const token = await generateJWTFallback(keyName, keySecret);
+      // Try the fallback method with the same request parameters
+      const token = await generateJWTFallback(keyName, keySecret, requestMethod, requestPath);
       console.log("JWT generated successfully with fallback method");
       return token;
     } catch (fallbackError) {
