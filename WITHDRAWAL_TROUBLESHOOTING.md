@@ -72,25 +72,7 @@ COINBASE_API_KEY_SECRET=-----BEGIN EC PRIVATE KEY-----...
 - Make sure there are no extra spaces or line breaks
 - Restart your development server after changing environment variables
 
-## 3. Test JWT Generation
-
-Use the test endpoint to verify JWT generation is working:
-
-```bash
-curl http://localhost:3000/api/test-jwt
-```
-
-Expected response:
-```json
-{
-  "success": true,
-  "hasJWT": true,
-  "jwtLength": 500,
-  "nodeEnv": "development"
-}
-```
-
-## 4. Common Issues and Solutions
+## 3. Common Issues and Solutions
 
 ### Issue: "Invalid Coinbase API credentials"
 **Causes:**
@@ -116,20 +98,19 @@ Expected response:
 2. Ensure the user ID matches the one passed to Coinbase
 3. Check that you're using the same API keys for both creating and fetching transactions
 
-## 5. Withdrawal Flow Checklist
+## 4. Withdrawal Flow Checklist
 
 ✅ **Step 1:** Coinbase API keys are configured
 ✅ **Step 2:** Environment variables are set correctly
-✅ **Step 3:** JWT generation works (test with `/api/test-jwt`)
-✅ **Step 4:** Session token creation works
-✅ **Step 5:** User clicks "Withdraw" button
-✅ **Step 6:** Redirected to Coinbase Offramp widget
-✅ **Step 7:** Complete withdrawal on Coinbase
-✅ **Step 8:** Transaction appears in Coinbase API
-✅ **Step 9:** `useProcessWithdrawal` hook picks up pending transaction
-✅ **Step 10:** Wallet sends funds to Coinbase address
+✅ **Step 3:** Session token creation works
+✅ **Step 4:** User clicks "Withdraw" button
+✅ **Step 5:** Redirected to Coinbase Offramp widget
+✅ **Step 6:** Complete withdrawal on Coinbase
+✅ **Step 7:** Transaction appears in Coinbase API
+✅ **Step 8:** `useProcessWithdrawal` hook picks up pending transaction
+✅ **Step 9:** Wallet sends funds to Coinbase address
 
-## 6. Debug Logging
+## 5. Debug Logging
 
 Check your Next.js console for these log messages:
 
@@ -143,7 +124,7 @@ JWT generated, making request...
 
 If you see "Failed to fetch transactions" with status 401, the API key permissions are likely the issue.
 
-## 7. API Key Scopes Reference
+## 6. API Key Scopes Reference
 
 When creating your CDP API Key, ensure these scopes are enabled:
 
@@ -156,7 +137,7 @@ When creating your CDP API Key, ensure these scopes are enabled:
 | `offramp:read` | ✅ | Read offramp transactions |
 | `offramp:write` | ✅ | Create offramp sessions |
 
-## 8. Still Having Issues?
+## 7. Still Having Issues?
 
 If you've checked all of the above and are still having issues:
 
@@ -165,7 +146,7 @@ If you've checked all of the above and are still having issues:
 3. **Contact Support:** Reach out in the [CDP Discord](https://discord.com/invite/cdp) #onramp channel
 4. **Verify Account:** Ensure your Coinbase account has offramp enabled in your region
 
-## 9. Next Steps
+## 8. Next Steps
 
 Once the 401 error is resolved:
 1. The withdrawal button should successfully redirect to Coinbase
