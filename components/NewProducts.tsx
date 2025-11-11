@@ -8,7 +8,7 @@ import { Container } from "./common/Container";
 const newProducts: NewProductProps[] = [
   {
     title: "Earn Yield",
-    description: "Earn up to 8% APR",
+    description: "Earn up to 5% APR",
     image: "/earn-yield.png",
     ctaLabel: "Go to Vaults",
     ctaHref: "/strategies",
