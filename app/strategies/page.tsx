@@ -7,6 +7,7 @@ import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { PremiumGuard } from "@/components/access/PremiumGuard";
 import { VaultDeployModal } from "@/components/vaults/VaultDeployModal";
+import { MyDeployedVaults } from "@/components/vaults/MyDeployedVaults";
 import { YearnVaultCard } from "@/components/yearn/YearnVaultCard";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { useKalaniApr } from "@/hooks/useKalaniApr";
@@ -212,6 +213,11 @@ export default function StrategiesPage() {
           />
         </PremiumGuard>
       </div>
+
+      {/* My Deployed Vaults Section */}
+      <section className="mt-10">
+        <MyDeployedVaults />
+      </section>
 
       {/* Yearn V3 Vaults Section */}
       {/* <section className="mt-10 flex flex-col gap-6">

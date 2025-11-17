@@ -29,21 +29,34 @@ export const appChain = (() => {
   return baseSepolia;
 })();
 
+// Validate Alchemy API key format (should be alphanumeric with hyphens, not empty)
+const isValidAlchemyKey = (key: string | undefined): boolean => {
+  if (!key || key.trim().length === 0) return false;
+  // Alchemy keys are typically alphanumeric with hyphens, at least 20 chars
+  // Exclude keys that look like placeholder values
+  const trimmed = key.trim();
+  return trimmed.length >= 20 && !trimmed.includes('xxx') && !trimmed.includes('your_');
+};
+
 // Build Base Mainnet RPC endpoints with fallbacks
 const buildBaseRpcEndpoints = () => {
   const endpoints = [];
 
-  // 1. Custom Alchemy endpoint (if provided)
+  // 1. Custom Alchemy endpoint (if provided and valid)
   const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
-  if (alchemyKey) {
+  if (isValidAlchemyKey(alchemyKey)) {
     endpoints.push(
       http(`https://base-mainnet.g.alchemy.com/v2/${alchemyKey}`, {
         batch: {
           wait: 50, // Wait 50ms before sending batch
         },
-        retryCount: 3,
-        retryDelay: 1000, // 1 second between retries
+        retryCount: 2, // Reduced retries to fail faster to fallback
+        retryDelay: 500, // Faster retry delay
       })
+    );
+  } else if (alchemyKey) {
+    console.warn(
+      `[wagmiConfig] Alchemy API key appears invalid or is a placeholder. Skipping Alchemy endpoint. Using public RPCs only.`
     );
   }
 
@@ -92,13 +105,14 @@ const buildBaseRpcEndpoints = () => {
 const buildBaseSepoliaRpcEndpoints = () => {
   const endpoints = [];
 
-  // Alchemy Sepolia endpoint
+  // Alchemy Sepolia endpoint (if provided and valid)
   const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
-  if (alchemyKey) {
+  if (isValidAlchemyKey(alchemyKey)) {
     endpoints.push(
       http(`https://base-sepolia.g.alchemy.com/v2/${alchemyKey}`, {
         batch: { wait: 50 },
-        retryCount: 3,
+        retryCount: 2, // Reduced retries to fail faster to fallback
+        retryDelay: 500,
       })
     );
   }

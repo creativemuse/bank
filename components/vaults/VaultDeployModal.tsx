@@ -9,7 +9,7 @@ import {
   type Reserve,
   type VaultDeployRequest,
 } from "@aave/react";
-import { useWalletClient, useAccount } from "wagmi";
+import { useWalletClient, useAccount, usePublicClient } from "wagmi";
 import { useSendTransaction } from "@aave/react/viem";
 import { useWallet, useAuth, EVMWallet } from "@crossmint/client-sdk-react-ui";
 import { createWalletClient, custom, type WalletClient } from "viem";
@@ -35,11 +35,13 @@ type SubmitState = {
   status: "idle" | "approval" | "deploying" | "success" | "error";
   message?: string;
   txHash?: string;
+  vaultAddress?: string;
 };
 
 export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeployModalProps) {
   const { address: wagmiAddress } = useAccount();
   const { data: wagmiWalletClient } = useWalletClient();
+  const publicClient = usePublicClient();
   const { wallet: crossmintWallet, status: walletStatus } = useWallet();
   const { status: authStatus } = useAuth();
   const [deployVault, deployState] = useVaultDeploy();
@@ -297,11 +299,105 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
         return;
       }
 
-      setSubmitState({
-        status: "success",
-        txHash: transactionResult.value,
-        message: "Vault deployment transaction submitted successfully.",
+      const txHash = transactionResult.value;
+      
+      // Wait for transaction receipt to get the vault address
+      setSubmitState({ 
+        status: "deploying", 
+        txHash,
+        message: "Waiting for transaction confirmation..." 
       });
+
+      try {
+        // Wait for the transaction to be mined using public client
+        if (publicClient) {
+          const receipt = await publicClient.waitForTransactionReceipt({ 
+            hash: txHash as `0x${string}`,
+            timeout: 120_000, // 2 minute timeout
+          });
+          
+          // Try to extract vault address from transaction receipt
+          // Aave vaults are deployed via factory, so the address is in event logs
+          let vaultAddress: string | undefined;
+          
+          if (receipt.contractAddress) {
+            vaultAddress = receipt.contractAddress;
+          } else if (receipt.logs && receipt.logs.length > 0) {
+            // Look for VaultDeployed event: VaultDeployed(address indexed vault, address indexed implementation, address indexed underlying, ...)
+            // Event signature: 0xa225f10988fd8a4e80df4ed9fe9ddce048ffc02e51061eb4ceb5beb0c2ec4f2a
+            const VAULT_DEPLOYED_EVENT_SIGNATURE = "0xa225f10988fd8a4e80df4ed9fe9ddce048ffc02e51061eb4ceb5beb0c2ec4f2a";
+            
+            for (const log of receipt.logs) {
+              // Check if this is a VaultDeployed event
+              if (log.topics[0]?.toLowerCase() === VAULT_DEPLOYED_EVENT_SIGNATURE.toLowerCase() && log.topics.length >= 4) {
+                // Second topic (index 1) is the vault address
+                const topic1 = log.topics[1];
+                const topic3 = log.topics[3];
+                
+                if (topic1 && topic3) {
+                  const vaultAddr = `0x${topic1.slice(-40)}`;
+                  // Fourth topic (index 3) is underlying asset (USDC)
+                  const underlying = `0x${topic3.slice(-40)}`;
+                  
+                  // Verify it's a USDC vault
+                  if (underlying.toLowerCase() === "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913") {
+                    vaultAddress = vaultAddr;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          setSubmitState({
+            status: "success",
+            txHash,
+            vaultAddress,
+            message: vaultAddress 
+              ? `Vault deployed successfully!`
+              : "Vault deployment confirmed!",
+          });
+
+          // If vault address found, save it to localStorage
+          if (vaultAddress && typeof window !== "undefined") {
+            try {
+              const stored = localStorage.getItem("deployedVaults");
+              const existingVaults = stored ? JSON.parse(stored) : [];
+              
+              // Check if vault already exists
+              const exists = existingVaults.some(
+                (v: { address: string }) => v.address.toLowerCase() === vaultAddress.toLowerCase()
+              );
+              
+              if (!exists) {
+                const newVault = {
+                  address: vaultAddress.toLowerCase(),
+                  name: shareName || undefined,
+                  transactionHash: txHash,
+                };
+                localStorage.setItem("deployedVaults", JSON.stringify([...existingVaults, newVault]));
+              }
+            } catch (error) {
+              console.warn("Could not save vault to localStorage:", error);
+            }
+          }
+        } else {
+          // Fallback if public client not available
+          setSubmitState({
+            status: "success",
+            txHash,
+            message: "Vault deployment transaction submitted. Check Basescan to find the vault address in the transaction logs.",
+          });
+        }
+      } catch (error) {
+        // If we can't get the receipt, still show success with transaction hash
+        console.warn("Could not get transaction receipt:", error);
+        setSubmitState({
+          status: "success",
+          txHash,
+          message: "Vault deployment transaction submitted. Check Basescan to find the vault address.",
+        });
+      }
     },
     [
       activeAddress,
@@ -309,6 +405,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
       initialDeposit,
       market,
       performanceFee,
+      publicClient,
       recipients,
       reserve,
       sendTransaction,
@@ -540,22 +637,63 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
         ) : null}
 
         {submitState.status === "success" && submitState.message ? (
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-            {submitState.message}
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+            <p className="mb-3 font-semibold">{submitState.message}</p>
+            {submitState.vaultAddress ? (
+              <div className="mt-2 space-y-2">
+                <div>
+                  <span className="font-medium">Vault Address: </span>
+                  <a
+                    href={`https://basescan.org/address/${submitState.vaultAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline break-all"
+                  >
+                    {submitState.vaultAddress}
+                  </a>
+                </div>
+                <p className="text-xs text-emerald-700">
+                  Your vault is now live! You can interact with it using the vault address above.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-2 space-y-2 text-xs text-emerald-700">
+                <p className="font-medium">To find your vault address:</p>
+                <ol className="list-decimal list-inside space-y-1 ml-2">
+                  <li>
+                    Click{" "}
+                    <a
+                      href={`https://basescan.org/tx/${submitState.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      View Transaction on Basescan
+                    </a>
+                  </li>
+                  <li>Go to the "Logs" tab in the transaction details</li>
+                  <li>Look for a "VaultCreated" or "Deployed" event</li>
+                  <li>The vault address will be in the event parameters</li>
+                </ol>
+                <p className="mt-2 text-emerald-600">
+                  <strong>Note:</strong> The vault address is the contract that was created by this transaction. 
+                  It will appear as a new contract creation in the transaction logs.
+                </p>
+              </div>
+            )}
             {submitState.txHash ? (
-              <>
-                {" "}
+              <div className="mt-3 pt-3 border-t border-emerald-300">
                 <a
                   href={`https://basescan.org/tx/${submitState.txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline"
+                  className="text-sm font-medium underline"
                 >
-                  View on Basescan
+                  View Transaction on Basescan →
                 </a>
-              </>
+              </div>
             ) : null}
-          </p>
+          </div>
         ) : null}
 
         <div className="flex flex-col gap-2 md:flex-row md:justify-end">
