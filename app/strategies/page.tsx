@@ -128,10 +128,10 @@ export default function StrategiesPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
             Creative Bank DeFi Suite
           </p>
-          <h1 className="text-3xl font-semibold text-slate-900 md:text-4xl">
-            Deploy & Manage Programmatic Yield Strategies
+          <h1 className="text-center text-3xl font-semibold text-slate-900 md:text-4xl">
+            Programmatic Yield Strategies
           </h1>
-          <p className="max-w-2xl text-sm leading-6 text-slate-600">
+          <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-slate-600">
             Launch an Aave Earn Vault backed by the Base USDC reserve, deposit into Yearn V3
             ERC-4626 compliant vaults, and unlock our token-gated Kalani premium strategies for
             high-touch treasury automation.

@@ -11,6 +11,9 @@ import {
 } from "@aave/react";
 import { useWalletClient, useAccount } from "wagmi";
 import { useSendTransaction } from "@aave/react/viem";
+import { useWallet, useAuth, EVMWallet } from "@crossmint/client-sdk-react-ui";
+import { createWalletClient, custom, type WalletClient } from "viem";
+import { base, baseSepolia } from "viem/chains";
 
 import { Modal } from "@/components/common/Modal";
 import { USDC_DECIMALS } from "@/lib/config/aave";
@@ -35,9 +38,88 @@ type SubmitState = {
 };
 
 export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeployModalProps) {
-  const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
+  const { address: wagmiAddress } = useAccount();
+  const { data: wagmiWalletClient } = useWalletClient();
+  const { wallet: crossmintWallet, status: walletStatus } = useWallet();
+  const { status: authStatus } = useAuth();
   const [deployVault, deployState] = useVaultDeploy();
+
+  // Determine active address (Crossmint takes priority, fallback to wagmi)
+  const activeAddress = useMemo(() => {
+    if (crossmintWallet?.address) {
+      return crossmintWallet.address as `0x${string}`;
+    }
+    return wagmiAddress;
+  }, [crossmintWallet?.address, wagmiAddress]);
+
+  // Create wallet client from Crossmint wallet if available, otherwise use wagmi client
+  const walletClient = useMemo((): WalletClient | undefined => {
+    // If we have a Crossmint wallet, create a viem wallet client adapter
+    if (crossmintWallet) {
+      try {
+        const evmWallet = EVMWallet.from(crossmintWallet);
+        const chain = process.env.NODE_ENV === "production" ? base : baseSepolia;
+        
+        // Create a custom wallet client that uses Crossmint's EVMWallet for transactions
+        return createWalletClient({
+          chain,
+          transport: custom({
+            async request({ method, params }) {
+              // Handle transaction sending through Crossmint's EVMWallet
+              if (method === "eth_sendTransaction" && params?.[0]) {
+                const tx = params[0] as {
+                  to?: string;
+                  value?: string;
+                  data?: string;
+                  gas?: string;
+                  gasPrice?: string;
+                  maxFeePerGas?: string;
+                  maxPriorityFeePerGas?: string;
+                };
+                
+                // Convert viem transaction format to Crossmint format
+                // Convert hex string value to bigint as required by EVMTransactionInput
+                const valueHex = tx.value || "0x0";
+                const valueBigInt = BigInt(valueHex);
+                
+                const transaction = {
+                  to: tx.to as `0x${string}`,
+                  value: valueBigInt,
+                  data: (tx.data || "0x") as `0x${string}`,
+                };
+                
+                // Send transaction using Crossmint's EVMWallet
+                const result = await evmWallet.sendTransaction(transaction);
+                
+                // Return the transaction hash in the format viem expects
+                return result.hash;
+              }
+              
+              // Handle account requests
+              if (method === "eth_accounts" || method === "eth_requestAccounts") {
+                return [crossmintWallet.address];
+              }
+              
+              // Handle chain ID requests
+              if (method === "eth_chainId") {
+                return `0x${chain.id.toString(16)}`;
+              }
+              
+              // For other methods, you might need to implement them or throw
+              // The Aave SDK primarily needs eth_sendTransaction
+              throw new Error(`Method ${method} not yet supported with Crossmint wallet adapter`);
+            },
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to create wallet client from Crossmint wallet:", error);
+      }
+    }
+    
+    // Fallback to wagmi wallet client
+    return wagmiWalletClient ?? undefined;
+  }, [crossmintWallet, wagmiWalletClient]);
+
   const [sendTransaction, sendTransactionState] = useSendTransaction(walletClient);
 
   const [shareName, setShareName] = useState("Aave USDC Vault Shares");
@@ -70,7 +152,12 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
   }, [onClose, resetForm]);
 
   const validate = useCallback(() => {
-    if (!address) {
+    // Check if wallet is connected (either Crossmint or wagmi)
+    if (!activeAddress) {
+      // Provide more helpful error message
+      if (authStatus === "initializing" || walletStatus === "in-progress") {
+        return "Wallet is connecting. Please wait...";
+      }
       return "Connect a wallet to deploy a vault.";
     }
 
@@ -95,7 +182,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
     }
 
     return null;
-  }, [address, initialDeposit, market, performanceFee, recipientInput.partnerPercent, reserve]);
+  }, [activeAddress, authStatus, walletStatus, initialDeposit, market, performanceFee, recipientInput.partnerPercent, reserve]);
 
   const recipients = useMemo(() => {
     const entries: VaultDeployRequest["recipients"] = [];
@@ -113,13 +200,13 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
     const ownerSplit = 100 - recipientInput.partnerPercent;
     if (ownerSplit > 0) {
       entries.push({
-        address: evmAddress(address ?? "0x0000000000000000000000000000000000000000"),
+        address: evmAddress(activeAddress ?? "0x0000000000000000000000000000000000000000"),
         percent: bigDecimal(ownerSplit),
       });
     }
 
     return entries.length ? entries : undefined;
-  }, [address, recipientInput.partnerAddress, recipientInput.partnerPercent]);
+  }, [activeAddress, recipientInput.partnerAddress, recipientInput.partnerPercent]);
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -139,7 +226,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
         return;
       }
 
-      if (!market || !reserve || !address) {
+      if (!market || !reserve || !activeAddress) {
         setSubmitState({
           status: "error",
           message: "Missing context to deploy vault. Please try again.",
@@ -153,7 +240,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
         market: evmAddress(market.address),
         chainId: market.chain.chainId,
         underlyingToken: evmAddress(reserve.underlyingToken.address),
-        deployer: evmAddress(address),
+        deployer: evmAddress(activeAddress),
         shareName,
         shareSymbol,
         initialFee: bigDecimal(performanceFee),
@@ -217,7 +304,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
       });
     },
     [
-      address,
+      activeAddress,
       deployVault,
       initialDeposit,
       market,
@@ -231,6 +318,75 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
       walletClient,
     ],
   );
+
+  // Add helper function to handle number input with better mobile UX
+  const handleNumberInputChange = useCallback((
+    value: string,
+    setter: (val: number) => void,
+    allowDecimal = false
+  ) => {
+    // If empty, set to 0
+    if (value === "" || value === "-") {
+      setter(0);
+      return;
+    }
+    
+    // Remove any non-numeric characters (except decimal point if allowed)
+    const cleaned = allowDecimal 
+      ? value.replace(/[^\d.]/g, '')
+      : value.replace(/[^\d]/g, '');
+    
+    // Parse the number
+    const num = allowDecimal ? parseFloat(cleaned) : parseInt(cleaned, 10);
+    
+    if (!isNaN(num)) {
+      setter(num);
+    }
+  }, []);
+
+  // Handle share symbol with preserved cursor position
+  const handleShareSymbolChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const cursorPosition = input.selectionStart || 0;
+    const newValue = event.target.value.toUpperCase();
+    
+    setShareSymbol(newValue);
+    
+    // Restore cursor position after state update
+    setTimeout(() => {
+      input.setSelectionRange(cursorPosition, cursorPosition);
+    }, 0);
+  }, []);
+
+  // Handle number input focus - select all for easy replacement
+  const handleNumberFocus = useCallback((event: React.FocusEvent<HTMLInputElement>) => {
+    event.target.select();
+  }, []);
+
+  // Handle partner percent with smart replacement when value is 0
+  const handlePartnerPercentChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    const currentValue = recipientInput.partnerPercent;
+    
+    // If current value is 0 and user types a digit, replace instead of append
+    if (currentValue === 0 && value.length === 2 && value.startsWith('0')) {
+      const newValue = parseInt(value.slice(1), 10);
+      if (!isNaN(newValue)) {
+        setRecipientInput((previous) => ({
+          ...previous,
+          partnerPercent: newValue,
+        }));
+        return;
+      }
+    }
+    
+    handleNumberInputChange(value, (num) => {
+      setRecipientInput((previous) => ({
+        ...previous,
+        partnerPercent: num,
+      }));
+    });
+  }, [recipientInput.partnerPercent, handleNumberInputChange]);
 
   if (!open) {
     return null;
@@ -255,6 +411,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
             <input
               value={shareName}
               onChange={(event) => setShareName(event.target.value)}
+              onFocus={handleNumberFocus}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
               placeholder="Aave USDC Vault Shares"
               required
@@ -264,7 +421,8 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
             <span className="text-xs font-medium uppercase text-slate-500">Share Symbol</span>
             <input
               value={shareSymbol}
-              onChange={(event) => setShareSymbol(event.target.value.toUpperCase())}
+              onChange={handleShareSymbolChange}
+              onFocus={handleNumberFocus}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
               placeholder="avUSDC"
               required
@@ -274,12 +432,14 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium uppercase text-slate-500">Performance Fee</span>
               <input
-                type="number"
+                type="tel"
+                inputMode="decimal"
                 step="0.1"
                 min={10}
                 max={50}
                 value={performanceFee}
-                onChange={(event) => setPerformanceFee(Number(event.target.value))}
+                onChange={(event) => handleNumberInputChange(event.target.value, setPerformanceFee, true)}
+                onFocus={handleNumberFocus}
                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
                 required
               />
@@ -292,11 +452,13 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
                 Initial Deposit (USDC)
               </span>
               <input
-                type="number"
+                type="tel"
+                inputMode="decimal"
                 min={0}
                 step={1 / 10 ** USDC_DECIMALS}
                 value={initialDeposit}
-                onChange={(event) => setInitialDeposit(Number(event.target.value))}
+                onChange={(event) => handleNumberInputChange(event.target.value, setInitialDeposit, true)}
+                onFocus={handleNumberFocus}
                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
                 required
               />
@@ -321,6 +483,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
                   partnerAddress: event.target.value,
                 }))
               }
+              onFocus={handleNumberFocus}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
               placeholder="0x..."
             />
@@ -330,17 +493,14 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
               Partner Share (% of your portion)
             </span>
             <input
-              type="number"
+              type="tel"
+              inputMode="numeric"
               min={0}
               max={100}
               step={1}
               value={recipientInput.partnerPercent}
-              onChange={(event) =>
-                setRecipientInput((previous) => ({
-                  ...previous,
-                  partnerPercent: Number(event.target.value),
-                }))
-              }
+              onChange={handlePartnerPercentChange}
+              onFocus={handleNumberFocus}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
             />
             <span className="text-xs text-slate-500">
