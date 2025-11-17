@@ -53,15 +53,42 @@ export const useYearnWithdraw = (
       try {
         setState({ status: "redeeming" });
 
-        // Use the V3-specific redeem function with maxLoss parameter
-        // This is recommended by Yearn for final withdrawal steps
-        const redeemHash = await writeRedeem({
-          address: vaultAddress,
-          abi: ERC4626_ABI,
-          functionName: "redeem",
-          args: [shares, receiver, owner, BigInt(maxLossBps)],
-          chainId: 8453,
-        });
+        // Try with maxLoss first (for Yearn V3 vaults)
+        // If that fails, fall back to standard ERC-4626 redeem (for Aave vaults)
+        let redeemHash: `0x${string}` | undefined;
+        
+        try {
+          // Attempt with maxLoss parameter (Yearn V3 style)
+          redeemHash = await writeRedeem({
+            address: vaultAddress,
+            abi: ERC4626_ABI,
+            functionName: "redeem",
+            args: [shares, receiver, owner, BigInt(maxLossBps)],
+            chainId: 8453,
+          });
+        } catch (maxLossError) {
+          // If maxLoss fails, try standard ERC-4626 redeem (Aave vaults)
+          console.log("maxLoss parameter not supported, trying standard redeem...");
+          redeemHash = await writeRedeem({
+            address: vaultAddress,
+            abi: [
+              {
+                inputs: [
+                  { name: "shares", type: "uint256" },
+                  { name: "receiver", type: "address" },
+                  { name: "owner", type: "address" },
+                ],
+                name: "redeem",
+                outputs: [{ name: "assets", type: "uint256" }],
+                stateMutability: "nonpayable",
+                type: "function",
+              },
+            ],
+            functionName: "redeem",
+            args: [shares, receiver, owner],
+            chainId: 8453,
+          });
+        }
 
         if (!redeemHash) {
           throw new Error("Redeem transaction failed");
