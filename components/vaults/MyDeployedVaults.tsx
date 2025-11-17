@@ -123,7 +123,7 @@ export const MyDeployedVaults = () => {
                 value={newVaultAddress}
                 onChange={(e) => setNewVaultAddress(e.target.value)}
                 placeholder="0x..."
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
               <p className="mt-1 text-xs text-slate-500">
                 Find this in your deployment transaction on Basescan (check "Internal Transactions"
@@ -139,7 +139,7 @@ export const MyDeployedVaults = () => {
                 value={newVaultName}
                 onChange={(e) => setNewVaultName(e.target.value)}
                 placeholder="My Aave Vault"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
             </div>
             <div>
@@ -151,7 +151,7 @@ export const MyDeployedVaults = () => {
                 value={newVaultTxHash}
                 onChange={(e) => setNewVaultTxHash(e.target.value)}
                 placeholder="0x..."
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
             </div>
             <div className="flex gap-2">
@@ -190,7 +190,7 @@ export const MyDeployedVaults = () => {
             />
             <button
               onClick={() => handleRemoveVault(vault.address)}
-              className="absolute right-2 top-2 rounded-full bg-red-100 p-1.5 text-red-600 transition hover:bg-red-200"
+              className="absolute right-2 top-2 z-10 rounded-full bg-red-100 p-1.5 text-red-600 transition hover:bg-red-200"
               aria-label="Remove vault"
               title="Remove vault"
             >

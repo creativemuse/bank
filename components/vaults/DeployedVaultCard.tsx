@@ -1,14 +1,32 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Address } from "viem";
-import { useAccount } from "wagmi";
+import { Address, formatUnits } from "viem";
+import { useAccount, useReadContract } from "wagmi";
 import { YearnVaultModal } from "@/components/yearn/YearnVaultModal";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
-import { useYearnVault, useYearnVaultBalance } from "@/hooks/useYearnVaults";
-import { formatPercentage, formatVaultShares } from "@/lib/yearnUtils";
-import { formatUnits } from "viem";
+import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
+import { formatPercent } from "@/lib/formatters";
+import { formatVaultShares } from "@/lib/yearnUtils";
 import Link from "next/link";
+
+// ERC-4626 ABI for reading vault data
+const ERC4626_ABI = [
+  {
+    inputs: [],
+    name: "totalAssets",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "asset",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
 type DeployedVaultCardProps = {
   vaultAddress: Address;
@@ -31,16 +49,66 @@ export const DeployedVaultCard = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"deposit" | "withdraw">("deposit");
 
-  // Get vault details
-  const { totalAssets, isLoading: vaultLoading, assetAddress: vaultAssetAddress } = useYearnVault(
-    vaultAddress,
-  );
+  // Get Aave reserve data for APR
+  const { reserve, loading: reserveLoading } = useBaseUsdcReserve();
 
-  // Get user's position
-  const { shareBalance, assetValue } = useYearnVaultBalance(vaultAddress, userAddress);
+  // Get vault TVL from ERC-4626 totalAssets
+  const { data: totalAssets, isLoading: vaultLoading } = useReadContract({
+    address: vaultAddress,
+    abi: ERC4626_ABI,
+    functionName: "totalAssets",
+    query: {
+      refetchInterval: 30000, // Refetch every 30 seconds
+    },
+  });
+
+  // Get vault asset address
+  const { data: vaultAssetAddress } = useReadContract({
+    address: vaultAddress,
+    abi: ERC4626_ABI,
+    functionName: "asset",
+  });
+
+  // Get user's share balance
+  const { data: shareBalance } = useReadContract({
+    address: vaultAddress,
+    abi: [
+      {
+        inputs: [{ internalType: "address", name: "account", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ],
+    functionName: "balanceOf",
+    args: userAddress ? [userAddress] : undefined,
+    query: {
+      enabled: !!userAddress,
+    },
+  });
+
+  // Calculate user's asset value from shares
+  const { data: convertToAssets } = useReadContract({
+    address: vaultAddress,
+    abi: [
+      {
+        inputs: [{ internalType: "uint256", name: "shares", type: "uint256" }],
+        name: "convertToAssets",
+        outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ],
+    functionName: "convertToAssets",
+    args: shareBalance ? [shareBalance] : undefined,
+    query: {
+      enabled: !!shareBalance && shareBalance > 0n,
+    },
+  });
 
   // Use the actual asset address from vault if available
-  const actualAssetAddress = vaultAssetAddress || assetAddress;
+  const actualAssetAddress = (vaultAssetAddress || assetAddress) as Address;
 
   const handleOpenDeposit = () => {
     setModalMode("deposit");
@@ -52,6 +120,20 @@ export const DeployedVaultCard = ({
     setModalOpen(true);
   };
 
+  // Calculate APR from Aave reserve (after performance fee)
+  const aprDisplay = useMemo(() => {
+    if (reserveLoading || !reserve) return "Loading...";
+    
+    const supplyApy = reserve.supplyInfo.apy?.value;
+    if (!supplyApy) return "—";
+    
+    // Aave vaults typically have a performance fee (e.g., 10-50%)
+    // The APR shown should be the net APR after fees
+    // For now, we'll show the underlying Aave APR
+    // In the future, we could calculate net APR based on vault fees
+    return formatPercent(supplyApy);
+  }, [reserve, reserveLoading]);
+
   const tvlDisplay = vaultLoading
     ? "Loading..."
     : totalAssets
@@ -62,8 +144,8 @@ export const DeployedVaultCard = ({
       : "—";
 
   const hasPosition = shareBalance && shareBalance > 0n;
-  const positionValue = hasPosition && assetValue
-    ? formatUnits(assetValue, assetDecimals)
+  const positionValue = hasPosition && convertToAssets
+    ? formatUnits(convertToAssets, assetDecimals)
     : "0";
 
   const displayName = name || `My Aave Vault`;
@@ -73,7 +155,7 @@ export const DeployedVaultCard = ({
       <StrategyCard
         title={displayName}
         subtitle="Your deployed Aave USDC Earn Vault"
-        apr="—"
+        apr={aprDisplay}
         tvl={tvlDisplay}
         description="Your custom ERC-4626 vault deployed on Base, sourcing yield from the Aave USDC reserve."
         actions={[

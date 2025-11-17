@@ -34,7 +34,7 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-0 flex justify-center overflow-y-auto bg-black/30 py-6 md:items-center">
+    <div className="fixed inset-0 z-50 flex justify-center overflow-y-auto bg-black/30 py-6 md:items-center">
       <div
         className={cn(
           "relative mx-4 flex w-full max-w-md flex-col items-center overflow-y-auto rounded-2xl bg-gray-400 p-6 shadow-xl",
