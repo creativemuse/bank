@@ -80,13 +80,16 @@ export const YearnVaultCard = ({
             ariaLabel: `Deposit ${assetSymbol} into ${name}`,
             onClick: handleOpenDeposit,
           },
-          {
-            id: "withdraw",
-            label: "Withdraw",
-            ariaLabel: `Withdraw ${assetSymbol} from ${name}`,
-            onClick: handleOpenWithdraw,
-            disabled: !hasPosition,
-          },
+          ...(hasPosition
+            ? [
+                {
+                  id: "withdraw",
+                  label: "Withdraw",
+                  ariaLabel: `Withdraw ${assetSymbol} from ${name}`,
+                  onClick: handleOpenWithdraw,
+                },
+              ]
+            : []),
         ]}
         footnote={
           hasPosition ? (

@@ -237,16 +237,13 @@ export const DeployedVaultCard = ({
             ariaLabel: "Deposit into vault",
             onClick: handleOpenDeposit,
           },
-          ...(hasPosition
-            ? [
-                {
-                  id: "withdraw",
-                  label: "Withdraw",
-                  ariaLabel: "Withdraw from vault",
-                  onClick: handleOpenWithdraw,
-                },
-              ]
-            : []),
+          {
+            id: "withdraw",
+            label: "Withdraw",
+            ariaLabel: "Withdraw from vault",
+            onClick: handleOpenWithdraw,
+            disabled: !hasPosition,
+          },
           {
             id: "view-vault",
             label: "View on Basescan",

@@ -62,7 +62,7 @@ export function StrategyCard({
               <button
                 key={action.id}
                 type="button"
-                className="rounded-xl border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:border-slate-700 hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
+                className="rounded-xl border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:border-slate-700 hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-400 disabled:hover:border-slate-400 disabled:hover:bg-slate-400"
                 onClick={action.onClick}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
