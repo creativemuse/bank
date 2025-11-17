@@ -374,6 +374,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
                   address: vaultAddress.toLowerCase(),
                   name: shareName || undefined,
                   transactionHash: txHash,
+                  performanceFee: performanceFee, // Store performance fee for net APR calculation
                 };
                 localStorage.setItem("deployedVaults", JSON.stringify([...existingVaults, newVault]));
               }

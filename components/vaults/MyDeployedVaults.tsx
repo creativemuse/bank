@@ -9,6 +9,7 @@ type DeployedVault = {
   address: Address;
   name?: string;
   transactionHash?: string;
+  performanceFee?: number; // Performance fee in percentage (e.g., 12 for 12%)
 };
 
 export const MyDeployedVaults = () => {
@@ -31,6 +32,7 @@ export const MyDeployedVaults = () => {
   const [newVaultAddress, setNewVaultAddress] = useState("");
   const [newVaultName, setNewVaultName] = useState("");
   const [newVaultTxHash, setNewVaultTxHash] = useState("");
+  const [newVaultPerformanceFee, setNewVaultPerformanceFee] = useState("");
 
   const saveVaults = useCallback((newVaults: DeployedVault[]) => {
     setVaults(newVaults);
@@ -45,10 +47,20 @@ export const MyDeployedVaults = () => {
       return;
     }
 
+    const performanceFeeNum = newVaultPerformanceFee 
+      ? parseFloat(newVaultPerformanceFee) 
+      : undefined;
+    
+    if (performanceFeeNum !== undefined && (isNaN(performanceFeeNum) || performanceFeeNum < 0 || performanceFeeNum > 100)) {
+      alert("Performance fee must be a number between 0 and 100");
+      return;
+    }
+
     const vault: DeployedVault = {
       address: newVaultAddress.toLowerCase() as Address,
       name: newVaultName || undefined,
       transactionHash: newVaultTxHash || undefined,
+      performanceFee: performanceFeeNum,
     };
 
     // Check if vault already exists
@@ -61,8 +73,9 @@ export const MyDeployedVaults = () => {
     setNewVaultAddress("");
     setNewVaultName("");
     setNewVaultTxHash("");
+    setNewVaultPerformanceFee("");
     setShowAddForm(false);
-  }, [newVaultAddress, newVaultName, newVaultTxHash, vaults, saveVaults]);
+  }, [newVaultAddress, newVaultName, newVaultTxHash, newVaultPerformanceFee, vaults, saveVaults]);
 
   const handleRemoveVault = useCallback(
     (address: Address) => {
@@ -154,6 +167,22 @@ export const MyDeployedVaults = () => {
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Performance Fee % (Optional)
+              </label>
+              <input
+                type="tel"
+                inputMode="decimal"
+                value={newVaultPerformanceFee}
+                onChange={(e) => setNewVaultPerformanceFee(e.target.value)}
+                placeholder="12"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Enter the performance fee percentage (e.g., 12 for 12%) to calculate net APR. Aave Labs takes 50% of this fee.
+              </p>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={handleAddVault}
@@ -167,6 +196,7 @@ export const MyDeployedVaults = () => {
                   setNewVaultAddress("");
                   setNewVaultName("");
                   setNewVaultTxHash("");
+                  setNewVaultPerformanceFee("");
                 }}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
@@ -187,6 +217,7 @@ export const MyDeployedVaults = () => {
               assetDecimals={6}
               name={vault.name}
               transactionHash={vault.transactionHash}
+              performanceFee={vault.performanceFee}
             />
             <button
               onClick={() => handleRemoveVault(vault.address)}

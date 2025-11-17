@@ -35,6 +35,7 @@ type DeployedVaultCardProps = {
   assetDecimals?: number;
   name?: string;
   transactionHash?: string;
+  performanceFee?: number; // Performance fee in percentage (e.g., 12 for 12%)
 };
 
 export const DeployedVaultCard = ({
@@ -44,20 +45,42 @@ export const DeployedVaultCard = ({
   assetDecimals = 6,
   name,
   transactionHash,
+  performanceFee,
 }: DeployedVaultCardProps) => {
   const { address: userAddress } = useAccount();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"deposit" | "withdraw">("deposit");
 
-  // Get Aave reserve data for APR
+  // Get Aave reserve data for APR and aToken address
   const { reserve, loading: reserveLoading } = useBaseUsdcReserve();
+  const aTokenAddress = reserve?.aToken?.address as Address | undefined;
 
-  // Get vault TVL from ERC-4626 totalAssets
+  // Get vault TVL from ERC-4626 totalAssets (this includes accrued interest)
   const { data: totalAssets, isLoading: vaultLoading } = useReadContract({
     address: vaultAddress,
     abi: ERC4626_ABI,
     functionName: "totalAssets",
     query: {
+      refetchInterval: 30000, // Refetch every 30 seconds to see interest accrue
+    },
+  });
+
+  // Get vault's aToken balance (shows the actual aToken amount held)
+  const { data: aTokenBalance } = useReadContract({
+    address: aTokenAddress,
+    abi: [
+      {
+        inputs: [{ internalType: "address", name: "account", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ],
+    functionName: "balanceOf",
+    args: vaultAddress ? [vaultAddress] : undefined,
+    query: {
+      enabled: !!aTokenAddress && !!vaultAddress,
       refetchInterval: 30000, // Refetch every 30 seconds
     },
   });
@@ -120,19 +143,38 @@ export const DeployedVaultCard = ({
     setModalOpen(true);
   };
 
-  // Calculate APR from Aave reserve (after performance fee)
+  // Calculate net APR from Aave reserve (after performance fee)
   const aprDisplay = useMemo(() => {
     if (reserveLoading || !reserve) return "Loading...";
     
-    const supplyApy = reserve.supplyInfo.apy?.value;
-    if (!supplyApy) return "—";
+    const supplyApyValue = reserve.supplyInfo.apy?.value;
+    if (!supplyApyValue) return "—";
     
-    // Aave vaults typically have a performance fee (e.g., 10-50%)
-    // The APR shown should be the net APR after fees
-    // For now, we'll show the underlying Aave APR
-    // In the future, we could calculate net APR based on vault fees
+    // Convert to number if it's a string
+    const supplyApy = typeof supplyApyValue === "string" 
+      ? Number.parseFloat(supplyApyValue) 
+      : Number(supplyApyValue);
+    
+    if (Number.isNaN(supplyApy)) return "—";
+    
+    // If we have the performance fee, calculate net APR
+    // Aave Labs takes 50% of the performance fee, so:
+    // Net APR = Gross APR * (1 - (performanceFee / 2) / 100)
+    // Example: 12% fee = 6% goes to Aave Labs, 6% to vault manager
+    // Net APR = Gross APR * (1 - 0.06) = Gross APR * 0.94
+    if (performanceFee !== undefined && performanceFee > 0) {
+      // Convert percentage to decimal (e.g., 12% -> 0.12)
+      const feeDecimal = performanceFee / 100;
+      // Aave Labs takes 50% of the fee
+      const aaveLabsFeeShare = feeDecimal / 2;
+      // Net APR after fees
+      const netApy = supplyApy * (1 - aaveLabsFeeShare);
+      return formatPercent(netApy);
+    }
+    
+    // If no performance fee available, show gross APR
     return formatPercent(supplyApy);
-  }, [reserve, reserveLoading]);
+  }, [reserve, reserveLoading, performanceFee]);
 
   const tvlDisplay = vaultLoading
     ? "Loading..."
@@ -142,6 +184,36 @@ export const DeployedVaultCard = ({
           maximumFractionDigits: 2,
         })}`
       : "—";
+
+  // Calculate accrued interest
+  // totalAssets already includes interest, but we can show the aToken balance for transparency
+  const aTokenBalanceDisplay = useMemo(() => {
+    if (!aTokenBalance || !aTokenAddress) return null;
+    
+    const balance = Number(formatUnits(aTokenBalance, assetDecimals));
+    return balance.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6,
+    });
+  }, [aTokenBalance, aTokenAddress, assetDecimals]);
+
+  // Calculate interest accrued (difference between aToken balance and underlying)
+  // Note: totalAssets already accounts for interest, but we can show the aToken amount
+  const interestInfo = useMemo(() => {
+    if (!totalAssets || !aTokenBalance) return null;
+    
+    // The aToken balance represents the claimable underlying amount (including interest)
+    // totalAssets should match this, but we can show both for transparency
+    const totalAssetsNum = Number(formatUnits(totalAssets, assetDecimals));
+    const aTokenBalanceNum = Number(formatUnits(aTokenBalance, assetDecimals));
+    
+    // If there's a difference, it's likely due to rounding or the way Aave calculates
+    // For now, we'll show the aToken balance as the "earning balance"
+    return {
+      aTokenBalance: aTokenBalanceNum,
+      totalAssets: totalAssetsNum,
+    };
+  }, [totalAssets, aTokenBalance, assetDecimals]);
 
   const hasPosition = shareBalance && shareBalance > 0n;
   const positionValue = hasPosition && convertToAssets
@@ -219,6 +291,29 @@ export const DeployedVaultCard = ({
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 6,
                 })} {assetSymbol} ({formatVaultShares(shareBalance)} shares)
+              </div>
+            )}
+            {aTokenBalanceDisplay && (
+              <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-emerald-900">aBaseUSDC Balance:</span>
+                  <span className="font-mono text-emerald-700">
+                    {aTokenBalanceDisplay} aBaseUSDC
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-emerald-700">
+                  💰 Interest accruing in real-time on Aave
+                </div>
+                {aTokenAddress && (
+                  <Link
+                    href={`https://basescan.org/address/${aTokenAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 block text-xs text-emerald-600 underline"
+                  >
+                    View aToken on Basescan
+                  </Link>
+                )}
               </div>
             )}
           </div>
