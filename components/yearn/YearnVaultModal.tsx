@@ -1,8 +1,10 @@
 "use client";
 
 import { FormEvent, useCallback, useMemo, useState } from "react";
-import { Address, formatUnits } from "viem";
-import { useAccount } from "wagmi";
+import { Address, formatUnits, createWalletClient, custom, type WalletClient } from "viem";
+import { useAccount, useWalletClient } from "wagmi";
+import { useWallet, useAuth, EVMWallet } from "@crossmint/client-sdk-react-ui";
+import { base, baseSepolia } from "viem/chains";
 
 import { Modal } from "@/components/common/Modal";
 import { useYearnDeposit } from "@/hooks/useYearnDeposit";
@@ -20,6 +22,7 @@ type YearnVaultModalProps = {
   mode: "deposit" | "withdraw";
   userAssetBalance?: bigint;
   assetDecimals?: number;
+  isBalanceLoading?: boolean;
 };
 
 export const YearnVaultModal = ({
@@ -31,19 +34,106 @@ export const YearnVaultModal = ({
   mode,
   userAssetBalance = 0n,
   assetDecimals = 6,
+  isBalanceLoading = false,
 }: YearnVaultModalProps) => {
-  const { address: userAddress } = useAccount();
+  const { address: wagmiAddress } = useAccount();
+  const { data: wagmiWalletClient } = useWalletClient();
+  const { wallet: crossmintWallet, status: walletStatus } = useWallet();
+  const { status: authStatus } = useAuth();
+
+  // Determine active address (Crossmint takes priority, fallback to wagmi)
+  const userAddress = useMemo(() => {
+    if (crossmintWallet?.address) {
+      return crossmintWallet.address as `0x${string}`;
+    }
+    return wagmiAddress;
+  }, [crossmintWallet?.address, wagmiAddress]);
+
+  // Create wallet client from Crossmint wallet if available, otherwise use wagmi client
+  const walletClient = useMemo((): WalletClient | undefined => {
+    // If we have a Crossmint wallet, create a viem wallet client adapter
+    if (crossmintWallet) {
+      try {
+        const evmWallet = EVMWallet.from(crossmintWallet);
+        const chain = process.env.NODE_ENV === "production" ? base : baseSepolia;
+        
+        // Create a custom wallet client that uses Crossmint's EVMWallet for transactions
+        return createWalletClient({
+          chain,
+          transport: custom({
+            async request({ method, params }) {
+              // Handle transaction sending through Crossmint's EVMWallet
+              if (method === "eth_sendTransaction" && params?.[0]) {
+                const tx = params[0] as {
+                  to?: string;
+                  value?: string;
+                  data?: string;
+                  gas?: string;
+                  gasPrice?: string;
+                  maxFeePerGas?: string;
+                  maxPriorityFeePerGas?: string;
+                };
+                
+                // Validate required fields
+                if (!tx.to) {
+                  throw new Error("Transaction 'to' address is required");
+                }
+                
+                // Convert viem transaction format to Crossmint format
+                const valueHex = tx.value || "0x0";
+                const valueBigInt = BigInt(valueHex);
+                
+                const transaction = {
+                  to: tx.to as `0x${string}`,
+                  value: valueBigInt,
+                  data: (tx.data || "0x") as `0x${string}`,
+                };
+                
+                // Send transaction using Crossmint's EVMWallet
+                const result = await evmWallet.sendTransaction(transaction);
+                
+                // Return the transaction hash in the format viem expects
+                return result.hash;
+              }
+              
+              // Handle account requests
+              if (method === "eth_accounts" || method === "eth_requestAccounts") {
+                return [crossmintWallet.address];
+              }
+              
+              // Handle chain ID requests
+              if (method === "eth_chainId") {
+                return `0x${chain.id.toString(16)}`;
+              }
+              
+              // For other methods, you might need to implement them or throw
+              throw new Error(`Method ${method} not yet supported with Crossmint wallet adapter`);
+            },
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to create wallet client from Crossmint wallet:", error);
+      }
+    }
+    
+    // Fallback to wagmi wallet client
+    return wagmiWalletClient ?? undefined;
+  }, [crossmintWallet, wagmiWalletClient]);
   
   const [inputAmount, setInputAmount] = useState("");
   const [maxLossPercent, setMaxLossPercent] = useState(1); // Default 1% max loss
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Hooks for vault interactions
+  // Hooks for vault interactions - pass wallet client for Crossmint support
   const { deposit, state: depositState, reset: resetDeposit } = useYearnDeposit(
     vaultAddress,
     assetAddress,
+    walletClient,
   );
-  const { redeem, state: withdrawState, reset: resetWithdraw } = useYearnWithdraw(vaultAddress);
+  const { redeem, state: withdrawState, reset: resetWithdraw } = useYearnWithdraw(
+    vaultAddress,
+    walletClient,
+  );
 
   // Get user's vault balance
   const { shareBalance, assetValue, refetch: refetchBalance } = useYearnVaultBalance(
@@ -86,6 +176,10 @@ export const YearnVaultModal = ({
 
   const validate = useCallback(() => {
     if (!userAddress) {
+      // Provide more helpful error message
+      if (authStatus === "initializing" || walletStatus === "in-progress") {
+        return "Wallet is connecting. Please wait...";
+      }
       return "Connect a wallet to continue.";
     }
 
@@ -98,6 +192,16 @@ export const YearnVaultModal = ({
     }
 
     if (mode === "deposit") {
+      // Block transaction if balance is still loading
+      if (isBalanceLoading) {
+        return "Balance is loading. Please wait...";
+      }
+      
+      // Ensure we have a valid balance before checking
+      if (userAssetBalance === undefined) {
+        return "Unable to fetch balance. Please try again.";
+      }
+      
       if (parsedAmount > userAssetBalance) {
         return `Insufficient ${assetSymbol} balance.`;
       }
@@ -122,6 +226,9 @@ export const YearnVaultModal = ({
     assetSymbol,
     shareBalance,
     maxLossPercent,
+    authStatus,
+    walletStatus,
+    isBalanceLoading,
   ]);
 
   const handleSubmit = useCallback(
@@ -205,7 +312,9 @@ export const YearnVaultModal = ({
               <span className="text-xs text-slate-500">
                 Balance:{" "}
                 {mode === "deposit"
-                  ? formatUnits(userAssetBalance, assetDecimals)
+                  ? isBalanceLoading
+                    ? "Loading..."
+                    : formatUnits(userAssetBalance, assetDecimals)
                   : shareBalance
                     ? formatVaultShares(shareBalance)
                     : "0"}

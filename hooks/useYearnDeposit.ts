@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useWriteContract, useReadContract, useAccount, usePublicClient } from "wagmi";
-import { Address } from "viem";
+import { useWriteContract, useReadContract, useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { Address, type WalletClient } from "viem";
+import { encodeFunctionData } from "viem";
 import { ERC4626_ABI, ERC20_ABI } from "@/lib/config/yearn";
 
 type DepositState = {
@@ -20,14 +21,20 @@ type UseYearnDepositReturn = {
 /**
  * Hook to handle Yearn V3 vault deposits with ERC-4626 compliance
  * Follows the standard flow: approve token -> deposit assets
+ * Supports both Crossmint wallet and wagmi wallet
  */
 export const useYearnDeposit = (
   vaultAddress: Address | undefined,
   assetAddress: Address | undefined,
+  walletClient?: WalletClient,
 ): UseYearnDepositReturn => {
   const [state, setState] = useState<DepositState>({ status: "idle" });
   const { address: ownerAddress } = useAccount();
   const publicClient = usePublicClient();
+  const { data: wagmiWalletClient } = useWalletClient();
+
+  // Use provided wallet client, fallback to wagmi wallet client
+  const activeWalletClient = walletClient || wagmiWalletClient;
 
   const { writeContractAsync: writeApprove } = useWriteContract();
   const { writeContractAsync: writeDeposit } = useWriteContract();
@@ -76,22 +83,50 @@ export const useYearnDeposit = (
         if (allowance < assets) {
           setState({ status: "approving" });
 
-          const approveHash = await writeApprove({
-            address: assetAddress,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [vaultAddress, assets],
-            chainId: 8453,
-          });
+          let approveHash: `0x${string}`;
 
-          if (!approveHash) {
-            throw new Error("Approval transaction failed");
+          // Use custom wallet client if provided (Crossmint), otherwise use wagmi
+          if (activeWalletClient) {
+            // Encode the function data
+            const data = encodeFunctionData({
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [vaultAddress, assets],
+            });
+            
+            // Get account from wallet client
+            const accounts = await activeWalletClient.getAddresses();
+            const account = accounts[0];
+            
+            if (!account) {
+              throw new Error("No account available in wallet");
+            }
+            
+            // Send transaction using wallet client
+            approveHash = await activeWalletClient.sendTransaction({
+              account,
+              to: assetAddress,
+              data,
+              chain: activeWalletClient.chain || null,
+            });
+          } else {
+            const hash = await writeApprove({
+              address: assetAddress,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [vaultAddress, assets],
+              chainId: 8453,
+            });
+            if (!hash) {
+              throw new Error("Approval transaction failed");
+            }
+            approveHash = hash;
           }
 
           // Wait for approval to be mined
           if (publicClient) {
             await publicClient.waitForTransactionReceipt({
-              hash: approveHash as `0x${string}`,
+              hash: approveHash,
               timeout: 120_000, // 2 minute timeout
             });
           }
@@ -103,22 +138,50 @@ export const useYearnDeposit = (
         // Step 2: Execute deposit
         setState({ status: "depositing" });
 
-        const depositHash = await writeDeposit({
-          address: vaultAddress,
-          abi: ERC4626_ABI,
-          functionName: "deposit",
-          args: [assets, receiver],
-          chainId: 8453,
-        });
+        let depositHash: `0x${string}`;
 
-        if (!depositHash) {
-          throw new Error("Deposit transaction failed");
+        // Use custom wallet client if provided (Crossmint), otherwise use wagmi
+        if (activeWalletClient) {
+          // Encode the function data
+          const data = encodeFunctionData({
+            abi: ERC4626_ABI,
+            functionName: "deposit",
+            args: [assets, receiver],
+          });
+          
+          // Get account from wallet client
+          const accounts = await activeWalletClient.getAddresses();
+          const account = accounts[0];
+          
+          if (!account) {
+            throw new Error("No account available in wallet");
+          }
+          
+          // Send transaction using wallet client
+          depositHash = await activeWalletClient.sendTransaction({
+            account,
+            to: vaultAddress,
+            data,
+            chain: activeWalletClient.chain || null,
+          });
+        } else {
+          const hash = await writeDeposit({
+            address: vaultAddress,
+            abi: ERC4626_ABI,
+            functionName: "deposit",
+            args: [assets, receiver],
+            chainId: 8453,
+          });
+          if (!hash) {
+            throw new Error("Deposit transaction failed");
+          }
+          depositHash = hash;
         }
 
         // Wait for deposit to be mined
         if (publicClient) {
           await publicClient.waitForTransactionReceipt({
-            hash: depositHash as `0x${string}`,
+            hash: depositHash,
             timeout: 120_000, // 2 minute timeout
           });
         }
@@ -139,6 +202,7 @@ export const useYearnDeposit = (
       assetAddress,
       ownerAddress,
       currentAllowance,
+      activeWalletClient,
       writeApprove,
       writeDeposit,
       refetchAllowance,

@@ -86,6 +86,11 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
                   maxPriorityFeePerGas?: string;
                 };
                 
+                // Validate required fields
+                if (!tx.to) {
+                  throw new Error("Transaction 'to' address is required");
+                }
+                
                 // Convert viem transaction format to Crossmint format
                 // Convert hex string value to bigint as required by EVMTransactionInput
                 const valueHex = tx.value || "0x0";

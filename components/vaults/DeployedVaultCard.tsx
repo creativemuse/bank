@@ -8,6 +8,7 @@ import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { formatPercent } from "@/lib/formatters";
 import { formatVaultShares } from "@/lib/yearnUtils";
+import { USDC_ADDRESS_BASE } from "@/lib/config/yearn";
 import Link from "next/link";
 
 // ERC-4626 ABI for reading vault data
@@ -135,11 +136,18 @@ export const DeployedVaultCard = ({
     },
   });
 
-  // Use the actual asset address from vault if available
-  const actualAssetAddress = (vaultAssetAddress || assetAddress) as Address;
+  // Use the actual asset address from vault if available, with USDC_ADDRESS_BASE as final fallback
+  // This ensures we always have a valid address for balance queries
+  const actualAssetAddress = useMemo(() => {
+    return (vaultAssetAddress || assetAddress || USDC_ADDRESS_BASE) as Address;
+  }, [vaultAssetAddress, assetAddress]);
 
   // Get user's asset balance (USDC balance for deposits)
-  const { data: userAssetBalance, refetch: refetchAssetBalance } = useReadContract({
+  const { 
+    data: userAssetBalance, 
+    refetch: refetchAssetBalance,
+    isLoading: isBalanceLoading 
+  } = useReadContract({
     address: actualAssetAddress,
     abi: [
       {
@@ -365,6 +373,7 @@ export const DeployedVaultCard = ({
         mode={modalMode}
         userAssetBalance={(userAssetBalance as bigint) ?? 0n}
         assetDecimals={assetDecimals}
+        isBalanceLoading={isBalanceLoading}
       />
     </>
   );

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useWriteContract } from "wagmi";
-import { Address } from "viem";
+import { useWriteContract, useWalletClient } from "wagmi";
+import { Address, type WalletClient, encodeFunctionData } from "viem";
 import { ERC4626_ABI, MAX_LOSS_BPS } from "@/lib/config/yearn";
 
 type WithdrawState = {
@@ -20,16 +20,22 @@ type UseYearnWithdrawReturn = {
 /**
  * Hook to handle Yearn V3 vault withdrawals using the redeem function
  * Recommended over withdraw function per Yearn V3 best practices
+ * Supports both Crossmint wallet and wagmi wallet
  * 
  * @param vaultAddress - Address of the Yearn V3 vault
- * @param maxLossBps - Maximum loss in basis points (default: 10000 = 100%)
+ * @param walletClient - Optional wallet client (for Crossmint support)
  */
 export const useYearnWithdraw = (
   vaultAddress: Address | undefined,
+  walletClient?: WalletClient,
 ): UseYearnWithdrawReturn => {
   const [state, setState] = useState<WithdrawState>({ status: "idle" });
 
+  const { data: wagmiWalletClient } = useWalletClient();
   const { writeContractAsync: writeRedeem } = useWriteContract();
+
+  // Use provided wallet client, fallback to wagmi wallet client
+  const activeWalletClient = walletClient || wagmiWalletClient;
 
   const reset = useCallback(() => {
     setState({ status: "idle" });
@@ -55,39 +61,97 @@ export const useYearnWithdraw = (
 
         // Try with maxLoss first (for Yearn V3 vaults)
         // If that fails, fall back to standard ERC-4626 redeem (for Aave vaults)
-        let redeemHash: `0x${string}` | undefined;
+        let redeemHash: `0x${string}`;
         
         try {
-          // Attempt with maxLoss parameter (Yearn V3 style)
-          redeemHash = await writeRedeem({
-            address: vaultAddress,
-            abi: ERC4626_ABI,
-            functionName: "redeem",
-            args: [shares, receiver, owner, BigInt(maxLossBps)],
-            chainId: 8453,
-          });
-        } catch (maxLossError) {
-          // If maxLoss fails, try standard ERC-4626 redeem (Aave vaults)
-          console.log("maxLoss parameter not supported, trying standard redeem...");
-          redeemHash = await writeRedeem({
-            address: vaultAddress,
-            abi: [
-              {
-                inputs: [
-                  { name: "shares", type: "uint256" },
-                  { name: "receiver", type: "address" },
-                  { name: "owner", type: "address" },
+          // Use custom wallet client if provided (Crossmint), otherwise use wagmi
+          if (activeWalletClient) {
+            // Get account from wallet client
+            const accounts = await activeWalletClient.getAddresses();
+            const account = accounts[0];
+            
+            if (!account) {
+              throw new Error("No account available in wallet");
+            }
+            
+            // Attempt with maxLoss parameter (Yearn V3 style)
+            try {
+              const data = encodeFunctionData({
+                abi: ERC4626_ABI,
+                functionName: "redeem",
+                args: [shares, receiver, owner, BigInt(maxLossBps)],
+              });
+              
+              redeemHash = await activeWalletClient.sendTransaction({
+                account,
+                to: vaultAddress,
+                data,
+                chain: activeWalletClient.chain || null,
+              });
+            } catch (maxLossError) {
+              // If maxLoss fails, try standard ERC-4626 redeem (Aave vaults)
+              console.log("maxLoss parameter not supported, trying standard redeem...");
+              const data = encodeFunctionData({
+                abi: [
+                  {
+                    inputs: [
+                      { name: "shares", type: "uint256" },
+                      { name: "receiver", type: "address" },
+                      { name: "owner", type: "address" },
+                    ],
+                    name: "redeem",
+                    outputs: [{ name: "assets", type: "uint256" }],
+                    stateMutability: "nonpayable",
+                    type: "function",
+                  },
                 ],
-                name: "redeem",
-                outputs: [{ name: "assets", type: "uint256" }],
-                stateMutability: "nonpayable",
-                type: "function",
-              },
-            ],
-            functionName: "redeem",
-            args: [shares, receiver, owner],
-            chainId: 8453,
-          });
+                functionName: "redeem",
+                args: [shares, receiver, owner],
+              });
+              
+              redeemHash = await activeWalletClient.sendTransaction({
+                account,
+                to: vaultAddress,
+                data,
+                chain: activeWalletClient.chain || null,
+              });
+            }
+          } else {
+            // Use wagmi writeContract
+            try {
+              redeemHash = await writeRedeem({
+                address: vaultAddress,
+                abi: ERC4626_ABI,
+                functionName: "redeem",
+                args: [shares, receiver, owner, BigInt(maxLossBps)],
+                chainId: 8453,
+              });
+            } catch (maxLossError) {
+              // If maxLoss fails, try standard ERC-4626 redeem (Aave vaults)
+              console.log("maxLoss parameter not supported, trying standard redeem...");
+              redeemHash = await writeRedeem({
+                address: vaultAddress,
+                abi: [
+                  {
+                    inputs: [
+                      { name: "shares", type: "uint256" },
+                      { name: "receiver", type: "address" },
+                      { name: "owner", type: "address" },
+                    ],
+                    name: "redeem",
+                    outputs: [{ name: "assets", type: "uint256" }],
+                    stateMutability: "nonpayable",
+                    type: "function",
+                  },
+                ],
+                functionName: "redeem",
+                args: [shares, receiver, owner],
+                chainId: 8453,
+              });
+            }
+          }
+        } catch (error) {
+          throw error;
         }
 
         if (!redeemHash) {
@@ -105,7 +169,7 @@ export const useYearnWithdraw = (
         });
       }
     },
-    [vaultAddress, writeRedeem],
+    [vaultAddress, activeWalletClient, writeRedeem],
   );
 
   return {
