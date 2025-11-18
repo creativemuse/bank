@@ -78,14 +78,20 @@ export const formatVaultShares = (shares: bigint, decimals: number = 18): string
     return "0";
   }
   
+  // For very small numbers, show more precision instead of scientific notation
   if (num < 0.000001) {
-    return num.toExponential(2);
+    // Show up to 12 decimal places for very small numbers
+    const fixed = num.toFixed(12);
+    // Remove trailing zeros
+    return fixed.replace(/\.?0+$/, "");
   }
   
   if (num < 1) {
-    return num.toFixed(6);
+    // For numbers between 0.000001 and 1, show 6 decimal places
+    return num.toFixed(6).replace(/\.?0+$/, "");
   }
   
+  // For numbers >= 1, use locale formatting with 2-6 decimal places
   return num.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 6,

@@ -60,6 +60,7 @@ export const DeployedVaultCard = ({
     address: vaultAddress,
     abi: ERC4626_ABI,
     functionName: "totalAssets",
+    chainId: 8453, // Base mainnet
     query: {
       refetchInterval: 30000, // Refetch every 30 seconds to see interest accrue
     },
@@ -79,6 +80,7 @@ export const DeployedVaultCard = ({
     ],
     functionName: "balanceOf",
     args: vaultAddress ? [vaultAddress] : undefined,
+    chainId: 8453, // Base mainnet
     query: {
       enabled: !!aTokenAddress && !!vaultAddress,
       refetchInterval: 30000, // Refetch every 30 seconds
@@ -90,10 +92,11 @@ export const DeployedVaultCard = ({
     address: vaultAddress,
     abi: ERC4626_ABI,
     functionName: "asset",
+    chainId: 8453, // Base mainnet
   });
 
   // Get user's share balance
-  const { data: shareBalance } = useReadContract({
+  const { data: shareBalance, isLoading: isShareBalanceLoading } = useReadContract({
     address: vaultAddress,
     abi: [
       {
@@ -106,6 +109,7 @@ export const DeployedVaultCard = ({
     ],
     functionName: "balanceOf",
     args: userAddress ? [userAddress] : undefined,
+    chainId: 8453, // Base mainnet
     query: {
       enabled: !!userAddress,
     },
@@ -125,6 +129,7 @@ export const DeployedVaultCard = ({
     ],
     functionName: "convertToAssets",
     args: shareBalance ? [shareBalance] : undefined,
+    chainId: 8453, // Base mainnet
     query: {
       enabled: !!shareBalance && shareBalance > 0n,
     },
@@ -133,10 +138,35 @@ export const DeployedVaultCard = ({
   // Use the actual asset address from vault if available
   const actualAssetAddress = (vaultAssetAddress || assetAddress) as Address;
 
+  // Get user's asset balance (USDC balance for deposits)
+  const { data: userAssetBalance, refetch: refetchAssetBalance } = useReadContract({
+    address: actualAssetAddress,
+    abi: [
+      {
+        inputs: [{ internalType: "address", name: "account", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ],
+    functionName: "balanceOf",
+    args: userAddress ? [userAddress] : undefined,
+    chainId: 8453, // Base mainnet
+    query: {
+      enabled: !!actualAssetAddress && !!userAddress,
+      refetchInterval: 10000, // Refetch every 10 seconds to keep balance updated
+    },
+  });
+
   const handleOpenDeposit = useCallback(() => {
     setModalMode("deposit");
     setModalOpen(true);
-  }, []);
+    // Refetch balance when opening deposit modal to ensure accurate balance
+    if (refetchAssetBalance) {
+      refetchAssetBalance();
+    }
+  }, [refetchAssetBalance]);
 
   const handleOpenWithdraw = useCallback(() => {
     setModalMode("withdraw");
@@ -215,7 +245,16 @@ export const DeployedVaultCard = ({
     };
   }, [totalAssets, aTokenBalance, assetDecimals]);
 
-  const hasPosition = shareBalance && shareBalance > 0n;
+  // Check if user has a position (shares > 0)
+  // Only consider hasPosition true if we've loaded the balance and it's > 0
+  const hasPosition = !isShareBalanceLoading && shareBalance !== undefined && shareBalance > 0n;
+  
+  // Disable withdraw button only if:
+  // 1. No wallet connected, OR
+  // 2. We've finished loading AND confirmed user has no shares
+  // Keep button enabled during loading to avoid showing inactive state when user actually has shares
+  const isWithdrawDisabled = !userAddress || (!isShareBalanceLoading && (shareBalance === undefined || shareBalance === 0n));
+  
   const positionValue = hasPosition && convertToAssets
     ? formatUnits(convertToAssets, assetDecimals)
     : "0";
@@ -242,7 +281,7 @@ export const DeployedVaultCard = ({
             label: "Withdraw",
             ariaLabel: "Withdraw from vault",
             onClick: handleOpenWithdraw,
-            disabled: !hasPosition,
+            disabled: isWithdrawDisabled,
           },
           {
             id: "view-vault",
@@ -324,7 +363,7 @@ export const DeployedVaultCard = ({
         assetAddress={actualAssetAddress}
         assetSymbol={assetSymbol}
         mode={modalMode}
-        userAssetBalance={0n} // Will be fetched by the modal
+        userAssetBalance={(userAssetBalance as bigint) ?? 0n}
         assetDecimals={assetDecimals}
       />
     </>

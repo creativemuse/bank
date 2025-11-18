@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { XMarkIcon, ArrowLongLeftIcon } from "@heroicons/react/24/outline";
-import React, { ReactNode, useEffect } from "react";
+import React, { ReactNode, useEffect, useRef } from "react";
 
 interface ModalProps {
   open: boolean;
@@ -23,18 +23,26 @@ export function Modal({
   title,
   showCloseButton,
 }: ModalProps) {
+  // Store original values in a ref so they persist across open/close cycles
+  const originalStylesRef = useRef<{
+    overflow: string;
+    touchAction: string;
+  } | null>(null);
+
   useEffect(() => {
     if (!open) {
-      // When modal is closed, ensure scroll is restored
-      // Remove inline styles to allow CSS to take over
-      document.body.style.overflow = "";
-      document.body.style.touchAction = "";
+      // When modal is closed, restore original styles via cleanup
+      // Don't clear styles here - let cleanup handle it
       return;
     }
 
-    // Store the original overflow value before changing it
-    const originalOverflow = document.body.style.overflow;
-    const originalTouchAction = document.body.style.touchAction;
+    // Capture the current body styles every time the modal opens
+    // This ensures we always restore to the state that existed when we opened,
+    // even if other components modified the styles between close and open
+    originalStylesRef.current = {
+      overflow: document.body.style.overflow,
+      touchAction: document.body.style.touchAction,
+    };
     
     // Lock body scroll - works better on mobile with touch-action
     document.body.style.overflow = "hidden";
@@ -44,17 +52,24 @@ export function Modal({
     // Cleanup function to restore original values
     // This runs when the modal closes (open becomes false) or component unmounts
     return () => {
-      // Restore original overflow value or remove the style
-      if (originalOverflow) {
-        document.body.style.overflow = originalOverflow;
+      const original = originalStylesRef.current;
+      if (original) {
+        // Restore original overflow value or remove the style
+        if (original.overflow) {
+          document.body.style.overflow = original.overflow;
+        } else {
+          document.body.style.overflow = "";
+        }
+        
+        // Restore original touch-action or remove the style
+        if (original.touchAction) {
+          document.body.style.touchAction = original.touchAction;
+        } else {
+          document.body.style.touchAction = "";
+        }
       } else {
+        // Fallback: remove styles if original values weren't captured
         document.body.style.overflow = "";
-      }
-      
-      // Restore original touch-action or remove the style
-      if (originalTouchAction) {
-        document.body.style.touchAction = originalTouchAction;
-      } else {
         document.body.style.touchAction = "";
       }
     };

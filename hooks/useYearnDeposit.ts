@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
+import { useWriteContract, useReadContract, useAccount, usePublicClient } from "wagmi";
 import { Address } from "viem";
 import { ERC4626_ABI, ERC20_ABI } from "@/lib/config/yearn";
 
@@ -26,21 +26,23 @@ export const useYearnDeposit = (
   assetAddress: Address | undefined,
 ): UseYearnDepositReturn => {
   const [state, setState] = useState<DepositState>({ status: "idle" });
+  const { address: ownerAddress } = useAccount();
+  const publicClient = usePublicClient();
 
   const { writeContractAsync: writeApprove } = useWriteContract();
   const { writeContractAsync: writeDeposit } = useWriteContract();
 
-  // Check current allowance
+  // Check current allowance - allowance(owner, spender)
   const { data: currentAllowance, refetch: refetchAllowance } = useReadContract({
     address: assetAddress,
     abi: ERC20_ABI,
     functionName: "allowance",
     args:
-      vaultAddress && assetAddress
-        ? [assetAddress, vaultAddress]
+      vaultAddress && assetAddress && ownerAddress
+        ? [ownerAddress, vaultAddress]
         : undefined,
     query: {
-      enabled: !!vaultAddress && !!assetAddress,
+      enabled: !!vaultAddress && !!assetAddress && !!ownerAddress,
     },
   });
 
@@ -58,10 +60,18 @@ export const useYearnDeposit = (
         return;
       }
 
+      if (!ownerAddress) {
+        setState({
+          status: "error",
+          error: "Wallet not connected",
+        });
+        return;
+      }
+
       try {
         // Step 1: Check and handle approval if needed
-        await refetchAllowance();
-        const allowance = (currentAllowance as bigint) ?? 0n;
+        const { data: newAllowance } = await refetchAllowance();
+        const allowance = (newAllowance as bigint) ?? 0n;
 
         if (allowance < assets) {
           setState({ status: "approving" });
@@ -79,8 +89,15 @@ export const useYearnDeposit = (
           }
 
           // Wait for approval to be mined
-          // Note: In production, you'd use useWaitForTransactionReceipt
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+          if (publicClient) {
+            await publicClient.waitForTransactionReceipt({
+              hash: approveHash as `0x${string}`,
+              timeout: 120_000, // 2 minute timeout
+            });
+          }
+
+          // Refetch allowance after approval
+          await refetchAllowance();
         }
 
         // Step 2: Execute deposit
@@ -98,6 +115,14 @@ export const useYearnDeposit = (
           throw new Error("Deposit transaction failed");
         }
 
+        // Wait for deposit to be mined
+        if (publicClient) {
+          await publicClient.waitForTransactionReceipt({
+            hash: depositHash as `0x${string}`,
+            timeout: 120_000, // 2 minute timeout
+          });
+        }
+
         setState({
           status: "success",
           txHash: depositHash,
@@ -112,10 +137,12 @@ export const useYearnDeposit = (
     [
       vaultAddress,
       assetAddress,
+      ownerAddress,
       currentAllowance,
       writeApprove,
       writeDeposit,
       refetchAllowance,
+      publicClient,
     ],
   );
 

@@ -36,6 +36,7 @@ export const YearnVaultModal = ({
   
   const [inputAmount, setInputAmount] = useState("");
   const [maxLossPercent, setMaxLossPercent] = useState(1); // Default 1% max loss
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Hooks for vault interactions
   const { deposit, state: depositState, reset: resetDeposit } = useYearnDeposit(
@@ -73,6 +74,7 @@ export const YearnVaultModal = ({
   const resetForm = useCallback(() => {
     setInputAmount("");
     setMaxLossPercent(1);
+    setValidationError(null);
     resetDeposit();
     resetWithdraw();
   }, [resetDeposit, resetWithdraw]);
@@ -125,9 +127,11 @@ export const YearnVaultModal = ({
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      setValidationError(null);
 
       const validationMessage = validate();
       if (validationMessage) {
+        setValidationError(validationMessage);
         if (mode === "deposit") {
           resetDeposit();
         } else {
@@ -137,6 +141,7 @@ export const YearnVaultModal = ({
       }
 
       if (!userAddress || !vaultAddress || !parsedAmount) {
+        setValidationError("Missing required information. Please try again.");
         return;
       }
 
@@ -289,7 +294,14 @@ export const YearnVaultModal = ({
           </div>
         </section>
 
-        {/* Error Message */}
+        {/* Validation Error Message */}
+        {validationError && (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {validationError}
+          </p>
+        )}
+
+        {/* Transaction Error Message */}
         {state.status === "error" && state.error && (
           <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {state.error}
