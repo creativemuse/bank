@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useWriteContract, useReadContract, useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { Address, type WalletClient } from "viem";
 import { encodeFunctionData } from "viem";
 import { ERC4626_ABI, ERC20_ABI } from "@/lib/config/yearn";
@@ -29,9 +30,19 @@ export const useYearnDeposit = (
   walletClient?: WalletClient,
 ): UseYearnDepositReturn => {
   const [state, setState] = useState<DepositState>({ status: "idle" });
-  const { address: ownerAddress } = useAccount();
+  const { address: wagmiAddress } = useAccount();
+  const { wallet: crossmintWallet } = useWallet();
   const publicClient = usePublicClient();
   const { data: wagmiWalletClient } = useWalletClient();
+
+  // Determine active address (Crossmint takes priority, fallback to wagmi)
+  // This must match the logic in YearnVaultModal to ensure we use the correct address
+  const ownerAddress = useMemo(() => {
+    if (crossmintWallet?.address) {
+      return crossmintWallet.address as `0x${string}`;
+    }
+    return wagmiAddress;
+  }, [crossmintWallet?.address, wagmiAddress]);
 
   // Use provided wallet client, fallback to wagmi wallet client
   const activeWalletClient = walletClient || wagmiWalletClient;
