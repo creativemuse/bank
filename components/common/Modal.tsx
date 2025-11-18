@@ -24,12 +24,42 @@ export function Modal({
   showCloseButton,
 }: ModalProps) {
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "auto";
+    if (!open) {
+      // When modal is closed, ensure scroll is restored
+      // Remove inline styles to allow CSS to take over
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+      return;
     }
+
+    // Store the original overflow value before changing it
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    
+    // Lock body scroll - works better on mobile with touch-action
+    document.body.style.overflow = "hidden";
+    // Prevent touch scrolling on mobile devices
+    document.body.style.touchAction = "none";
+
+    // Cleanup function to restore original values
+    // This runs when the modal closes (open becomes false) or component unmounts
+    return () => {
+      // Restore original overflow value or remove the style
+      if (originalOverflow) {
+        document.body.style.overflow = originalOverflow;
+      } else {
+        document.body.style.overflow = "";
+      }
+      
+      // Restore original touch-action or remove the style
+      if (originalTouchAction) {
+        document.body.style.touchAction = originalTouchAction;
+      } else {
+        document.body.style.touchAction = "";
+      }
+    };
   }, [open]);
+  
   if (!open) return null;
 
   return (
