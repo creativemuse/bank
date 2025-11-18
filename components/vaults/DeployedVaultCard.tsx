@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { Address, formatUnits } from "viem";
 import { useAccount, useReadContract } from "wagmi";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { YearnVaultModal } from "@/components/yearn/YearnVaultModal";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
@@ -48,7 +49,18 @@ export const DeployedVaultCard = ({
   transactionHash,
   performanceFee,
 }: DeployedVaultCardProps) => {
-  const { address: userAddress } = useAccount();
+  const { address: wagmiAddress } = useAccount();
+  const { wallet: crossmintWallet } = useWallet();
+  
+  // Determine active address (Crossmint takes priority, fallback to wagmi)
+  // This must match the logic in YearnVaultModal to ensure balance checks use the same address
+  const userAddress = useMemo(() => {
+    if (crossmintWallet?.address) {
+      return crossmintWallet.address as `0x${string}`;
+    }
+    return wagmiAddress;
+  }, [crossmintWallet?.address, wagmiAddress]);
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"deposit" | "withdraw">("deposit");
 
