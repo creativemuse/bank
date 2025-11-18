@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Address, formatUnits } from "viem";
 import { useAccount } from "wagmi";
 import { YearnVaultModal } from "./YearnVaultModal";
@@ -39,15 +39,15 @@ export const YearnVaultCard = ({
   // Get user's position
   const { shareBalance, assetValue } = useYearnVaultBalance(vaultAddress, userAddress);
 
-  const handleOpenDeposit = () => {
+  const handleOpenDeposit = useCallback(() => {
     setModalMode("deposit");
     setModalOpen(true);
-  };
+  }, []);
 
-  const handleOpenWithdraw = () => {
+  const handleOpenWithdraw = useCallback(() => {
     setModalMode("withdraw");
     setModalOpen(true);
-  };
+  }, []);
 
   const tvlDisplay = vaultLoading
     ? "Loading..."

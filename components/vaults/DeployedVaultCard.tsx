@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Address, formatUnits } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { YearnVaultModal } from "@/components/yearn/YearnVaultModal";
@@ -133,15 +133,15 @@ export const DeployedVaultCard = ({
   // Use the actual asset address from vault if available
   const actualAssetAddress = (vaultAssetAddress || assetAddress) as Address;
 
-  const handleOpenDeposit = () => {
+  const handleOpenDeposit = useCallback(() => {
     setModalMode("deposit");
     setModalOpen(true);
-  };
+  }, []);
 
-  const handleOpenWithdraw = () => {
+  const handleOpenWithdraw = useCallback(() => {
     setModalMode("withdraw");
     setModalOpen(true);
-  };
+  }, []);
 
   // Calculate net APR from Aave reserve (after performance fee)
   const aprDisplay = useMemo(() => {

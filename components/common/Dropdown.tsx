@@ -1,10 +1,12 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface DropdownOption {
   icon: ReactNode;
   label: string;
-  onClick?: () => void;
+  onClick?: () => void | Promise<void>;
+  disabled?: boolean;
 }
 
 interface DropdownProps {
@@ -20,8 +22,19 @@ export function Dropdown({ trigger, options }: DropdownProps) {
         {options.map((option, index) => (
           <DropdownMenu.Item
             key={index}
-            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-300 focus-visible:outline-none"
-            onClick={option.onClick}
+            className={cn(
+              "flex items-center gap-2 rounded-md px-2 py-1.5 focus-visible:outline-none",
+              option.disabled
+                ? "cursor-not-allowed opacity-50"
+                : "cursor-pointer hover:bg-gray-300"
+            )}
+            onClick={(e) => {
+              if (!option.disabled && option.onClick) {
+                e.preventDefault();
+                option.onClick();
+              }
+            }}
+            disabled={option.disabled}
           >
             {option.icon}
             <span>{option.label}</span>

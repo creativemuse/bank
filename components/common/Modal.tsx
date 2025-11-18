@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { XMarkIcon, ArrowLongLeftIcon } from "@heroicons/react/24/outline";
-import clsx from "clsx";
 import React, { ReactNode, useEffect } from "react";
 
 interface ModalProps {
@@ -34,13 +33,21 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-center overflow-y-auto bg-black/30 py-6 md:items-center">
+    <div 
+      className="fixed inset-0 z-50 flex justify-center overflow-y-auto bg-black/30 py-6 md:items-center"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div
         className={cn(
           "relative mx-4 flex w-full max-w-md flex-col items-center overflow-y-auto rounded-2xl bg-gray-400 p-6 shadow-xl",
           "max-h-[calc(100dvh-48px)]",
           className
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="relative flex h-9 w-full items-center justify-between">
           {showBackButton && (

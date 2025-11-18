@@ -18,6 +18,7 @@ import { base, baseSepolia } from "viem/chains";
 import { Modal } from "@/components/common/Modal";
 import { USDC_DECIMALS } from "@/lib/config/aave";
 import { formatPercent } from "@/lib/formatters";
+import { useMembership } from "@/context/MembershipContext";
 
 type VaultDeployModalProps = {
   open: boolean;
@@ -38,13 +39,19 @@ type SubmitState = {
   vaultAddress?: string;
 };
 
+const CREATIVE_ADDRESS = "0x1fde40a4046eda0ca0539dd6c77abf8933b94260";
+
 export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeployModalProps) {
   const { address: wagmiAddress } = useAccount();
   const { data: wagmiWalletClient } = useWalletClient();
   const publicClient = usePublicClient();
   const { wallet: crossmintWallet, status: walletStatus } = useWallet();
   const { status: authStatus } = useAuth();
+  const { tier, isLoading: membershipLoading } = useMembership();
   const [deployVault, deployState] = useVaultDeploy();
+
+  // Check if user has any membership (only after loading is complete)
+  const hasMembership = !membershipLoading && tier !== null;
 
   // Determine active address (Crossmint takes priority, fallback to wagmi)
   const activeAddress = useMemo(() => {
@@ -128,10 +135,19 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
   const [shareSymbol, setShareSymbol] = useState("avUSDC");
   const [performanceFee, setPerformanceFee] = useState(12);
   const [initialDeposit, setInitialDeposit] = useState(1000);
-  const [recipientInput, setRecipientInput] = useState<RecipientInput>({
-    partnerAddress: "",
-    partnerPercent: 0,
-  });
+  
+  // Initialize recipient input based on membership status
+  // If no membership or still loading: pre-fill with Creative address and 2%
+  // If has membership: start empty and editable
+  const getInitialRecipientInput = useCallback((): RecipientInput => {
+    // If membership is still loading or user doesn't have membership, pre-fill with Creative
+    if (membershipLoading || !hasMembership) {
+      return { partnerAddress: CREATIVE_ADDRESS, partnerPercent: 5 };
+    }
+    return { partnerAddress: "", partnerPercent: 0 };
+  }, [hasMembership, membershipLoading]);
+  
+  const [recipientInput, setRecipientInput] = useState<RecipientInput>(getInitialRecipientInput);
   const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle" });
 
   const reserveApy = formatPercent(reserve?.supplyInfo.apy?.formatted);
@@ -143,10 +159,10 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
     setSubmitState({ status: "idle" });
     setPerformanceFee(12);
     setInitialDeposit(1000);
-    setRecipientInput({ partnerAddress: "", partnerPercent: 0 });
+    setRecipientInput(getInitialRecipientInput());
     setShareName("Aave USDC Vault Shares");
     setShareSymbol("avUSDC");
-  }, []);
+  }, [getInitialRecipientInput]);
 
   const handleClose = useCallback(() => {
     resetForm();
@@ -574,7 +590,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium uppercase text-slate-500">Partner Address</span>
             <input
-              value={recipientInput.partnerAddress}
+              value={recipientInput.partnerAddress || ""}
               onChange={(event) =>
                 setRecipientInput((previous) => ({
                   ...previous,
@@ -582,9 +598,18 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
                 }))
               }
               onFocus={handleNumberFocus}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
               placeholder="0x..."
+              disabled={membershipLoading || !hasMembership}
+              readOnly={membershipLoading || !hasMembership}
             />
+            {(membershipLoading || !hasMembership) && (
+              <span className="text-xs text-slate-500">
+                {membershipLoading 
+                  ? "Checking membership..." 
+                  : "Membership required to edit partner address. Default: Creative Bank (creative.eth)"}
+              </span>
+            )}
           </label>
           <label className="flex flex-col gap-1 md:w-1/2">
             <span className="text-xs font-medium uppercase text-slate-500">
@@ -599,10 +624,13 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
               value={recipientInput.partnerPercent}
               onChange={handlePartnerPercentChange}
               onFocus={handleNumberFocus}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+              disabled={membershipLoading || !hasMembership}
+              readOnly={membershipLoading || !hasMembership}
             />
             <span className="text-xs text-slate-500">
               Remaining split automatically allocated to your wallet.
+              {(membershipLoading || !hasMembership) && " Default: 2% for Creative Bank."}
             </span>
           </label>
         </section>
