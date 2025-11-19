@@ -18,6 +18,7 @@ import { USDC_ADDRESS_BASE } from "@/lib/config/yearn";
 import { useMembership } from "@/context/MembershipContext";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { parseUnits } from "viem";
+import { CopyWrapper } from "@/components/common/CopyWrapper";
 
 export default function StrategiesPage() {
   const [deployModalOpen, setDeployModalOpen] = useState(false);
@@ -55,6 +56,13 @@ export default function StrategiesPage() {
 
     return shortenAddress(crossmintAddress);
   }, [authStatus, wallet, walletStatus]);
+
+  const walletAddress = useMemo(() => {
+    if (!wallet || authStatus !== "logged-in" || !wallet.address) {
+      return null;
+    }
+    return wallet.address;
+  }, [authStatus, wallet]);
 
   const baseApr = baseReserve.loading
     ? "Loading..."
@@ -140,7 +148,18 @@ export default function StrategiesPage() {
         </div>
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-            Connected Wallet: {walletStatusLabel}
+            Connected Wallet:{" "}
+            {walletAddress ? (
+              <CopyWrapper
+                toCopy={walletAddress}
+                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700"
+                iconPosition="right"
+              >
+                <span>{walletStatusLabel}</span>
+              </CopyWrapper>
+            ) : (
+              <span>{walletStatusLabel}</span>
+            )}
           </span>
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
             Membership Tier: {membership.isLoading ? "Checking..." : membership.tier ?? "None"}

@@ -14,9 +14,21 @@ const newProducts: NewProductProps[] = [
     ctaHref: "/strategies",
   },
   {
+    title: "Access Benefits",
+    description: "Health, retirement, and tax benefits",
+    image: "/benefits.png",
+    ctaLabel: "Access Benefits",
+    ctaHref: "https://partner.opolis.co/CreativeOrganizationDao",
+  },
+  {
     title: "Get Your Card",
     description: "Set up a card to start using your funds",
     image: "/creative_platform_card.png",
+  },
+  {
+    title: "Lending/Borrowing",
+    description: "Borrow without having to sell your crypto",
+    image: "/5901923.png",
   },
 ];
 
@@ -53,7 +65,7 @@ const NewProduct = ({ title, description, image, ctaLabel, ctaHref }: NewProduct
     <Container className="flex flex-1 justify-between">
       <div className="flex flex-col gap-4 md:flex-row">
         <div className="flex flex-col justify-center">
-          <img className="w-fit" src={image} alt={title} />
+          <img className="h-12 w-12 object-contain" src={image} alt={title} />
         </div>
         <div>
           <div className="text-base font-semibold">{title}</div>
@@ -83,10 +95,20 @@ const NewProduct = ({ title, description, image, ctaLabel, ctaHref }: NewProduct
 };
 
 export function NewProducts() {
+  // Split products into rows of 2
+  const rows: NewProductProps[][] = [];
+  for (let i = 0; i < newProducts.length; i += 2) {
+    rows.push(newProducts.slice(i, i + 2));
+  }
+
   return (
-    <div className="my-2 flex flex-col gap-2 md:flex-row">
-      {newProducts.map((product) => (
-        <NewProduct key={product.title} {...product} />
+    <div className="my-2 flex flex-col gap-2">
+      {rows.map((row, rowIndex) => (
+        <div key={rowIndex} className="flex flex-col gap-2 md:flex-row">
+          {row.map((product) => (
+            <NewProduct key={product.title} {...product} />
+          ))}
+        </div>
       ))}
     </div>
   );
