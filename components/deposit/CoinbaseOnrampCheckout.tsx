@@ -32,12 +32,19 @@ export function CoinbaseOnrampCheckout({
   const popupRef = useRef<Window | null>(null);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const messageHandlerRef = useRef<((event: MessageEvent) => void) | null>(null);
+  const paymentInitiatedRef = useRef<boolean>(false);
+  const paymentCompletedRef = useRef<boolean>(false);
+  const popupOpenTimeRef = useRef<number | null>(null);
+  const paymentInitiationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
+      }
+      if (paymentInitiationTimeoutRef.current) {
+        clearTimeout(paymentInitiationTimeoutRef.current);
       }
       if (messageHandlerRef.current) {
         window.removeEventListener("message", messageHandlerRef.current);
@@ -57,10 +64,19 @@ export function CoinbaseOnrampCheckout({
       clearInterval(checkIntervalRef.current);
       checkIntervalRef.current = null;
     }
+    if (paymentInitiationTimeoutRef.current) {
+      clearTimeout(paymentInitiationTimeoutRef.current);
+      paymentInitiationTimeoutRef.current = null;
+    }
     if (messageHandlerRef.current) {
       window.removeEventListener("message", messageHandlerRef.current);
       messageHandlerRef.current = null;
     }
+    
+    // Reset flags for new session
+    paymentInitiatedRef.current = false;
+    paymentCompletedRef.current = false;
+    popupOpenTimeRef.current = null;
 
     try {
       // Generate session token
@@ -101,6 +117,17 @@ export function CoinbaseOnrampCheckout({
         throw new Error("Popup blocked. Please allow popups for this site.");
       }
 
+      // Track when popup was opened
+      popupOpenTimeRef.current = Date.now();
+
+      // If popup stays open for more than 5 seconds, assume user is interacting
+      // and payment might be initiated (heuristic for when Coinbase doesn't send messages)
+      paymentInitiationTimeoutRef.current = setTimeout(() => {
+        if (popupRef.current && !popupRef.current.closed) {
+          paymentInitiatedRef.current = true;
+        }
+      }, 5000); // 5 seconds
+
       // Monitor popup for close events
       const checkPopupClosed = setInterval(() => {
         if (popupRef.current?.closed) {
@@ -109,8 +136,42 @@ export function CoinbaseOnrampCheckout({
             clearInterval(checkIntervalRef.current);
             checkIntervalRef.current = null;
           }
-          // When popup closes, assume payment is processing
-          onProcessingPayment();
+          
+          // Clear payment initiation timeout if popup closes
+          if (paymentInitiationTimeoutRef.current) {
+            clearTimeout(paymentInitiationTimeoutRef.current);
+            paymentInitiationTimeoutRef.current = null;
+          }
+          
+          // Give a small delay to allow any pending success messages to arrive
+          // This handles the case where popup closes right after payment completes
+          setTimeout(() => {
+            // If payment was already completed via message, don't do anything
+            // (the message handler already called onPaymentCompleted)
+            if (paymentCompletedRef.current) {
+              return;
+            }
+            
+            // Calculate how long popup was open
+            const popupDuration = popupOpenTimeRef.current 
+              ? Date.now() - popupOpenTimeRef.current 
+              : 0;
+            
+            // Only set processing if:
+            // 1. Payment was explicitly initiated (via message), OR
+            // 2. Popup was open for more than 3 seconds (user likely interacted)
+            // Otherwise, assume cancellation and reset to options
+            if (paymentInitiatedRef.current || popupDuration > 3000) {
+              onProcessingPayment();
+            } else {
+              // User closed popup quickly - likely canceled, reset to options
+              goBack();
+            }
+            
+            // Reset flags
+            paymentInitiatedRef.current = false;
+            popupOpenTimeRef.current = null;
+          }, 500); // 500ms delay to catch late-arriving messages
         }
       }, 1000);
 
@@ -124,11 +185,26 @@ export function CoinbaseOnrampCheckout({
           return;
         }
 
+        // Handle payment initiation events
+        if (
+          event.data?.type === "payment-initiated" ||
+          event.data?.type === "payment-started" ||
+          event.data?.status === "initiated" ||
+          event.data?.status === "started"
+        ) {
+          paymentInitiatedRef.current = true;
+          return;
+        }
+
         // Handle payment completion events
         if (event.data?.type === "payment-success" || event.data?.status === "success") {
           if (checkIntervalRef.current) {
             clearInterval(checkIntervalRef.current);
             checkIntervalRef.current = null;
+          }
+          if (paymentInitiationTimeoutRef.current) {
+            clearTimeout(paymentInitiationTimeoutRef.current);
+            paymentInitiationTimeoutRef.current = null;
           }
           if (popupRef.current && !popupRef.current.closed) {
             popupRef.current.close();
@@ -137,7 +213,42 @@ export function CoinbaseOnrampCheckout({
             window.removeEventListener("message", messageHandlerRef.current);
             messageHandlerRef.current = null;
           }
+          paymentInitiatedRef.current = false;
+          popupOpenTimeRef.current = null;
           onPaymentCompleted();
+          return;
+        }
+
+        // Handle payment cancellation/error events
+        if (
+          event.data?.type === "payment-cancelled" ||
+          event.data?.type === "payment-canceled" ||
+          event.data?.type === "payment-error" ||
+          event.data?.status === "cancelled" ||
+          event.data?.status === "canceled" ||
+          event.data?.status === "error" ||
+          event.data?.status === "failed"
+        ) {
+          if (checkIntervalRef.current) {
+            clearInterval(checkIntervalRef.current);
+            checkIntervalRef.current = null;
+          }
+          if (paymentInitiationTimeoutRef.current) {
+            clearTimeout(paymentInitiationTimeoutRef.current);
+            paymentInitiationTimeoutRef.current = null;
+          }
+          if (popupRef.current && !popupRef.current.closed) {
+            popupRef.current.close();
+          }
+          if (messageHandlerRef.current) {
+            window.removeEventListener("message", messageHandlerRef.current);
+            messageHandlerRef.current = null;
+          }
+          paymentInitiatedRef.current = false;
+          popupOpenTimeRef.current = null;
+          // Reset to options when payment is cancelled
+          goBack();
+          return;
         }
       };
 
@@ -151,6 +262,10 @@ export function CoinbaseOnrampCheckout({
         clearInterval(checkIntervalRef.current);
         checkIntervalRef.current = null;
       }
+      if (paymentInitiationTimeoutRef.current) {
+        clearTimeout(paymentInitiationTimeoutRef.current);
+        paymentInitiationTimeoutRef.current = null;
+      }
       if (messageHandlerRef.current) {
         window.removeEventListener("message", messageHandlerRef.current);
         messageHandlerRef.current = null;
@@ -158,6 +273,8 @@ export function CoinbaseOnrampCheckout({
       if (popupRef.current && !popupRef.current.closed) {
         popupRef.current.close();
       }
+      paymentInitiatedRef.current = false;
+      popupOpenTimeRef.current = null;
       setError(err.message || "Failed to start Coinbase onramp. Please try again.");
       setLoading(false);
     }
