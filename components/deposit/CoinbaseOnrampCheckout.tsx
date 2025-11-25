@@ -23,8 +23,8 @@ export function CoinbaseOnrampCheckout({
   onProcessingPayment,
   isAmountValid,
   step,
-  goBack,
-  receiptEmail,
+  goBack, // Reserved for future use - parent manages navigation
+  receiptEmail, // Reserved for future use - not required for Coinbase onramp
   MAX_AMOUNT,
 }: CoinbaseOnrampCheckoutProps) {
   const [error, setError] = useState<string | null>(null);
@@ -162,6 +162,26 @@ export function CoinbaseOnrampCheckout({
       setLoading(false);
     }
   };
+
+  // Don't render button if already processing or completed
+  if (step === "processing") {
+    return (
+      <div className="flex w-full flex-col items-center justify-center space-y-4">
+        <div className="flex items-center space-x-2">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+          <span className="text-sm text-gray-500">Processing payment...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "completed") {
+    return (
+      <div className="flex w-full flex-col items-center justify-center space-y-4">
+        <div className="text-sm text-green-600">Payment completed successfully!</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full flex-col items-center justify-center space-y-4">

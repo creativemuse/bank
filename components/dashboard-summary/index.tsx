@@ -9,7 +9,7 @@ import {
   EllipsisVerticalIcon,
 } from "@heroicons/react/24/outline";
 import { Dropdown } from "../common/Dropdown";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { WalletDetails } from "./WalletDetails";
 import { useWallet, useAuth } from "@crossmint/client-sdk-react-ui";
 import { WarningModal } from "./WarningModal";
@@ -28,6 +28,37 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
   const [openWarningModal, setOpenWarningModal] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawalStatus, setWithdrawalStatus] = useState<string | null>(null);
+  const withdrawalStatusRef = useRef(withdrawalStatus);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    withdrawalStatusRef.current = withdrawalStatus;
+  }, [withdrawalStatus]);
+
+  // Clear withdrawal status when user returns to the page (e.g., via back button)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Clear withdrawal status if user returns to the page
+        if (withdrawalStatusRef.current === "Redirecting to withdrawal...") {
+          setWithdrawalStatus(null);
+          setIsWithdrawing(false);
+        }
+      }
+    };
+
+    // Clear on mount if status is still set (in case of page refresh or navigation)
+    if (withdrawalStatusRef.current === "Redirecting to withdrawal...") {
+      setWithdrawalStatus(null);
+      setIsWithdrawing(false);
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []); // Empty deps - only run on mount/unmount
+
   const dropdownOptions = [
     {
       icon: <ArrowsRightLeftIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
