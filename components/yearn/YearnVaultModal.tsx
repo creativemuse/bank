@@ -142,9 +142,12 @@ export const YearnVaultModal = ({
   );
 
   // Parse input amount to bigint
+  // In withdraw mode, we're entering shares (18 decimals)
+  // In deposit mode, we're entering assets (assetDecimals)
   const parsedAmount = useMemo(() => {
-    return parseInputAmount(inputAmount, assetDecimals);
-  }, [inputAmount, assetDecimals]);
+    const decimals = mode === "withdraw" ? 18 : assetDecimals;
+    return parseInputAmount(inputAmount, decimals);
+  }, [inputAmount, assetDecimals, mode]);
 
   // Preview deposit (get expected shares)
   const { expectedShares } = usePreviewDeposit(
