@@ -125,7 +125,8 @@ export default async function createCoinbaseSessionToken({
       }
 
       const data = await response.json();
-      const token = data.data?.token;
+      // Handle both response structures: { data: { token } } and { token }
+      const token = data.data?.token || data.token;
 
       if (!token) {
         console.error("No token in response:", data);

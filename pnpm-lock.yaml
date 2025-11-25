@@ -35,18 +35,6 @@ importers:
       '@unlock-protocol/unlock-js':
         specifier: ^0.51.2
         version: 0.51.2(axios@1.12.2)(ethers@6.15.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@wert-io/module-react-component':
-        specifier: ^3.0.3
-        version: 3.0.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      '@wert-io/widget-initializer':
-        specifier: ^6.10.0-beta.1
-        version: 6.10.0-beta.1
-      '@wert-io/widget-sc-signer':
-        specifier: ^2.0.2
-        version: 2.0.2
-      '@wert-io/widget-themes':
-        specifier: ^1.5.0
-        version: 1.5.0
       base64url:
         specifier: ^3.0.1
         version: 3.0.1
@@ -3252,26 +3240,11 @@ packages:
     resolution: {integrity: sha512-iUbTUwD4f4ibdLy5PWWb7ITEz4S4VAP9/mNjFhoRY3cKVVTDfmykrVTKjPOIHWzDgAmLtgrLvySIIC9ZBVENBw==}
     engines: {node: '>=18.0.0'}
 
-  '@types/bn.js@5.2.0':
-    resolution: {integrity: sha512-DLbJ1BPqxvQhIGbeu8VbUC1DiAiahHtAYvA0ZEAa4P31F7IaArc8z3C3BRQdWX4mtLQuABG4yzp76ZrS02Ui1Q==}
-
-  '@types/color-convert@2.0.4':
-    resolution: {integrity: sha512-Ub1MmDdyZ7mX//g25uBAoH/mWGd9swVbt8BseymnaE18SU4po/PjmCrHxqIIRjBo3hV/vh1KGr0eMxUhp+t+dQ==}
-
-  '@types/color-name@1.1.5':
-    resolution: {integrity: sha512-j2K5UJqGTxeesj6oQuGpMgifpT5k9HprgQd8D1Y0lOFqKHl3PJu5GMeS4Y5EgjS55AE6OQxf8mPED9uaGbf4Cg==}
-
-  '@types/color@3.0.6':
-    resolution: {integrity: sha512-NMiNcZFRUAiUUCCf7zkAelY8eV3aKqfbzyFQlXpPIEeoNDbsEHGpb854V3gzTsGKYj830I5zPuOwU/TP5/cW6A==}
-
   '@types/connect@3.4.38':
     resolution: {integrity: sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug==}
 
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
-
-  '@types/elliptic@6.4.18':
-    resolution: {integrity: sha512-UseG6H5vjRiNpQvrhy4VF/JXdA3V/Fp5amvveaL+fs28BZ6xIKJBPnUPRlEaZpysD9MbpfaLi8lbl7PGUAkpWw==}
 
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
@@ -3560,24 +3533,6 @@ packages:
 
   '@walletconnect/window-metadata@1.0.1':
     resolution: {integrity: sha512-9koTqyGrM2cqFRW517BPY/iEtUDx2r1+Pwwu5m7sJ7ka79wi3EyqhqcICk/yDmv6jAS1rjKgTKXlEhanYjijcA==}
-
-  '@wert-io/module-react-component@3.0.3':
-    resolution: {integrity: sha512-VrFmMWfhkdZPjotYGJRBBQq9Z96UofsQhH1tKHJ/Bw1YToeg5lSXUFQOuuS7unlIBPsGUZfWQtyalf2dlDcFgQ==}
-    peerDependencies:
-      react: ^18.1.0
-      react-dom: ^18.1.0
-
-  '@wert-io/widget-initializer@6.10.0-beta.1':
-    resolution: {integrity: sha512-jBzXZu4rFo0YMpAPyIVYpLUpjRTk5G9U9rhFOglOxBg+wnphOtrHbZiCYvaSGaLlgtlhX44iBOWnMsj59zAUSg==}
-
-  '@wert-io/widget-initializer@6.9.3':
-    resolution: {integrity: sha512-jnBN5bJabjCI7+UI2yx+LS7lONDZQdPn6acUZoVUE2wAbGzfmHSzoeXGPvjOmtb0LLirg46JGPHmGlpPCKyg8g==}
-
-  '@wert-io/widget-sc-signer@2.0.2':
-    resolution: {integrity: sha512-uixAsFg2CKmK0BFRbuK4tXi5OC9HMcodtG1baJOH1ayxGjWc5wXJWAGob1HZA4wiuxrw1Gc7+lu8aFner58FPw==}
-
-  '@wert-io/widget-themes@1.5.0':
-    resolution: {integrity: sha512-w32D7M4If1G0qE/BOLjTTRpHnCTaLHt9C3v465gGStRb5KHdOoCQgZv6Iv65OEaHQe67b8GNoH9w9X9l5ENGVw==}
 
   abitype@1.0.6:
     resolution: {integrity: sha512-MMSqYh4+C/aVqI2RQaWqbvI4Kxo5cQV40WQ4QFtDnNzCkqChm8MuENhElmynZlO0qUy/ObkEUaXtKqYnx1Kp3A==}
@@ -12623,20 +12578,6 @@ snapshots:
     dependencies:
       sha256-uint8array: 0.10.7
 
-  '@types/bn.js@5.2.0':
-    dependencies:
-      '@types/node': 20.17.30
-
-  '@types/color-convert@2.0.4':
-    dependencies:
-      '@types/color-name': 1.1.5
-
-  '@types/color-name@1.1.5': {}
-
-  '@types/color@3.0.6':
-    dependencies:
-      '@types/color-convert': 2.0.4
-
   '@types/connect@3.4.38':
     dependencies:
       '@types/node': 20.17.30
@@ -12644,10 +12585,6 @@ snapshots:
   '@types/debug@4.1.12':
     dependencies:
       '@types/ms': 2.1.0
-
-  '@types/elliptic@6.4.18':
-    dependencies:
-      '@types/bn.js': 5.2.0
 
   '@types/istanbul-lib-coverage@2.0.6': {}
 
@@ -14404,27 +14341,6 @@ snapshots:
     dependencies:
       '@walletconnect/window-getters': 1.0.1
       tslib: 1.14.1
-
-  '@wert-io/module-react-component@3.0.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
-    dependencies:
-      '@wert-io/widget-initializer': 6.9.3
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
-
-  '@wert-io/widget-initializer@6.10.0-beta.1': {}
-
-  '@wert-io/widget-initializer@6.9.3': {}
-
-  '@wert-io/widget-sc-signer@2.0.2':
-    dependencies:
-      '@types/elliptic': 6.4.18
-      buffer: 6.0.3
-      elliptic: 6.6.1
-
-  '@wert-io/widget-themes@1.5.0':
-    dependencies:
-      '@types/color': 3.0.6
-      color: 4.2.3
 
   abitype@1.0.6(typescript@5.8.3)(zod@3.25.76):
     optionalDependencies:

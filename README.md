@@ -236,12 +236,9 @@ NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY=your_crossmint_client_api_key_here
 NEXT_PUBLIC_CHAIN_ID=base-sepolia
 NEXT_PUBLIC_USDC_MINT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 
-# Coinbase Offramp Configuration (Required for Withdrawals)
+# Coinbase Onramp/Offramp Configuration (Required for Deposits and Withdrawals)
 COINBASE_API_KEY_ID=your_coinbase_api_key_id_here
 COINBASE_API_KEY_SECRET=your_coinbase_api_key_secret_here
-
-# Wert Onramp Configuration (Optional)
-WERT_API_KEY=your_wert_api_key_here
 ```
 
 **USDC Contract Addresses:**

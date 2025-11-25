@@ -4,7 +4,7 @@ import {
   CrossmintProvider,
   useAuth,
 } from "@crossmint/client-sdk-react-ui";
-import { WertCheckout } from "./WertCheckout";
+import { CoinbaseOnrampCheckout } from "./CoinbaseOnrampCheckout";
 import { AmountInput } from "../common/AmountInput";
 import { Modal } from "../common/Modal";
 import { useActivityFeed } from "../../hooks/useActivityFeed";
@@ -43,7 +43,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
     refetchActivityFeed();
     refetchBalance();
     handleDone();
-  }, [refetchActivityFeed]);
+  }, [refetchActivityFeed, refetchBalance, handleDone]);
 
   const handleProcessingPayment = useCallback(() => {
     setStep("processing");
@@ -75,7 +75,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
           </div>
         )}
         <div className="flex w-full flex-grow flex-col">
-          <WertCheckout
+          <CoinbaseOnrampCheckout
             amount={amount}
             isAmountValid={Number(amount) <= MAX_AMOUNT && Number(amount) >= 1}
             walletAddress={walletAddress}
