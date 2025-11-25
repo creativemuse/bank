@@ -21,9 +21,52 @@ const conthrax = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.NODE_ENV === "production"
+        ? "https://creativeplatform.xyz"
+        : "http://localhost:3000")
+  ),
   title: "Creative Bank",
   description:
     "Banking designed for creatives. Manage your income, track expenses, and save for your dreams.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Creative Bank",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/152x152.png", sizes: "152x152", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/creative_icons-180x180.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/152x152.png", sizes: "152x152", type: "image/png" },
+    ],
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Creative Bank",
+    title: "Creative Bank",
+    description:
+      "Banking designed for creatives. Manage your income, track expenses, and save for your dreams.",
+    images: [
+      {
+        url: "/Creative_Bank.png",
+        width: 1200,
+        height: 630,
+        alt: "Creative Bank",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Creative Bank",
+    description:
+      "Banking designed for creatives. Manage your income, track expenses, and save for your dreams.",
+    images: ["/Creative_Bank.png"],
+  },
 };
 
 export default function RootLayout({
