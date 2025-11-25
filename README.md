@@ -1,11 +1,11 @@
 <div align="center">
-<img width="200" alt="Image" src="https://github.com/user-attachments/assets/8b617791-cd37-4a5a-8695-a7c9018b7c70" />
+<img width="200" alt="Image" src="https://bafybeidv76nddgn4zv52rqul6hgmf35oztbe66ebfq7cxhaadwakf4o7s4.ipfs.w3s.link/Asset%201.svg" />
 <br>
 <br>
-<h1>Fintech Starter App</h1>
+<h1>Creative Bank</h1>
 
 <div align="center">
-<a href="https://fintech-starter-app.demos-crossmint.com/">Live Demo</a>  | <a href="https://docs.crossmint.com/">Docs</a> | <a href="https://crossmint.com/quickstarts">See all quickstarts</a>  | <a href="https://t.me/crossmintdevs">Join our Telegram</a> 
+<a href="https://bank.creativeplatform.xyz/">App Link</a> | <a href="https://t.me/thecrtv">Join our Telegram</a> 
 </div>
 
 <br>
