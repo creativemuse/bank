@@ -87,6 +87,31 @@ export const useYearnDeposit = (
       }
 
       try {
+        // Pre-deposit validation: Check maxDeposit before attempting
+        if (publicClient && vaultAddress && receiver) {
+          try {
+            const maxDeposit = await publicClient.readContract({
+              address: vaultAddress,
+              abi: ERC4626_ABI,
+              functionName: "maxDeposit",
+              args: [receiver],
+            });
+
+            if (maxDeposit < assets) {
+              const maxDepositFormatted = maxDeposit === 0n 
+                ? "0 (vault may be paused or at capacity)"
+                : `${Number(maxDeposit) / 1e6} USDC`;
+              throw new Error(
+                `Deposit amount exceeds maximum allowed. Maximum deposit: ${maxDepositFormatted}. Your requested amount: ${Number(assets) / 1e6} USDC.`
+              );
+            }
+          } catch (maxDepositError: any) {
+            // If maxDeposit check fails, log it but continue (might be a read error)
+            console.warn("Could not check maxDeposit:", maxDepositError);
+            // Don't throw here - let the gas estimation catch the actual error
+          }
+        }
+
         // Step 1: Check and handle approval if needed
         const { data: newAllowance } = await refetchAllowance();
         const allowance = (newAllowance as bigint) ?? 0n;
@@ -180,11 +205,59 @@ export const useYearnDeposit = (
             }
           } catch (gasError: any) {
             // If gas estimation fails, the transaction will likely fail
-            const errorMessage = gasError?.message || "Transaction would fail";
-            // Try to extract a more helpful error message
-            if (errorMessage.includes("revert") || errorMessage.includes("execution reverted")) {
-              throw new Error("Deposit failed: The vault may be paused, have insufficient capacity, or there may be another issue. Please try again or contact support.");
+            console.error("Gas estimation error:", gasError);
+            
+            // Try to extract the actual revert reason from viem error
+            let errorMessage = gasError?.message || "Transaction would fail";
+            let revertReason = "";
+            
+            // Check for revert reason in error data
+            if (gasError?.data) {
+              if (typeof gasError.data === "string") {
+                revertReason = gasError.data;
+              } else if (gasError.data?.message) {
+                revertReason = gasError.data.message;
+              } else if (gasError.data?.reason) {
+                revertReason = gasError.data.reason;
+              }
             }
+            
+            // Check for revert reason in cause
+            if (!revertReason && gasError?.cause) {
+              if (typeof gasError.cause === "string") {
+                revertReason = gasError.cause;
+              } else if (gasError.cause?.message) {
+                revertReason = gasError.cause.message;
+              } else if (gasError.cause?.data?.message) {
+                revertReason = gasError.cause.data.message;
+              }
+            }
+            
+            // Try to parse common revert reasons
+            if (revertReason || errorMessage.includes("revert") || errorMessage.includes("execution reverted")) {
+              // Check for specific revert reasons
+              const lowerReason = (revertReason + " " + errorMessage).toLowerCase();
+              
+              if (lowerReason.includes("paused") || lowerReason.includes("pause")) {
+                throw new Error("Deposit failed: The vault is currently paused. Deposits are not available at this time.");
+              }
+              
+              if (lowerReason.includes("capacity") || lowerReason.includes("limit") || lowerReason.includes("max")) {
+                throw new Error("Deposit failed: The vault has reached its deposit capacity. Please try a smaller amount or try again later.");
+              }
+              
+              if (lowerReason.includes("allowance") || lowerReason.includes("approval")) {
+                throw new Error("Deposit failed: Insufficient token allowance. Please approve the vault to spend your tokens.");
+              }
+              
+              // Generic revert error with more context
+              const detailedError = revertReason 
+                ? `Deposit failed: ${revertReason}`
+                : "Deposit failed: The transaction was reverted. The vault may be paused, have insufficient capacity, or there may be another issue. Please check the vault status and try again.";
+              
+              throw new Error(detailedError);
+            }
+            
             throw new Error(`Transaction validation failed: ${errorMessage}`);
           }
           
@@ -260,9 +333,21 @@ export const useYearnDeposit = (
           txHash: depositHash,
         });
       } catch (error) {
+        // Log the full error for debugging
+        console.error("Deposit error:", error);
+        
+        let errorMessage = "Deposit failed";
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === "string") {
+          errorMessage = error;
+        } else if (error && typeof error === "object" && "message" in error) {
+          errorMessage = String(error.message);
+        }
+        
         setState({
           status: "error",
-          error: error instanceof Error ? error.message : "Deposit failed",
+          error: errorMessage,
         });
       }
     },

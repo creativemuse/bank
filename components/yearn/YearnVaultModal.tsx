@@ -9,7 +9,7 @@ import { base, baseSepolia } from "viem/chains";
 import { Modal } from "@/components/common/Modal";
 import { useYearnDeposit } from "@/hooks/useYearnDeposit";
 import { useYearnWithdraw } from "@/hooks/useYearnWithdraw";
-import { useYearnVaultBalance, usePreviewDeposit, usePreviewRedeem } from "@/hooks/useYearnVaults";
+import { useYearnVaultBalance, usePreviewDeposit, usePreviewRedeem, useMaxDeposit } from "@/hooks/useYearnVaults";
 import { MAX_LOSS_BPS } from "@/lib/config/yearn";
 import { parseInputAmount, formatVaultShares, formatUsdValue } from "@/lib/yearnUtils";
 
@@ -161,6 +161,12 @@ export const YearnVaultModal = ({
     mode === "withdraw" ? parsedAmount ?? undefined : undefined,
   );
 
+  // Check max deposit for validation
+  const { maxDeposit } = useMaxDeposit(
+    vaultAddress,
+    mode === "deposit" ? userAddress : undefined,
+  );
+
   const state = mode === "deposit" ? depositState : withdrawState;
   const isSubmitting = state.status === "approving" || state.status === "depositing" || state.status === "redeeming";
 
@@ -208,6 +214,17 @@ export const YearnVaultModal = ({
       if (parsedAmount > userAssetBalance) {
         return `Insufficient ${assetSymbol} balance.`;
       }
+      
+      // Check maxDeposit limit
+      if (maxDeposit !== undefined) {
+        if (maxDeposit === 0n) {
+          return "Vault deposits are currently unavailable. The vault may be paused or at capacity.";
+        }
+        if (parsedAmount > maxDeposit) {
+          const maxFormatted = formatUnits(maxDeposit, assetDecimals);
+          return `Deposit amount exceeds maximum allowed (${maxFormatted} ${assetSymbol}). Please try a smaller amount.`;
+        }
+      }
     } else {
       if (!shareBalance || parsedAmount > shareBalance) {
         return "Insufficient vault shares to withdraw.";
@@ -232,6 +249,8 @@ export const YearnVaultModal = ({
     authStatus,
     walletStatus,
     isBalanceLoading,
+    maxDeposit,
+    assetDecimals,
   ]);
 
   const handleSubmit = useCallback(
