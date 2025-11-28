@@ -168,33 +168,91 @@ export const useYearnDeposit = (
             throw new Error("No account available in wallet");
           }
           
-          // Send transaction using wallet client
-          depositHash = await activeWalletClient.sendTransaction({
-            account,
-            to: vaultAddress,
-            data,
-            chain: activeWalletClient.chain || null,
-          });
-        } else {
-          const hash = await writeDeposit({
-            address: vaultAddress,
-            abi: ERC4626_ABI,
-            functionName: "deposit",
-            args: [assets, receiver],
-            chainId: 8453,
-          });
-          if (!hash) {
-            throw new Error("Deposit transaction failed");
+          // Estimate gas before sending (helps catch errors early)
+          let gasEstimate: bigint | undefined;
+          try {
+            if (publicClient) {
+              gasEstimate = await publicClient.estimateGas({
+                account,
+                to: vaultAddress,
+                data,
+              });
+            }
+          } catch (gasError: any) {
+            // If gas estimation fails, the transaction will likely fail
+            const errorMessage = gasError?.message || "Transaction would fail";
+            // Try to extract a more helpful error message
+            if (errorMessage.includes("revert") || errorMessage.includes("execution reverted")) {
+              throw new Error("Deposit failed: The vault may be paused, have insufficient capacity, or there may be another issue. Please try again or contact support.");
+            }
+            throw new Error(`Transaction validation failed: ${errorMessage}`);
           }
-          depositHash = hash;
+          
+          // Send transaction using wallet client
+          try {
+            depositHash = await activeWalletClient.sendTransaction({
+              account,
+              to: vaultAddress,
+              data,
+              chain: activeWalletClient.chain || null,
+              gas: gasEstimate ? (gasEstimate * 120n / 100n) : undefined, // Add 20% buffer
+            });
+          } catch (txError: any) {
+            // Parse transaction error
+            const errorMessage = txError?.message || "Transaction failed";
+            if (errorMessage.includes("user rejected") || errorMessage.includes("User denied")) {
+              throw new Error("Transaction was cancelled");
+            }
+            if (errorMessage.includes("revert") || errorMessage.includes("execution reverted")) {
+              throw new Error("Deposit failed: The transaction was reverted. The vault may be paused, have insufficient capacity, or there may be another issue. Please check the vault status and try again.");
+            }
+            throw new Error(`Deposit failed: ${errorMessage}`);
+          }
+        } else {
+          try {
+            const hash = await writeDeposit({
+              address: vaultAddress,
+              abi: ERC4626_ABI,
+              functionName: "deposit",
+              args: [assets, receiver],
+              chainId: 8453,
+            });
+            if (!hash) {
+              throw new Error("Deposit transaction failed");
+            }
+            depositHash = hash;
+          } catch (txError: any) {
+            const errorMessage = txError?.message || "Transaction failed";
+            if (errorMessage.includes("user rejected") || errorMessage.includes("User denied")) {
+              throw new Error("Transaction was cancelled");
+            }
+            if (errorMessage.includes("revert") || errorMessage.includes("execution reverted")) {
+              throw new Error("Deposit failed: The transaction was reverted. The vault may be paused, have insufficient capacity, or there may be another issue. Please check the vault status and try again.");
+            }
+            throw new Error(`Deposit failed: ${errorMessage}`);
+          }
         }
 
         // Wait for deposit to be mined
         if (publicClient) {
-          await publicClient.waitForTransactionReceipt({
-            hash: depositHash,
-            timeout: 120_000, // 2 minute timeout
-          });
+          try {
+            const receipt = await publicClient.waitForTransactionReceipt({
+              hash: depositHash,
+              timeout: 120_000, // 2 minute timeout
+            });
+            
+            // Check if transaction was reverted
+            if (receipt.status === "reverted") {
+              throw new Error("Transaction was reverted on-chain. Please check the transaction on Basescan for more details.");
+            }
+          } catch (waitError: any) {
+            // If waiting fails, the transaction might still be pending or reverted
+            const errorMessage = waitError?.message || "Failed to confirm transaction";
+            if (errorMessage.includes("timeout")) {
+              throw new Error("Transaction is taking longer than expected. Please check the transaction status on Basescan.");
+            }
+            throw new Error(`Failed to confirm transaction: ${errorMessage}`);
+          }
         }
 
         setState({

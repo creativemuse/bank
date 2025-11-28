@@ -41,7 +41,7 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
           )}
           {error && <div className="text-center text-red-500">{error.message}</div>}
           {!isLoading && !error && data?.events?.length && data?.events?.length > 0 ? (
-            <ul className="w-full min-h-0 flex-1 overflow-y-auto pr-2">
+            <ul className="w-full min-h-0 flex-1 overflow-y-auto pr-2 pt-2 pb-2">
               {data?.events.map((event) => {
                 const isOutgoing =
                   event.from_address.toLowerCase() === wallet?.address.toLowerCase();

@@ -8,7 +8,8 @@
     "start": "next start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "yearn:query": "tsx scripts/queryYearnRegistry.ts"
+    "yearn:query": "tsx scripts/queryYearnRegistry.ts",
+    "kalani:verify": "tsx scripts/verifyKalaniVault.ts"
   },
   "dependencies": {
     "@aave/react": "^0.7.1",
