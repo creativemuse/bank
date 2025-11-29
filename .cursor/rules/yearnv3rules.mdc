@@ -898,49 +898,49 @@ Current V3 Registry
 registry.v3.ychad.eth	0xd40ecF29e001c76Dcc4cC0D9cd50520CE845B038
 Legacy V3 Registry
 0xff31A1B020c868F6eA3f61Eb953344920EeCA3af
+
 Ethereum Mainnet (1) Addresses
 Ethereum-specific Yearn addresses
-
 Name / ENS	Contract Address
 Role Manager
 role-manager.v3.ychad.eth	0xb3bd6b2e61753c311efbcf0111f75d29706d9a41
 Accountant
 accountant.v3.ychad.eth	0x5A74Cb32D36f2f517DB6f7b0A0591e09b22cDE69
+
 Optimism (10) Addresses
 Optimism-specific Yearn addresses
-
 Name / ENS	Contract Address
 Role Manager
 0x0000000000000000000000000000000000000000
 Accountant
 0x0000000000000000000000000000000000000000
+
 Polygon (137) Addresses
 Polygon-specific Yearn addresses
-
 Name / ENS	Contract Address
 Role Manager
 0x9bcD66bf09ebe5DD35A868307B7638Fd281061E2
 Accountant
 0x54483f1592ab0aDea2757Ae0d62e6393361d4CEe
+
 Base (8453) Addresses
 Base-specific Yearn addresses
-
 Name / ENS	Contract Address
 Role Manager
 0xea3481244024E2321cc13AcAa80df1050f1fD456
 Accountant
 0x1f399808fE52d0E960CAB84b6b54d5707ab27c8a
+
 Arbitrum (42161) Addresses
 Arbitrum-specific Yearn addresses
-
 Name / ENS	Contract Address
 Role Manager
 0x3BF72024420bdc4D7cA6a8b6211829476D6685b1
 Accountant
 0x9ab47be62631036cda3a64b8322704988427f366
+
 Katana (747474) Addresses
 Katana-specific Yearn addresses
-
 Name / ENS	Contract Address
 Role Manager
 0x4671394A28FF147cfcBc9c2b1aab9d3883597417
