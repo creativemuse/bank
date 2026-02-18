@@ -29,6 +29,8 @@ const newProducts: NewProductProps[] = [
     title: "Lending/Borrowing",
     description: "Borrow without having to sell your crypto",
     image: "/5901923.png",
+    ctaLabel: "Go to Lending",
+    ctaHref: "/lending",
   },
 ];
 
