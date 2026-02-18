@@ -33,7 +33,7 @@ import { useMembership } from "@/context/MembershipContext";
 import { formatPercent, formatUsd } from "@/lib/formatters";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { AAVE_TARGET_CHAIN_ID } from "@/lib/config/aave";
-import type { WalletClient } from "viem";
+import { isAddress, type WalletClient } from "viem";
 import type { Market, Reserve } from "@aave/react";
 import type { MarketUserReserveSupplyPosition, MarketUserReserveBorrowPosition } from "@aave/react";
 
@@ -105,9 +105,28 @@ export default function LendingPage() {
     () => supplies.find((s) => s.currency?.symbol?.toUpperCase() === "USDC"),
     [supplies],
   );
+
+  const hasUsdcSupply = useMemo(
+    () =>
+      Boolean(
+        usdcSupplyPosition &&
+          Number(usdcSupplyPosition.balance?.amount?.value ?? 0) > 0,
+      ),
+    [usdcSupplyPosition],
+  );
+
   const usdcBorrowPosition = useMemo(
     () => borrows.find((b) => b.currency?.symbol?.toUpperCase() === "USDC"),
     [borrows],
+  );
+
+  const hasUsdcBorrow = useMemo(
+    () =>
+      Boolean(
+        usdcBorrowPosition &&
+          Number(usdcBorrowPosition.debt?.amount?.value ?? 0) > 0,
+      ),
+    [usdcBorrowPosition],
   );
 
   const canToggleCollateral =
@@ -213,7 +232,7 @@ export default function LendingPage() {
                 <p className="text-sm text-slate-500">Loading positions…</p>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {userMarketState?.healthFactor != null && (
+                  {hasUsdcSupply && userMarketState?.healthFactor != null && (
                     <div>
                       <p className="text-xs text-slate-500">Health factor</p>
                       <p className="text-lg font-semibold text-slate-900">
@@ -275,7 +294,10 @@ export default function LendingPage() {
                 <button
                   type="button"
                   onClick={() => setActionModal("withdraw")}
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+                  disabled={!hasUsdcSupply}
+                  title={!hasUsdcSupply ? "Supply USDC first to withdraw" : undefined}
+                  aria-disabled={!hasUsdcSupply}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
                 >
                   Withdraw
                 </button>
@@ -289,7 +311,10 @@ export default function LendingPage() {
                 <button
                   type="button"
                   onClick={() => setActionModal("repay")}
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+                  disabled={!hasUsdcBorrow}
+                  title={!hasUsdcBorrow ? "Borrow USDC first to repay" : undefined}
+                  aria-disabled={!hasUsdcBorrow}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
                 >
                   Repay
                 </button>
@@ -304,6 +329,7 @@ export default function LendingPage() {
               walletAddress={walletAddress}
               walletClient={walletClient}
               reserve={baseReserve.reserve ?? undefined}
+              hasUsdcSupply={hasUsdcSupply}
             />
           </PremiumGuard>
         </>
@@ -363,6 +389,7 @@ type LendingAdvancedSectionProps = {
   walletAddress: string | null;
   walletClient: WalletClient | undefined;
   reserve?: Reserve | null;
+  hasUsdcSupply: boolean;
 };
 
 function LendingAdvancedSection({
@@ -371,6 +398,7 @@ function LendingAdvancedSection({
   walletAddress,
   walletClient,
   reserve,
+  hasUsdcSupply,
 }: LendingAdvancedSectionProps) {
   const [txCursor, setTxCursor] = useState<string | undefined>(undefined);
   const [accumulatedTxItems, setAccumulatedTxItems] = useState<Array<{ __typename?: string; timestamp?: string; txHash?: string }>>([]);
@@ -462,7 +490,11 @@ function LendingAdvancedSection({
       ) : (
         <div className="flex flex-col gap-6">
           {reserve != null && (
-            <div>
+            <div
+              className={!hasUsdcSupply ? "pointer-events-none opacity-50" : undefined}
+              title={!hasUsdcSupply ? "Supply USDC first to use health factor preview" : undefined}
+              aria-hidden={!hasUsdcSupply}
+            >
               <h3 className="mb-2 text-sm font-medium text-slate-700">Health factor preview</h3>
               <p className="mb-2 text-xs text-slate-500">Preview health factor after supplying USDC.</p>
               <div className="flex flex-wrap items-center gap-2">
@@ -474,11 +506,12 @@ function LendingAdvancedSection({
                   placeholder="Amount (e.g. 100)"
                   className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-900"
                   aria-label="Preview supply amount"
+                  disabled={!hasUsdcSupply}
                 />
                 <button
                   type="button"
                   onClick={handleHealthPreview}
-                  disabled={healthPreviewRunning.loading || !previewAmount}
+                  disabled={!hasUsdcSupply || healthPreviewRunning.loading || !previewAmount}
                   className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-50"
                 >
                   {healthPreviewRunning.loading ? "Previewing…" : "Preview"}
@@ -908,6 +941,8 @@ function BorrowModal({
   );
 }
 
+type RepayForMode = "self" | "other";
+
 function RepayModal({
   market,
   reserve,
@@ -925,11 +960,37 @@ function RepayModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const [repayForMode, setRepayForMode] = useState<RepayForMode>("self");
+  const [otherBorrowerAddress, setOtherBorrowerAddress] = useState("");
   const [repay, repaying] = useRepay();
   const [sendTransaction, sending] = useSendTransaction(walletClient ?? undefined);
   const [amount, setAmount] = useState("");
   const [useMax, setUseMax] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const otherBorrowerEvm = useMemo(() => {
+    if (repayForMode !== "other" || !otherBorrowerAddress.trim() || !isAddress(otherBorrowerAddress.trim())) return null;
+    return evmAddress(otherBorrowerAddress.trim());
+  }, [repayForMode, otherBorrowerAddress]);
+
+  const marketsInput = useMemo(
+    () => [{ address: market.address, chainId: AAVE_TARGET_CHAIN_ID }],
+    [market.address],
+  );
+
+  const { data: otherBorrows = [] } = useUserBorrows({
+    markets: marketsInput,
+    user: otherBorrowerEvm ?? evmAddress("0x0000000000000000000000000000000000000000"),
+  });
+
+  const otherUsdcBorrowPosition = useMemo(
+    () => otherBorrows.find((b) => b.currency?.symbol?.toUpperCase() === "USDC"),
+    [otherBorrows],
+  );
+
+  const positionToRepay = repayForMode === "self" ? borrowPosition : otherUsdcBorrowPosition;
+  const debt = positionToRepay?.debt?.amount?.value ?? "0";
+  const canRepayOther = repayForMode === "other" && otherBorrowerEvm != null && Number(debt) > 0;
 
   const parsed = useMemo(() => {
     if (useMax) return null;
@@ -942,6 +1003,10 @@ function RepayModal({
       e.preventDefault();
       setErrorMessage(null);
       if (!walletClient) return;
+      if (repayForMode === "other" && !otherBorrowerEvm) {
+        setErrorMessage("Enter a valid borrower address.");
+        return;
+      }
       const result = await repay({
         market: market.address,
         amount: {
@@ -952,6 +1017,7 @@ function RepayModal({
         },
         sender,
         chainId: AAVE_TARGET_CHAIN_ID,
+        ...(repayForMode === "other" && otherBorrowerEvm && { onBehalfOf: otherBorrowerEvm }),
       }).andThen((plan) => {
         if (plan.__typename === "InsufficientBalanceError") {
           return errAsync(new Error(`Insufficient balance. Required: ${plan.required?.value} USDC.`));
@@ -968,16 +1034,81 @@ function RepayModal({
       onSuccess();
       onClose();
     },
-    [useMax, parsed, walletClient, repay, sendTransaction, market.address, reserve.underlyingToken.address, sender, onSuccess, onClose],
+    [
+      repayForMode,
+      otherBorrowerEvm,
+      useMax,
+      parsed,
+      walletClient,
+      repay,
+      sendTransaction,
+      market.address,
+      reserve.underlyingToken.address,
+      sender,
+      onSuccess,
+      onClose,
+    ],
   );
 
-  const debt = borrowPosition?.debt?.amount?.value ?? "0";
+  const submitDisabled =
+    repaying.loading ||
+    sending.loading ||
+    (!useMax && parsed == null) ||
+    (repayForMode === "other" && !canRepayOther);
 
   return (
     <Modal open title="Repay USDC" onClose={onClose} showCloseButton className="max-w-lg bg-white text-slate-900">
       <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium text-slate-700">Repay from</p>
+          <div className="flex gap-3">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="repayForMode"
+                checked={repayForMode === "self"}
+                onChange={() => { setRepayForMode("self"); setErrorMessage(null); }}
+                className="h-4 w-4 border-slate-300 text-primary focus:ring-primary"
+                aria-label="Repay my own debt"
+              />
+              <span className="text-sm text-slate-900">My wallet (this debt)</span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="repayForMode"
+                checked={repayForMode === "other"}
+                onChange={() => { setRepayForMode("other"); setErrorMessage(null); }}
+                className="h-4 w-4 border-slate-300 text-primary focus:ring-primary"
+                aria-label="Repay for another address"
+              />
+              <span className="text-sm text-slate-900">Another wallet</span>
+            </label>
+          </div>
+        </div>
+
+        {repayForMode === "other" && (
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-slate-500">Borrower address (whose debt to repay)</span>
+            <input
+              type="text"
+              value={otherBorrowerAddress}
+              onChange={(e) => setOtherBorrowerAddress(e.target.value)}
+              placeholder="0x…"
+              className="rounded-lg border border-slate-200 px-3 py-2 font-mono text-sm text-slate-900 placeholder:text-slate-400"
+              aria-label="Borrower address"
+            />
+            {otherBorrowerAddress.trim() && !isAddress(otherBorrowerAddress.trim()) && (
+              <p className="text-xs text-amber-600">Enter a valid Ethereum address.</p>
+            )}
+          </label>
+        )}
+
         <label className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-slate-500">Amount (USDC) — Debt: {debt}</span>
+          <span className="text-xs font-medium text-slate-500">
+            {repayForMode === "self" ? "Amount (USDC) — Debt: " : "Amount (USDC) — Their debt: "}
+            {debt}
+          </span>
           <input
             type="text"
             inputMode="decimal"
@@ -987,7 +1118,12 @@ function RepayModal({
             disabled={useMax}
             className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900 disabled:bg-slate-100"
           />
-          <button type="button" onClick={() => setUseMax(true)} className="w-fit text-xs font-medium text-primary hover:underline">
+          <button
+            type="button"
+            onClick={() => setUseMax(true)}
+            disabled={repayForMode === "other" && !canRepayOther}
+            className="w-fit text-xs font-medium text-primary hover:underline disabled:opacity-50"
+          >
             Repay max
           </button>
         </label>
@@ -995,7 +1131,7 @@ function RepayModal({
         <div className="flex gap-2">
           <button
             type="submit"
-            disabled={repaying.loading || sending.loading || (!useMax && parsed == null)}
+            disabled={submitDisabled}
             className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
             {repaying.loading || sending.loading ? "Processing…" : "Repay"}
