@@ -33,8 +33,7 @@ import { getHealthFactorStatusLabel } from "@/lib/healthFactor";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { AAVE_TARGET_CHAIN_ID } from "@/lib/config/aave";
 import { isAddress, type WalletClient } from "viem";
-import type { Market, Reserve } from "@aave/react";
-import type { MarketUserReserveSupplyPosition, MarketUserReserveBorrowPosition } from "@aave/react";
+import type { Market, Reserve, MarketUserReserveSupplyPosition, MarketUserReserveBorrowPosition } from "@aave/react";
 
 const AAVE_USDC_RESERVE_URL =
   "https://app.aave.com/reserve-overview/?underlyingAsset=0x833589fcd6edb6e08f4c7c32d4f71b54bda02913&marketName=proto_base_v3";
@@ -159,10 +158,10 @@ export default function LendingPage() {
             Aave Markets
           </p>
           <h1 className="text-center text-3xl font-semibold text-slate-900 md:text-4xl">
-            Borrow & Lend
+            Lend & Borrow
           </h1>
           <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-slate-600">
-            Supply USDC to earn interest or borrow against your collateral on Aave V3 (Base). Manage
+            Supply USDC to earn interest and borrow against your collateral on Aave V3 (Base). Manage
             your positions and health factor in one place.
           </p>
         </div>
