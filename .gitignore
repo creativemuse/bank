@@ -51,3 +51,6 @@ broadcast/
 # agents
 .agent/*
 .cursor/*
+
+# cache
+.pnpm-store/*

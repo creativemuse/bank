@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import {
   bigDecimal,
   evmAddress,
   errAsync,
+  useAaveHealthFactorPreview,
   useBorrow,
   useCollateralToggle,
   useRepay,
@@ -14,13 +15,19 @@ import {
   useUserBorrows,
   useUserMarketState,
   useUserSupplies,
+  useUserTransactionHistory,
+  useUserMeritRewards,
   useWithdraw,
+  OrderDirection,
+  PageSize,
 } from "@aave/react";
 import { useSendTransaction } from "@aave/react/viem";
 
 import { Modal } from "@/components/common/Modal";
 import { CopyWrapper } from "@/components/common/CopyWrapper";
+import { PremiumGuard } from "@/components/access/PremiumGuard";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
+import { useBalance } from "@/hooks/useBalance";
 import { useAaveWalletClient } from "@/hooks/useAaveWalletClient";
 import { useMembership } from "@/context/MembershipContext";
 import { formatPercent, formatUsd } from "@/lib/formatters";
@@ -41,8 +48,11 @@ export default function LendingPage() {
   const membership = useMembership();
   const baseReserve = useBaseUsdcReserve();
   const walletClient = useAaveWalletClient();
+  const { balances, displayableBalance, isLoading: isBalanceLoading } = useBalance();
   const [sendTransaction] = useSendTransaction(walletClient);
   const [actionModal, setActionModal] = useState<ActionModalKind>(null);
+
+  const walletUsdcBalance = balances?.usdc?.amount ?? "0";
 
   const walletAddress = useMemo(() => {
     if (!wallet || authStatus !== "logged-in" || !wallet.address) return null;
@@ -286,6 +296,16 @@ export default function LendingPage() {
               </div>
             )}
           </section>
+
+          <PremiumGuard requiredTier="Creative Creator">
+            <LendingAdvancedSection
+              marketAddressEvm={marketAddressEvm}
+              userEvm={userEvm}
+              walletAddress={walletAddress}
+              walletClient={walletClient}
+              reserve={baseReserve.reserve ?? undefined}
+            />
+          </PremiumGuard>
         </>
       )}
 
@@ -295,6 +315,8 @@ export default function LendingPage() {
           reserve={baseReserve.reserve}
           sender={evmAddress(walletAddress)}
           walletClient={walletClient ?? undefined}
+          walletUsdcBalance={walletUsdcBalance}
+          isBalanceLoading={isBalanceLoading}
           onClose={() => setActionModal(null)}
           onSuccess={() => setActionModal(null)}
         />
@@ -332,6 +354,196 @@ export default function LendingPage() {
         />
       )}
     </main>
+  );
+}
+
+type LendingAdvancedSectionProps = {
+  marketAddressEvm: ReturnType<typeof evmAddress>;
+  userEvm: ReturnType<typeof evmAddress>;
+  walletAddress: string | null;
+  walletClient: WalletClient | undefined;
+  reserve?: Reserve | null;
+};
+
+function LendingAdvancedSection({
+  marketAddressEvm,
+  userEvm,
+  walletAddress,
+  walletClient,
+  reserve,
+}: LendingAdvancedSectionProps) {
+  const [txCursor, setTxCursor] = useState<string | undefined>(undefined);
+  const [accumulatedTxItems, setAccumulatedTxItems] = useState<Array<{ __typename?: string; timestamp?: string; txHash?: string }>>([]);
+  const [txNextCursor, setTxNextCursor] = useState<string | undefined>(undefined);
+
+  const { data: txHistory, loading: txHistoryLoading } = useUserTransactionHistory({
+    market: marketAddressEvm,
+    user: userEvm,
+    chainId: AAVE_TARGET_CHAIN_ID,
+    orderBy: { date: OrderDirection.Desc },
+    pageSize: PageSize.Fifty,
+    ...(txCursor != null && { cursor: txCursor as never }),
+  });
+
+  useEffect(() => {
+    if (txHistory?.items == null) return;
+    const items = txHistory.items as Array<{ __typename?: string; timestamp?: string; txHash?: string }>;
+    if (txCursor == null) {
+      setAccumulatedTxItems((prev) => (prev.length === 0 ? items : prev));
+    } else {
+      setAccumulatedTxItems((prev) => [...prev, ...items]);
+    }
+    setTxNextCursor(txHistory.pageInfo?.next ?? undefined);
+    setTxCursor(undefined);
+  }, [txHistory?.items, txHistory?.pageInfo?.next, txCursor]);
+
+  const [previewAmount, setPreviewAmount] = useState("");
+  const [healthPreview, healthPreviewRunning] = useAaveHealthFactorPreview();
+  const [healthPreviewResult, setHealthPreviewResult] = useState<{ before: string | null; after: string | null } | null>(null);
+
+  const handleHealthPreview = useCallback(async () => {
+    const num = Number.parseFloat(previewAmount);
+    if (!reserve || Number.isNaN(num) || num <= 0) return;
+    setHealthPreviewResult(null);
+    const result = await healthPreview({
+      action: {
+        supply: {
+          market: marketAddressEvm,
+          amount: {
+            erc20: {
+              currency: reserve.underlyingToken.address,
+              value: bigDecimal(num),
+            },
+          },
+          sender: userEvm,
+          chainId: AAVE_TARGET_CHAIN_ID,
+        },
+      },
+    });
+    if (result.isOk()) {
+      const v = result.value;
+      setHealthPreviewResult({
+        before: v.before != null ? String(v.before) : null,
+        after: v.after != null ? String(v.after) : null,
+      });
+    } else {
+      setHealthPreviewResult({ before: null, after: null });
+    }
+  }, [previewAmount, reserve, healthPreview, marketAddressEvm, userEvm]);
+
+  const handleLoadMoreTx = useCallback(() => {
+    if (txNextCursor != null) setTxCursor(txNextCursor);
+  }, [txNextCursor]);
+
+  const { data: meritRewards, loading: meritLoading } = useUserMeritRewards({
+    user: userEvm,
+    chainId: AAVE_TARGET_CHAIN_ID,
+  });
+  const [sendTransaction, sending] = useSendTransaction(walletClient ?? undefined);
+  const [meritError, setMeritError] = useState<string | null>(null);
+
+  const handleClaimMerit = useCallback(async () => {
+    if (meritRewards == null || !walletClient) return;
+    setMeritError(null);
+    const result = await sendTransaction(meritRewards.transaction);
+    if (result.isErr()) {
+      setMeritError(result.error?.message ?? "Claim failed");
+    }
+  }, [meritRewards, walletClient, sendTransaction]);
+
+  const displayTxItems = txCursor == null ? accumulatedTxItems : (txHistory?.items ?? accumulatedTxItems) as Array<{ __typename?: string; timestamp?: string; txHash?: string }>;
+  const showLoadMore = Boolean(txNextCursor && !txHistoryLoading);
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+      <h2 className="mb-4 text-lg font-semibold text-slate-900">Advanced (Members)</h2>
+      {!walletAddress ? (
+        <p className="text-sm text-slate-500">Connect a wallet to see transaction history and claim rewards.</p>
+      ) : (
+        <div className="flex flex-col gap-6">
+          {reserve != null && (
+            <div>
+              <h3 className="mb-2 text-sm font-medium text-slate-700">Health factor preview</h3>
+              <p className="mb-2 text-xs text-slate-500">Preview health factor after supplying USDC.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={previewAmount}
+                  onChange={(e) => setPreviewAmount(e.target.value)}
+                  placeholder="Amount (e.g. 100)"
+                  className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-900"
+                  aria-label="Preview supply amount"
+                />
+                <button
+                  type="button"
+                  onClick={handleHealthPreview}
+                  disabled={healthPreviewRunning.loading || !previewAmount}
+                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {healthPreviewRunning.loading ? "Previewing…" : "Preview"}
+                </button>
+              </div>
+              {healthPreviewResult != null && (
+                <p className="mt-2 text-sm text-slate-600">
+                  Before: {healthPreviewResult.before ?? "—"} → After: {healthPreviewResult.after ?? "—"}
+                </p>
+              )}
+            </div>
+          )}
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-slate-700">Transaction history</h3>
+            {txHistoryLoading && accumulatedTxItems.length === 0 ? (
+              <p className="text-sm text-slate-500">Loading…</p>
+            ) : displayTxItems.length > 0 ? (
+              <>
+                <ul className="max-h-48 list-none space-y-2 overflow-y-auto text-sm">
+                  {displayTxItems.map((item, i) => (
+                    <li key={(item as { txHash?: string }).txHash ?? i} className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/50 px-3 py-2">
+                      <span className="text-slate-600">{(item as { __typename?: string }).__typename ?? "Transaction"}</span>
+                      <span className="text-xs text-slate-500">{item.timestamp ? new Date(item.timestamp).toLocaleDateString() : "—"}</span>
+                    </li>
+                  ))}
+                </ul>
+                {showLoadMore && (
+                  <button
+                    type="button"
+                    onClick={handleLoadMoreTx}
+                    disabled={txHistoryLoading}
+                    className="mt-2 text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                  >
+                    Load more
+                  </button>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-slate-500">No transactions yet.</p>
+            )}
+          </div>
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-slate-700">Merit rewards</h3>
+            {meritLoading ? (
+              <p className="text-sm text-slate-500">Loading…</p>
+            ) : meritRewards != null ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-slate-600">You have claimable rewards.</p>
+                <button
+                  type="button"
+                  onClick={handleClaimMerit}
+                  disabled={sending.loading || !walletClient}
+                  className="w-fit rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {sending.loading ? "Claiming…" : "Claim rewards"}
+                </button>
+                {meritError && <p className="text-sm text-red-600">{meritError}</p>}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">No claimable Merit rewards.</p>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -391,6 +603,8 @@ function SupplyModal({
   reserve,
   sender,
   walletClient,
+  walletUsdcBalance,
+  isBalanceLoading,
   onClose,
   onSuccess,
 }: {
@@ -398,6 +612,8 @@ function SupplyModal({
   reserve: Reserve;
   sender: ReturnType<typeof evmAddress>;
   walletClient: WalletClient | undefined;
+  walletUsdcBalance: string;
+  isBalanceLoading?: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -405,11 +621,16 @@ function SupplyModal({
   const [sendTransaction, sending] = useSendTransaction(walletClient ?? undefined);
   const [amount, setAmount] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const permitSupported = reserve.permitSupported === true;
 
   const parsed = useMemo(() => {
     const n = Number.parseFloat(amount);
     return Number.isNaN(n) || n <= 0 ? null : n;
   }, [amount]);
+
+  const handleMaxClick = useCallback(() => {
+    setAmount(walletUsdcBalance);
+  }, [walletUsdcBalance]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -445,11 +666,16 @@ function SupplyModal({
     [parsed, walletClient, supply, sendTransaction, market.address, reserve.underlyingToken.address, sender, onSuccess, onClose],
   );
 
+  const balanceDisplay = isBalanceLoading ? "Loading…" : (parseFloat(walletUsdcBalance).toFixed(2));
+
   return (
     <Modal open title="Supply USDC" onClose={onClose} showCloseButton className="max-w-lg bg-white text-slate-900">
       <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-slate-500">Amount (USDC)</span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">Amount (USDC)</span>
+            <span className="text-xs text-slate-500">Available: {balanceDisplay} USDC</span>
+          </div>
           <input
             type="text"
             inputMode="decimal"
@@ -458,7 +684,20 @@ function SupplyModal({
             placeholder="0"
             className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
           />
+          <button
+            type="button"
+            onClick={handleMaxClick}
+            disabled={isBalanceLoading || !walletUsdcBalance || parseFloat(walletUsdcBalance) <= 0}
+            className="w-fit text-xs font-medium text-primary hover:underline disabled:opacity-50"
+          >
+            Use max
+          </button>
         </label>
+        {permitSupported && (
+          <p className="text-xs text-slate-500">
+            This reserve supports Permit (EIP-2612). Members can sign a message to skip the approval transaction in a future update.
+          </p>
+        )}
         {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
         <div className="flex gap-2">
           <button
