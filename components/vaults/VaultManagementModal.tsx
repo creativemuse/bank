@@ -1,0 +1,297 @@
+"use client";
+
+import { FormEvent, useCallback, useMemo, useState } from "react";
+import { useAccount, useWalletClient } from "wagmi";
+import { useWallet, EVMWallet } from "@crossmint/client-sdk-react-ui";
+import { createWalletClient, custom, type WalletClient } from "viem";
+import { base, baseSepolia } from "viem/chains";
+import { bigDecimal, chainId as aaveChainId, evmAddress, useVaultSetFee, useVaultWithdrawFees, useVaultTransferOwnership } from "@aave/react";
+import { useSendTransaction } from "@aave/react/viem";
+import type { Vault } from "@aave/react";
+
+import { Modal } from "@/components/common/Modal";
+
+type VaultManagementModalProps = {
+  open: boolean;
+  onClose: () => void;
+  vault: Vault;
+  onSuccess?: () => void;
+};
+
+type TabId = "fee" | "withdraw-fees" | "transfer";
+
+export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultManagementModalProps) {
+  const { data: wagmiWalletClient } = useWalletClient();
+  const { wallet: crossmintWallet } = useWallet();
+
+  const walletClient = useMemo((): WalletClient | undefined => {
+    if (crossmintWallet) {
+      try {
+        const evmWallet = EVMWallet.from(crossmintWallet);
+        const chain = process.env.NODE_ENV === "production" ? base : baseSepolia;
+        return createWalletClient({
+          chain,
+          transport: custom({
+            async request({ method, params }) {
+              if (method === "eth_sendTransaction" && params?.[0]) {
+                const tx = params[0] as { to?: string; value?: string; data?: string };
+                if (!tx.to) throw new Error("Transaction 'to' address is required");
+                const valueBigInt = BigInt(tx.value || "0x0");
+                const result = await evmWallet.sendTransaction({
+                  to: tx.to as `0x${string}`,
+                  value: valueBigInt,
+                  data: (tx.data || "0x") as `0x${string}`,
+                });
+                return result.hash;
+              }
+              if (method === "eth_accounts" || method === "eth_requestAccounts") {
+                return [crossmintWallet.address];
+              }
+              if (method === "eth_chainId") {
+                return `0x${chain.id.toString(16)}`;
+              }
+              throw new Error(`Method ${method} not yet supported with Crossmint wallet adapter`);
+            },
+          }),
+        });
+      } catch (e) {
+        console.error("Failed to create wallet client from Crossmint:", e);
+      }
+    }
+    return wagmiWalletClient ?? undefined;
+  }, [crossmintWallet, wagmiWalletClient]);
+
+  const [setFee, setFeeState] = useVaultSetFee();
+  const [withdrawFees, withdrawFeesState] = useVaultWithdrawFees();
+  const [transferOwnership, transferState] = useVaultTransferOwnership();
+  const [sendTransaction, sendState] = useSendTransaction(walletClient);
+
+  const [activeTab, setActiveTab] = useState<TabId>("fee");
+  const [feeInput, setFeeInput] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawMax, setWithdrawMax] = useState(false);
+  const [newOwnerAddress, setNewOwnerAddress] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const chainId = aaveChainId(Number(vault.chainId));
+  const currentFee = vault.fee?.formatted ?? "—";
+  const feesBalanceValue = vault.feesBalance?.amount?.value ?? "0";
+  const totalFeeRevenueValue = vault.totalFeeRevenue?.amount?.value ?? "0";
+
+  const isBusy =
+    setFeeState.loading ||
+    withdrawFeesState.loading ||
+    transferState.loading ||
+    sendState.loading;
+
+  const handleSetFee = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      setErrorMessage(null);
+      const parsed = Number.parseFloat(feeInput);
+      if (Number.isNaN(parsed) || parsed < 10 || parsed > 100) {
+        setErrorMessage("Fee must be between 10 and 100%");
+        return;
+      }
+      if (!walletClient) {
+        setErrorMessage("Wallet not connected");
+        return;
+      }
+      const result = await setFee({
+        chainId,
+        vault: evmAddress(vault.address),
+        newFee: bigDecimal(parsed),
+      }).andThen(sendTransaction);
+      if (result.isErr()) {
+        setErrorMessage(result.error?.message ?? "Set fee failed");
+        return;
+      }
+      onSuccess?.();
+      onClose();
+    },
+    [feeInput, walletClient, chainId, vault.address, setFee, sendTransaction, onSuccess, onClose],
+  );
+
+  const handleWithdrawFees = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      setErrorMessage(null);
+      if (!walletClient) {
+        setErrorMessage("Wallet not connected");
+        return;
+      }
+      const amount = withdrawMax
+        ? { max: true as const }
+        : { exact: bigDecimal(withdrawAmount) };
+      const result = await withdrawFees({
+        chainId,
+        vault: evmAddress(vault.address),
+        amount,
+      }).andThen(sendTransaction);
+      if (result.isErr()) {
+        setErrorMessage(result.error?.message ?? "Withdraw fees failed");
+        return;
+      }
+      onSuccess?.();
+      onClose();
+    },
+    [withdrawMax, withdrawAmount, walletClient, chainId, vault.address, withdrawFees, sendTransaction, onSuccess, onClose],
+  );
+
+  const handleTransferOwnership = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      setErrorMessage(null);
+      const trimmed = newOwnerAddress.trim();
+      if (!/^0x[a-fA-F0-9]{40}$/.test(trimmed)) {
+        setErrorMessage("Enter a valid Ethereum address (0x...)");
+        return;
+      }
+      if (!walletClient) {
+        setErrorMessage("Wallet not connected");
+        return;
+      }
+      const result = await transferOwnership({
+        chainId,
+        vault: evmAddress(vault.address),
+        newOwner: evmAddress(trimmed),
+      }).andThen(sendTransaction);
+      if (result.isErr()) {
+        setErrorMessage(result.error?.message ?? "Transfer ownership failed");
+        return;
+      }
+      onSuccess?.();
+      onClose();
+    },
+    [newOwnerAddress, walletClient, chainId, vault.address, transferOwnership, sendTransaction, onSuccess, onClose],
+  );
+
+  const tabs: { id: TabId; label: string }[] = [
+    { id: "fee", label: "Set fee" },
+    { id: "withdraw-fees", label: "Withdraw fees" },
+    { id: "transfer", label: "Transfer ownership" },
+  ];
+
+  return (
+    <Modal open={open} onClose={onClose} title="Manage vault">
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-slate-600">
+          Current fee: <strong>{currentFee}%</strong> · Fees balance: <strong>{feesBalanceValue}</strong> · Total fee revenue: <strong>{totalFeeRevenueValue}</strong>
+        </p>
+
+        <div className="flex gap-2 border-b border-slate-200 pb-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              aria-label={`${tab.label} tab`}
+              className={`rounded px-3 py-1.5 text-sm font-medium ${
+                activeTab === tab.id
+                  ? "bg-slate-800 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setErrorMessage(null);
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {errorMessage && (
+          <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+            {errorMessage}
+          </p>
+        )}
+
+        {activeTab === "fee" && (
+          <form onSubmit={handleSetFee} className="flex flex-col gap-3">
+            <label className="text-sm font-medium text-slate-700">
+              New performance fee (%)
+            </label>
+            <input
+              type="number"
+              min={10}
+              max={100}
+              step={1}
+              value={feeInput}
+              onChange={(e) => setFeeInput(e.target.value)}
+              placeholder="e.g. 15"
+              className="rounded border border-slate-300 px-3 py-2 text-slate-900"
+              aria-label="New fee percentage"
+            />
+            <p className="text-xs text-slate-500">Minimum 10%. Aave Labs retains 50% of the fee.</p>
+            <button
+              type="submit"
+              disabled={isBusy || !feeInput}
+              className="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {setFeeState.loading || sendState.loading ? "Processing…" : "Set fee"}
+            </button>
+          </form>
+        )}
+
+        {activeTab === "withdraw-fees" && (
+          <form onSubmit={handleWithdrawFees} className="flex flex-col gap-3">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={withdrawMax}
+                onChange={(e) => {
+                  setWithdrawMax(e.target.checked);
+                  if (e.target.checked) setWithdrawAmount("");
+                }}
+                aria-label="Withdraw maximum"
+              />
+              <span className="text-sm font-medium text-slate-700">Withdraw max</span>
+            </label>
+            {!withdrawMax && (
+              <input
+                type="text"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                placeholder="Amount to withdraw"
+                className="rounded border border-slate-300 px-3 py-2 text-slate-900"
+                aria-label="Withdraw amount"
+              />
+            )}
+            <p className="text-xs text-slate-500">Withdrawn fees are received as aTokens.</p>
+            <button
+              type="submit"
+              disabled={isBusy || (!withdrawMax && !withdrawAmount.trim())}
+              className="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {withdrawFeesState.loading || sendState.loading ? "Processing…" : "Withdraw fees"}
+            </button>
+          </form>
+        )}
+
+        {activeTab === "transfer" && (
+          <form onSubmit={handleTransferOwnership} className="flex flex-col gap-3">
+            <label className="text-sm font-medium text-slate-700">
+              New owner address
+            </label>
+            <input
+              type="text"
+              value={newOwnerAddress}
+              onChange={(e) => setNewOwnerAddress(e.target.value)}
+              placeholder="0x..."
+              className="rounded border border-slate-300 px-3 py-2 font-mono text-sm text-slate-900"
+              aria-label="New owner address"
+            />
+            <p className="text-xs text-slate-500">This action is irreversible. You will lose owner privileges.</p>
+            <button
+              type="submit"
+              disabled={isBusy || !newOwnerAddress.trim()}
+              className="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {transferState.loading || sendState.loading ? "Processing…" : "Transfer ownership"}
+            </button>
+          </form>
+        )}
+      </div>
+    </Modal>
+  );
+}

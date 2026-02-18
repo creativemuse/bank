@@ -47,3 +47,7 @@ cache/
 broadcast/
 # Note: lib/ is NOT ignored to allow git submodules (forge-std, tokenized-strategy, openzeppelin-contracts)
 # to be properly tracked via .gitmodules
+
+# agents
+.agent/*
+.cursor/*
