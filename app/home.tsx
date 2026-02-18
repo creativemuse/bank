@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Login } from "@/components/Login";
 import { MainScreen } from "@/components/MainScreen";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
