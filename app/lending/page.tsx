@@ -26,6 +26,7 @@ import { useMembership } from "@/context/MembershipContext";
 import { formatPercent, formatUsd } from "@/lib/formatters";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { AAVE_TARGET_CHAIN_ID } from "@/lib/config/aave";
+import type { WalletClient } from "viem";
 import type { Market, Reserve } from "@aave/react";
 import type { MarketUserReserveSupplyPosition, MarketUserReserveBorrowPosition } from "@aave/react";
 
@@ -344,7 +345,7 @@ function CollateralToggle({
   market: Market;
   position: MarketUserReserveSupplyPosition;
   userEvm: ReturnType<typeof evmAddress>;
-  walletClient: ReturnType<typeof useAaveWalletClient>;
+  walletClient: WalletClient | undefined;
   onSuccess: () => void;
 }) {
   const [toggleCollateral, toggling] = useCollateralToggle();
@@ -396,7 +397,7 @@ function SupplyModal({
   market: Market;
   reserve: Reserve;
   sender: ReturnType<typeof evmAddress>;
-  walletClient: ReturnType<typeof useAaveWalletClient> extends () => infer R ? R : undefined;
+  walletClient: WalletClient | undefined;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -489,7 +490,7 @@ function WithdrawModal({
   reserve: Reserve;
   supplyPosition?: MarketUserReserveSupplyPosition;
   sender: ReturnType<typeof evmAddress>;
-  walletClient: ReturnType<typeof useAaveWalletClient> extends () => infer R ? R : undefined;
+  walletClient: WalletClient | undefined;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -588,7 +589,7 @@ function BorrowModal({
   market: Market;
   reserve: Reserve;
   sender: ReturnType<typeof evmAddress>;
-  walletClient: ReturnType<typeof useAaveWalletClient> extends () => infer R ? R : undefined;
+  walletClient: WalletClient | undefined;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -681,7 +682,7 @@ function RepayModal({
   reserve: Reserve;
   borrowPosition?: MarketUserReserveBorrowPosition;
   sender: ReturnType<typeof evmAddress>;
-  walletClient: ReturnType<typeof useAaveWalletClient> extends () => infer R ? R : undefined;
+  walletClient: WalletClient | undefined;
   onClose: () => void;
   onSuccess: () => void;
 }) {
