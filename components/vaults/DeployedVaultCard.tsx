@@ -4,7 +4,10 @@ import { useState, useMemo, useCallback } from "react";
 import { Address, formatUnits } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
-import { YearnVaultModal } from "@/components/yearn/YearnVaultModal";
+import type { Vault } from "@aave/react";
+import { AaveVaultModal } from "@/components/vaults/AaveVaultModal";
+import { VaultManagementModal } from "@/components/vaults/VaultManagementModal";
+import { VaultActivityModal } from "@/components/vaults/VaultActivityModal";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { formatPercent } from "@/lib/formatters";
@@ -31,6 +34,7 @@ const ERC4626_ABI = [
 ] as const;
 
 type DeployedVaultCardProps = {
+  vault?: Vault | null;
   vaultAddress: Address;
   assetAddress: Address;
   assetSymbol?: string;
@@ -41,6 +45,7 @@ type DeployedVaultCardProps = {
 };
 
 export const DeployedVaultCard = ({
+  vault: vaultFromApi,
   vaultAddress,
   assetAddress,
   assetSymbol = "USDC",
@@ -63,10 +68,13 @@ export const DeployedVaultCard = ({
   
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"deposit" | "withdraw">("deposit");
+  const [managementModalOpen, setManagementModalOpen] = useState(false);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
 
-  // Get Aave reserve data for APR and aToken address
-  const { reserve, loading: reserveLoading } = useBaseUsdcReserve();
-  const aTokenAddress = reserve?.aToken?.address as Address | undefined;
+  // When vault is from API, use its usedReserve; otherwise fall back to Base USDC reserve
+  const { reserve: baseReserve, loading: reserveLoading } = useBaseUsdcReserve();
+  const reserve = vaultFromApi?.usedReserve ?? baseReserve;
+  const aTokenAddress = (reserve?.aToken?.address ?? baseReserve?.aToken?.address) as Address | undefined;
 
   // Get vault TVL from ERC-4626 totalAssets (this includes accrued interest)
   const { data: totalAssets, isLoading: vaultLoading } = useReadContract({
@@ -281,6 +289,63 @@ export const DeployedVaultCard = ({
 
   const displayName = name || `My Aave Vault`;
 
+  const isOwner =
+    !!vaultFromApi &&
+    !!userAddress &&
+    (vaultFromApi.owner?.toLowerCase() === userAddress.toLowerCase());
+
+  const cardActions = useMemo(() => {
+    const actions: Array<{
+      id: string;
+      label: string;
+      ariaLabel: string;
+      onClick: () => void;
+      disabled?: boolean;
+    }> = [
+      {
+        id: "deposit",
+        label: hasPosition ? "Add Funds" : "Deposit",
+        ariaLabel: "Deposit into vault",
+        onClick: handleOpenDeposit,
+      },
+      {
+        id: "withdraw",
+        label: "Withdraw",
+        ariaLabel: "Withdraw from vault",
+        onClick: handleOpenWithdraw,
+        disabled: isWithdrawDisabled,
+      },
+      {
+        id: "view-vault",
+        label: "View on Basescan",
+        ariaLabel: "View vault on Basescan",
+        onClick: () =>
+          window.open(
+            `https://basescan.org/address/${vaultAddress}`,
+            "_blank",
+            "noopener,noreferrer",
+          ),
+      },
+    ];
+    if (isOwner) {
+      actions.splice(2, 0, {
+        id: "manage",
+        label: "Manage",
+        ariaLabel: "Manage vault (fee, withdraw fees, transfer ownership)",
+        onClick: () => setManagementModalOpen(true),
+      });
+    }
+    if (hasPosition) {
+      actions.splice(actions.findIndex((a) => a.id === "view-vault"), 0, {
+        id: "activity",
+        label: "Activity",
+        ariaLabel: "View vault activity and history",
+        onClick: () => setActivityModalOpen(true),
+      });
+    }
+    return actions;
+  }, [hasPosition, handleOpenDeposit, handleOpenWithdraw, isWithdrawDisabled, vaultAddress, isOwner]);
+
   return (
     <>
       <StrategyCard
@@ -289,32 +354,7 @@ export const DeployedVaultCard = ({
         apr={aprDisplay}
         tvl={tvlDisplay}
         description="Your custom ERC-4626 vault deployed on Base, sourcing yield from the Aave USDC reserve."
-        actions={[
-          {
-            id: "deposit",
-            label: hasPosition ? "Add Funds" : "Deposit",
-            ariaLabel: "Deposit into vault",
-            onClick: handleOpenDeposit,
-          },
-          {
-            id: "withdraw",
-            label: "Withdraw",
-            ariaLabel: "Withdraw from vault",
-            onClick: handleOpenWithdraw,
-            disabled: isWithdrawDisabled,
-          },
-          {
-            id: "view-vault",
-            label: "View on Basescan",
-            ariaLabel: "View vault on Basescan",
-            onClick: () =>
-              window.open(
-                `https://basescan.org/address/${vaultAddress}`,
-                "_blank",
-                "noopener,noreferrer",
-              ),
-          },
-        ]}
+        actions={cardActions}
         footnote={
           <div className="flex flex-col gap-1 text-xs text-slate-500">
             <div>
@@ -376,16 +416,34 @@ export const DeployedVaultCard = ({
         }
       />
 
-      <YearnVaultModal
+      <AaveVaultModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         vaultAddress={vaultAddress}
-        assetAddress={actualAssetAddress}
         assetSymbol={assetSymbol}
-        mode={modalMode}
-        userAssetBalance={(userAssetBalance as bigint) ?? 0n}
         assetDecimals={assetDecimals}
+        mode={modalMode}
+        userAddress={userAddress ?? undefined}
+        userAssetBalance={(userAssetBalance as bigint) ?? 0n}
+        shareBalance={shareBalance ?? 0n}
         isBalanceLoading={isBalanceLoading}
+      />
+
+      {vaultFromApi && (
+        <VaultManagementModal
+          open={managementModalOpen}
+          onClose={() => setManagementModalOpen(false)}
+          vault={vaultFromApi}
+        />
+      )}
+
+      <VaultActivityModal
+        open={activityModalOpen}
+        onClose={() => setActivityModalOpen(false)}
+        vaultAddress={vaultAddress}
+        chainId={8453}
+        userAddress={userAddress ?? undefined}
+        assetSymbol={assetSymbol}
       />
     </>
   );

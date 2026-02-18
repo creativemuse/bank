@@ -2,8 +2,12 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { Address } from "viem";
+import { useAccount } from "wagmi";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { DeployedVaultCard } from "./DeployedVaultCard";
+import { useOwnedVaults } from "@/hooks/useOwnedVaults";
 import { USDC_ADDRESS_BASE } from "@/lib/config/yearn";
+import type { Vault } from "@aave/react";
 
 type DeployedVault = {
   address: Address;
@@ -13,8 +17,16 @@ type DeployedVault = {
 };
 
 export const MyDeployedVaults = () => {
-  const [vaults, setVaults] = useState<DeployedVault[]>(() => {
-    // Load from localStorage on mount
+  const { address: wagmiAddress } = useAccount();
+  const { wallet: crossmintWallet } = useWallet();
+  const userAddress = useMemo(() => {
+    if (crossmintWallet?.address) return crossmintWallet.address;
+    return wagmiAddress ?? undefined;
+  }, [crossmintWallet?.address, wagmiAddress]);
+
+  const { vaults: apiVaults, loading: apiLoading } = useOwnedVaults(userAddress);
+
+  const [localVaults, setLocalVaults] = useState<DeployedVault[]>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("deployedVaults");
       if (stored) {
@@ -34,8 +46,17 @@ export const MyDeployedVaults = () => {
   const [newVaultTxHash, setNewVaultTxHash] = useState("");
   const [newVaultPerformanceFee, setNewVaultPerformanceFee] = useState("");
 
-  const saveVaults = useCallback((newVaults: DeployedVault[]) => {
-    setVaults(newVaults);
+  const apiAddressSet = useMemo(
+    () => new Set(apiVaults.map((v) => v.address.toLowerCase())),
+    [apiVaults],
+  );
+  const localOnlyVaults = useMemo(
+    () => localVaults.filter((v) => !apiAddressSet.has(v.address.toLowerCase())),
+    [localVaults, apiAddressSet],
+  );
+
+  const saveLocalVaults = useCallback((newVaults: DeployedVault[]) => {
+    setLocalVaults(newVaults);
     if (typeof window !== "undefined") {
       localStorage.setItem("deployedVaults", JSON.stringify(newVaults));
     }
@@ -47,11 +68,14 @@ export const MyDeployedVaults = () => {
       return;
     }
 
-    const performanceFeeNum = newVaultPerformanceFee 
-      ? parseFloat(newVaultPerformanceFee) 
+    const performanceFeeNum = newVaultPerformanceFee
+      ? parseFloat(newVaultPerformanceFee)
       : undefined;
-    
-    if (performanceFeeNum !== undefined && (isNaN(performanceFeeNum) || performanceFeeNum < 0 || performanceFeeNum > 100)) {
+
+    if (
+      performanceFeeNum !== undefined &&
+      (isNaN(performanceFeeNum) || performanceFeeNum < 0 || performanceFeeNum > 100)
+    ) {
       alert("Performance fee must be a number between 0 and 100");
       return;
     }
@@ -63,30 +87,31 @@ export const MyDeployedVaults = () => {
       performanceFee: performanceFeeNum,
     };
 
-    // Check if vault already exists
-    if (vaults.some((v) => v.address.toLowerCase() === vault.address.toLowerCase())) {
+    if (localVaults.some((v) => v.address.toLowerCase() === vault.address.toLowerCase())) {
       alert("This vault is already added");
       return;
     }
 
-    saveVaults([...vaults, vault]);
+    saveLocalVaults([...localVaults, vault]);
     setNewVaultAddress("");
     setNewVaultName("");
     setNewVaultTxHash("");
     setNewVaultPerformanceFee("");
     setShowAddForm(false);
-  }, [newVaultAddress, newVaultName, newVaultTxHash, newVaultPerformanceFee, vaults, saveVaults]);
+  }, [newVaultAddress, newVaultName, newVaultTxHash, newVaultPerformanceFee, localVaults, saveLocalVaults]);
 
   const handleRemoveVault = useCallback(
     (address: Address) => {
       if (confirm("Remove this vault from your list?")) {
-        saveVaults(vaults.filter((v) => v.address.toLowerCase() !== address.toLowerCase()));
+        saveLocalVaults(localVaults.filter((v) => v.address.toLowerCase() !== address.toLowerCase()));
       }
     },
-    [vaults, saveVaults],
+    [localVaults, saveLocalVaults],
   );
 
-  if (vaults.length === 0 && !showAddForm) {
+  const hasAnyVaults = apiVaults.length > 0 || localOnlyVaults.length > 0;
+
+  if (!hasAnyVaults && !showAddForm) {
     return (
       <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white/80 p-8 text-center">
         <p className="mb-4 text-sm font-medium text-slate-500">No deployed vaults yet</p>
@@ -207,8 +232,26 @@ export const MyDeployedVaults = () => {
         </div>
       )}
 
+      {apiLoading ? (
+        <p className="text-sm text-slate-500">Loading your vaults…</p>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {vaults.map((vault) => (
+        {apiVaults.map((vault) => (
+          <div key={vault.address} className="relative">
+            <DeployedVaultCard
+              vault={vault}
+              vaultAddress={vault.address as Address}
+              assetAddress={(vault.usedReserve?.underlyingToken?.address ?? USDC_ADDRESS_BASE) as Address}
+              assetSymbol={vault.usedReserve?.underlyingToken?.symbol ?? "USDC"}
+              assetDecimals={vault.usedReserve?.underlyingToken?.decimals ?? 6}
+              name={vault.shareName}
+              transactionHash={undefined}
+              performanceFee={vault.fee?.formatted ? Number(vault.fee.formatted) : undefined}
+            />
+          </div>
+        ))}
+        {localOnlyVaults.map((vault) => (
           <div key={vault.address} className="relative">
             <DeployedVaultCard
               vaultAddress={vault.address}

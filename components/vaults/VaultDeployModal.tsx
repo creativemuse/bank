@@ -39,7 +39,7 @@ type SubmitState = {
   vaultAddress?: string;
 };
 
-const CREATIVE_ADDRESS = "0x1fde40a4046eda0ca0539dd6c77abf8933b94260";
+const CREATIVE_ADDRESS = "0xf46F1BA19A9280F752a451d0973b047D81c63D70";
 
 export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeployModalProps) {
   const { address: wagmiAddress } = useAccount();
@@ -142,7 +142,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
   const [initialDeposit, setInitialDeposit] = useState(1000);
   
   // Initialize recipient input based on membership status
-  // If no membership or still loading: pre-fill with Creative address and 2%
+  // If no membership or still loading: pre-fill with Creative address and 5%
   // If has membership: start empty and editable
   const getInitialRecipientInput = useCallback((): RecipientInput => {
     // If membership is still loading or user doesn't have membership, pre-fill with Creative
@@ -160,14 +160,17 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
   const isSubmitting =
     deployState.loading || sendTransactionState.loading || submitState.status === "deploying";
 
+  const assetSymbol = reserve?.underlyingToken?.symbol ?? "USDC";
+  const assetDecimals = reserve?.underlyingToken?.decimals ?? USDC_DECIMALS;
+
   const resetForm = useCallback(() => {
     setSubmitState({ status: "idle" });
     setPerformanceFee(12);
     setInitialDeposit(1000);
     setRecipientInput(getInitialRecipientInput());
-    setShareName("Aave USDC Vault Shares");
-    setShareSymbol("avUSDC");
-  }, [getInitialRecipientInput]);
+    setShareName(reserve ? `Aave ${reserve.underlyingToken.symbol} Vault Shares` : "Aave USDC Vault Shares");
+    setShareSymbol(reserve ? `av${reserve.underlyingToken.symbol}` : "avUSDC");
+  }, [getInitialRecipientInput, reserve]);
 
   const handleClose = useCallback(() => {
     resetForm();
@@ -282,7 +285,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
       if (plan.__typename === "InsufficientBalanceError") {
         setSubmitState({
           status: "error",
-          message: `Insufficient balance. Required: ${plan.required.value} USDC.`,
+          message: `Insufficient balance. Required: ${plan.required.value} ${assetSymbol}.`,
         });
         return;
       }
@@ -355,13 +358,11 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
                 const topic1 = log.topics[1];
                 const topic3 = log.topics[3];
                 
-                if (topic1 && topic3) {
+                if (topic1 && topic3 && reserve) {
                   const vaultAddr = `0x${topic1.slice(-40)}`;
-                  // Fourth topic (index 3) is underlying asset (USDC)
                   const underlying = `0x${topic3.slice(-40)}`;
-                  
-                  // Verify it's a USDC vault
-                  if (underlying.toLowerCase() === "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913") {
+                  const expectedUnderlying = reserve.underlyingToken.address.toLowerCase();
+                  if (underlying.toLowerCase() === expectedUnderlying) {
                     vaultAddress = vaultAddr;
                     break;
                   }
@@ -515,7 +516,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
     <Modal
       open={open}
       onClose={handleClose}
-      title="Deploy Aave USDC Vault"
+      title={`Deploy Aave ${assetSymbol} Vault`}
       showCloseButton
       className="max-w-2xl bg-white text-slate-900"
     >
@@ -532,7 +533,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
               onChange={(event) => setShareName(event.target.value)}
               onFocus={handleNumberFocus}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
-              placeholder="Aave USDC Vault Shares"
+              placeholder={`Aave ${assetSymbol} Vault Shares`}
               required
             />
           </label>
@@ -543,7 +544,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
               onChange={handleShareSymbolChange}
               onFocus={handleNumberFocus}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
-              placeholder="avUSDC"
+              placeholder={`av${assetSymbol}`}
               required
             />
           </label>
@@ -568,13 +569,13 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium uppercase text-slate-500">
-                Initial Deposit (USDC)
+                Initial Deposit ({assetSymbol})
               </span>
               <input
                 type="tel"
                 inputMode="decimal"
                 min={0}
-                step={1 / 10 ** USDC_DECIMALS}
+                step={1 / 10 ** assetDecimals}
                 value={initialDeposit}
                 onChange={(event) => handleNumberInputChange(event.target.value, setInitialDeposit, true)}
                 onFocus={handleNumberFocus}
@@ -635,7 +636,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
             />
             <span className="text-xs text-slate-500">
               Remaining split automatically allocated to your wallet.
-              {(membershipLoading || !hasMembership) && " Default: 2% for Creative Bank."}
+              {(membershipLoading || !hasMembership) && " Default: 5% for Creative Bank."}
             </span>
           </label>
         </section>

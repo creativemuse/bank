@@ -7,7 +7,9 @@ import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { PremiumGuard } from "@/components/access/PremiumGuard";
 import { VaultDeployModal } from "@/components/vaults/VaultDeployModal";
+import { DeployedVaultCard } from "@/components/vaults/DeployedVaultCard";
 import { MyDeployedVaults } from "@/components/vaults/MyDeployedVaults";
+import { useUserVaultPositions } from "@/hooks/useUserVaultPositions";
 import { YearnVaultCard } from "@/components/yearn/YearnVaultCard";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { useKalaniApr } from "@/hooks/useKalaniApr";
@@ -17,7 +19,7 @@ import { KALANI_VAULT_ADDRESSES, CREATIVE_BANK_VAULT } from "@/lib/config/kalani
 import { USDC_ADDRESS_BASE } from "@/lib/config/yearn";
 import { useMembership } from "@/context/MembershipContext";
 import { shortenAddress } from "@/utils/shortenAddress";
-import { parseUnits } from "viem";
+import { parseUnits, type Address } from "viem";
 import { CopyWrapper } from "@/components/common/CopyWrapper";
 
 export default function StrategiesPage() {
@@ -63,6 +65,16 @@ export default function StrategiesPage() {
     }
     return wallet.address;
   }, [authStatus, wallet]);
+
+  const { vaults: userPositionVaults, loading: userPositionsLoading } =
+    useUserVaultPositions(walletAddress ?? undefined);
+
+  const otherPositionVaults = useMemo(() => {
+    if (!walletAddress) return [];
+    return userPositionVaults.filter(
+      (v) => v.owner?.toLowerCase() !== walletAddress.toLowerCase(),
+    );
+  }, [userPositionVaults, walletAddress]);
 
   const baseApr = baseReserve.loading
     ? "Loading..."
@@ -237,6 +249,42 @@ export default function StrategiesPage() {
       <section className="mt-10">
         <MyDeployedVaults />
       </section>
+
+      {/* Your positions in other vaults */}
+      {otherPositionVaults.length > 0 && (
+        <section className="mt-10">
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-xl font-semibold text-slate-900">
+              Your positions in other vaults
+            </h2>
+            <p className="text-sm text-slate-600">
+              Vaults you have deposited into (not owned by you).
+            </p>
+          </div>
+          {userPositionsLoading ? (
+            <p className="text-sm text-slate-500">Loading positions…</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {otherPositionVaults.map((vault) => (
+                <DeployedVaultCard
+                  key={`${vault.address}-${vault.chainId}`}
+                  vault={vault}
+                  vaultAddress={vault.address as Address}
+                  assetAddress={vault.usedReserve?.underlyingToken?.address as Address}
+                  assetSymbol={vault.usedReserve?.underlyingToken?.symbol ?? "USDC"}
+                  assetDecimals={vault.usedReserve?.underlyingToken?.decimals ?? 6}
+                  name={vault.shareName}
+                  performanceFee={
+                    vault.fee?.formatted != null
+                      ? Number.parseFloat(String(vault.fee.formatted))
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Yearn V3 Vaults Section */}
       {/* <section className="mt-10 flex flex-col gap-6">
