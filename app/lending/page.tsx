@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import {
@@ -15,22 +15,21 @@ import {
   useUserBorrows,
   useUserMarketState,
   useUserSupplies,
-  useUserTransactionHistory,
-  useUserMeritRewards,
   useWithdraw,
-  OrderDirection,
-  PageSize,
 } from "@aave/react";
 import { useSendTransaction } from "@aave/react/viem";
 
 import { Modal } from "@/components/common/Modal";
 import { CopyWrapper } from "@/components/common/CopyWrapper";
 import { PremiumGuard } from "@/components/access/PremiumGuard";
+import { LendingMeritRewards } from "@/components/lending/LendingMeritRewards";
+import { LendingTransactionHistory } from "@/components/lending/LendingTransactionHistory";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { useBalance } from "@/hooks/useBalance";
 import { useAaveWalletClient } from "@/hooks/useAaveWalletClient";
 import { useMembership } from "@/context/MembershipContext";
 import { formatPercent, formatUsd } from "@/lib/formatters";
+import { getHealthFactorStatusLabel } from "@/lib/healthFactor";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { AAVE_TARGET_CHAIN_ID } from "@/lib/config/aave";
 import { isAddress, type WalletClient } from "viem";
@@ -49,7 +48,6 @@ export default function LendingPage() {
   const baseReserve = useBaseUsdcReserve();
   const walletClient = useAaveWalletClient();
   const { balances, displayableBalance, isLoading: isBalanceLoading } = useBalance();
-  const [sendTransaction] = useSendTransaction(walletClient);
   const [actionModal, setActionModal] = useState<ActionModalKind>(null);
 
   const walletUsdcBalance = balances?.usdc?.amount ?? "0";
@@ -133,6 +131,16 @@ export default function LendingPage() {
     usdcSupplyPosition &&
     usdcSupplyPosition.canBeCollateral != null &&
     (usdcSupplyPosition.isCollateral ? true : usdcSupplyPosition.canBeCollateral);
+
+  const availableBorrowUsd = useMemo(() => {
+    const raw = userMarketState?.availableBorrowsBase;
+    if (raw == null) return null;
+    const value =
+      typeof raw === "object" && raw !== null && "value" in raw
+        ? Number((raw as { value: string }).value)
+        : Number(raw);
+    return Number.isNaN(value) || value <= 0 ? null : value;
+  }, [userMarketState?.availableBorrowsBase]);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-8 sm:px-6 sm:py-12">
@@ -225,21 +233,45 @@ export default function LendingPage() {
             </div>
           </section>
 
-          {walletAddress && (
-            <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold text-slate-900">Your positions</h2>
-              {marketStateLoading || suppliesLoading || borrowsLoading ? (
-                <p className="text-sm text-slate-500">Loading positions…</p>
-              ) : (
+          <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900">Your positions</h2>
+            {!walletAddress ? (
+              <p className="text-sm text-slate-500">Connect a wallet to view your positions and health factor.</p>
+            ) : marketStateLoading || suppliesLoading || borrowsLoading ? (
+              <p className="text-sm text-slate-500">Loading positions…</p>
+            ) : (
                 <div className="flex flex-col gap-4">
-                  {hasUsdcSupply && userMarketState?.healthFactor != null && (
-                    <div>
-                      <p className="text-xs text-slate-500">Health factor</p>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {Number(userMarketState.healthFactor).toFixed(2)}
-                      </p>
-                    </div>
-                  )}
+                  {hasUsdcSupply && userMarketState?.healthFactor != null && (() => {
+                    const statusInfo = getHealthFactorStatusLabel(
+                      userMarketState.healthFactor,
+                      hasUsdcBorrow,
+                    );
+                    const display = statusInfo ?? (hasUsdcSupply ? { status: "safe" as const, label: "Safe", ariaLabel: "Your loan is healthy" } : null);
+                    return (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-xs text-slate-500">Health factor</p>
+                        <p className="text-lg font-semibold text-slate-900">
+                          {Number(userMarketState.healthFactor).toFixed(2)}
+                        </p>
+                        {display != null && (
+                          <span
+                            role="status"
+                            aria-label={display.ariaLabel}
+                            className={[
+                              "inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium",
+                              display.status === "safe" && "bg-emerald-100 text-emerald-800",
+                              display.status === "warning" && "bg-amber-100 text-amber-800",
+                              display.status === "danger" && "bg-red-100 text-red-800",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                          >
+                            {display.label}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <p className="text-xs text-slate-500">Supplied (USDC)</p>
@@ -275,19 +307,19 @@ export default function LendingPage() {
                   )}
                 </div>
               )}
-            </section>
-          )}
+          </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-slate-900">Actions</h2>
             {!walletClient ? (
               <p className="text-sm text-slate-500">Connect a wallet to supply, withdraw, borrow, or repay.</p>
             ) : (
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
                 <button
                   type="button"
                   onClick={() => setActionModal("supply")}
-                  className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:flex-shrink-0"
+                  aria-label="Supply USDC"
                 >
                   Supply USDC
                 </button>
@@ -297,14 +329,19 @@ export default function LendingPage() {
                   disabled={!hasUsdcSupply}
                   title={!hasUsdcSupply ? "Supply USDC first to withdraw" : undefined}
                   aria-disabled={!hasUsdcSupply}
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
+                  aria-label="Withdraw USDC"
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-shrink-0"
                 >
                   Withdraw
                 </button>
                 <button
                   type="button"
                   onClick={() => setActionModal("borrow")}
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+                  disabled={!hasUsdcSupply}
+                  title={!hasUsdcSupply ? "Supply USDC first to borrow" : undefined}
+                  aria-disabled={!hasUsdcSupply}
+                  aria-label="Borrow USDC"
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-shrink-0"
                 >
                   Borrow USDC
                 </button>
@@ -314,13 +351,35 @@ export default function LendingPage() {
                   disabled={!hasUsdcBorrow}
                   title={!hasUsdcBorrow ? "Borrow USDC first to repay" : undefined}
                   aria-disabled={!hasUsdcBorrow}
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
+                  aria-label="Repay USDC"
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-shrink-0"
                 >
                   Repay
                 </button>
               </div>
             )}
+            {walletClient && hasUsdcSupply && availableBorrowUsd != null && (
+              <p className="mt-3 text-center text-sm text-slate-600" role="status">
+                Available to borrow:{" "}
+                <span className="font-medium text-slate-900">
+                  {formatUsd(availableBorrowUsd)} USDC
+                </span>
+                {" "}(based on your collateral and health factor)
+              </p>
+            )}
           </section>
+
+          <LendingTransactionHistory
+            marketAddressEvm={marketAddressEvm}
+            userEvm={userEvm}
+            walletAddress={walletAddress}
+          />
+
+          <LendingMeritRewards
+            userEvm={userEvm}
+            walletClient={walletClient}
+            walletAddress={walletAddress}
+          />
 
           <PremiumGuard requiredTier="Creative Creator">
             <LendingAdvancedSection
@@ -364,6 +423,7 @@ export default function LendingPage() {
           reserve={baseReserve.reserve}
           sender={evmAddress(walletAddress)}
           walletClient={walletClient ?? undefined}
+          availableBorrowUsd={availableBorrowUsd}
           onClose={() => setActionModal(null)}
           onSuccess={() => setActionModal(null)}
         />
@@ -400,31 +460,6 @@ function LendingAdvancedSection({
   reserve,
   hasUsdcSupply,
 }: LendingAdvancedSectionProps) {
-  const [txCursor, setTxCursor] = useState<string | undefined>(undefined);
-  const [accumulatedTxItems, setAccumulatedTxItems] = useState<Array<{ __typename?: string; timestamp?: string; txHash?: string }>>([]);
-  const [txNextCursor, setTxNextCursor] = useState<string | undefined>(undefined);
-
-  const { data: txHistory, loading: txHistoryLoading } = useUserTransactionHistory({
-    market: marketAddressEvm,
-    user: userEvm,
-    chainId: AAVE_TARGET_CHAIN_ID,
-    orderBy: { date: OrderDirection.Desc },
-    pageSize: PageSize.Fifty,
-    ...(txCursor != null && { cursor: txCursor as never }),
-  });
-
-  useEffect(() => {
-    if (txHistory?.items == null) return;
-    const items = txHistory.items as Array<{ __typename?: string; timestamp?: string; txHash?: string }>;
-    if (txCursor == null) {
-      setAccumulatedTxItems((prev) => (prev.length === 0 ? items : prev));
-    } else {
-      setAccumulatedTxItems((prev) => [...prev, ...items]);
-    }
-    setTxNextCursor(txHistory.pageInfo?.next ?? undefined);
-    setTxCursor(undefined);
-  }, [txHistory?.items, txHistory?.pageInfo?.next, txCursor]);
-
   const [previewAmount, setPreviewAmount] = useState("");
   const [healthPreview, healthPreviewRunning] = useAaveHealthFactorPreview();
   const [healthPreviewResult, setHealthPreviewResult] = useState<{ before: string | null; after: string | null } | null>(null);
@@ -459,34 +494,11 @@ function LendingAdvancedSection({
     }
   }, [previewAmount, reserve, healthPreview, marketAddressEvm, userEvm]);
 
-  const handleLoadMoreTx = useCallback(() => {
-    if (txNextCursor != null) setTxCursor(txNextCursor);
-  }, [txNextCursor]);
-
-  const { data: meritRewards, loading: meritLoading } = useUserMeritRewards({
-    user: userEvm,
-    chainId: AAVE_TARGET_CHAIN_ID,
-  });
-  const [sendTransaction, sending] = useSendTransaction(walletClient ?? undefined);
-  const [meritError, setMeritError] = useState<string | null>(null);
-
-  const handleClaimMerit = useCallback(async () => {
-    if (meritRewards == null || !walletClient) return;
-    setMeritError(null);
-    const result = await sendTransaction(meritRewards.transaction);
-    if (result.isErr()) {
-      setMeritError(result.error?.message ?? "Claim failed");
-    }
-  }, [meritRewards, walletClient, sendTransaction]);
-
-  const displayTxItems = txCursor == null ? accumulatedTxItems : (txHistory?.items ?? accumulatedTxItems) as Array<{ __typename?: string; timestamp?: string; txHash?: string }>;
-  const showLoadMore = Boolean(txNextCursor && !txHistoryLoading);
-
   return (
     <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
       <h2 className="mb-4 text-lg font-semibold text-slate-900">Advanced (Members)</h2>
       {!walletAddress ? (
-        <p className="text-sm text-slate-500">Connect a wallet to see transaction history and claim rewards.</p>
+        <p className="text-sm text-slate-500">Connect a wallet to use the health factor preview.</p>
       ) : (
         <div className="flex flex-col gap-6">
           {reserve != null && (
@@ -524,56 +536,6 @@ function LendingAdvancedSection({
               )}
             </div>
           )}
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">Transaction history</h3>
-            {txHistoryLoading && accumulatedTxItems.length === 0 ? (
-              <p className="text-sm text-slate-500">Loading…</p>
-            ) : displayTxItems.length > 0 ? (
-              <>
-                <ul className="max-h-48 list-none space-y-2 overflow-y-auto text-sm">
-                  {displayTxItems.map((item, i) => (
-                    <li key={(item as { txHash?: string }).txHash ?? i} className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/50 px-3 py-2">
-                      <span className="text-slate-600">{(item as { __typename?: string }).__typename ?? "Transaction"}</span>
-                      <span className="text-xs text-slate-500">{item.timestamp ? new Date(item.timestamp).toLocaleDateString() : "—"}</span>
-                    </li>
-                  ))}
-                </ul>
-                {showLoadMore && (
-                  <button
-                    type="button"
-                    onClick={handleLoadMoreTx}
-                    disabled={txHistoryLoading}
-                    className="mt-2 text-xs font-medium text-primary hover:underline disabled:opacity-50"
-                  >
-                    Load more
-                  </button>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-slate-500">No transactions yet.</p>
-            )}
-          </div>
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">Merit rewards</h3>
-            {meritLoading ? (
-              <p className="text-sm text-slate-500">Loading…</p>
-            ) : meritRewards != null ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm text-slate-600">You have claimable rewards.</p>
-                <button
-                  type="button"
-                  onClick={handleClaimMerit}
-                  disabled={sending.loading || !walletClient}
-                  className="w-fit rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {sending.loading ? "Claiming…" : "Claim rewards"}
-                </button>
-                {meritError && <p className="text-sm text-red-600">{meritError}</p>}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">No claimable Merit rewards.</p>
-            )}
-          </div>
         </div>
       )}
     </section>
@@ -855,6 +817,7 @@ function BorrowModal({
   reserve,
   sender,
   walletClient,
+  availableBorrowUsd,
   onClose,
   onSuccess,
 }: {
@@ -862,6 +825,7 @@ function BorrowModal({
   reserve: Reserve;
   sender: ReturnType<typeof evmAddress>;
   walletClient: WalletClient | undefined;
+  availableBorrowUsd?: number | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -874,6 +838,12 @@ function BorrowModal({
     const n = Number.parseFloat(amount);
     return Number.isNaN(n) || n <= 0 ? null : n;
   }, [amount]);
+
+  const handleMaxClick = useCallback(() => {
+    if (availableBorrowUsd != null && availableBorrowUsd > 0) {
+      setAmount(String(availableBorrowUsd));
+    }
+  }, [availableBorrowUsd]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -912,8 +882,21 @@ function BorrowModal({
   return (
     <Modal open title="Borrow USDC" onClose={onClose} showCloseButton className="max-w-lg bg-white text-slate-900">
       <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
+        {availableBorrowUsd != null && availableBorrowUsd > 0 && (
+          <p className="text-sm text-slate-600" role="status">
+            Available to borrow:{" "}
+            <span className="font-medium text-slate-900">{formatUsd(availableBorrowUsd)} USDC</span>
+          </p>
+        )}
         <label className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-slate-500">Amount (USDC)</span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">Amount (USDC)</span>
+            {availableBorrowUsd != null && availableBorrowUsd > 0 && (
+              <span className="text-xs text-slate-500">
+                Max: {formatUsd(availableBorrowUsd)}
+              </span>
+            )}
+          </div>
           <input
             type="text"
             inputMode="decimal"
@@ -921,7 +904,18 @@ function BorrowModal({
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
             className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
+            aria-label="Borrow amount in USDC"
           />
+          {availableBorrowUsd != null && availableBorrowUsd > 0 && (
+            <button
+              type="button"
+              onClick={handleMaxClick}
+              className="w-fit text-xs font-medium text-primary hover:underline"
+              aria-label="Use maximum available to borrow"
+            >
+              Use max
+            </button>
+          )}
         </label>
         {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
         <div className="flex gap-2">
