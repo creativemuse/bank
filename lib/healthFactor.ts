@@ -49,3 +49,20 @@ export function getHealthFactorStatusLabel(
   const { label, ariaLabel } = labels[status];
   return { status, label, ariaLabel };
 }
+
+/**
+ * Format health factor for display in UI (e.g. preview before/after).
+ * Returns "∞" or "No borrows (N/A)" when there is no borrow or HF is infinite.
+ */
+export function formatHealthFactorDisplay(
+  healthFactor: number | string | null | undefined,
+  hasBorrows?: boolean,
+): string {
+  if (healthFactor == null || healthFactor === "") {
+    return hasBorrows ? "—" : "No borrows (N/A)";
+  }
+  const value = typeof healthFactor === "string" ? Number.parseFloat(healthFactor) : Number(healthFactor);
+  if (Number.isNaN(value)) return hasBorrows ? "—" : "No borrows (N/A)";
+  if (value === Infinity || value >= 1e10) return "∞";
+  return value.toFixed(2);
+}

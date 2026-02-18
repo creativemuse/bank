@@ -18,6 +18,7 @@ import {
   useWithdraw,
 } from "@aave/react";
 import { useSendTransaction } from "@aave/react/viem";
+import { usePublicClient } from "wagmi";
 
 import { Modal } from "@/components/common/Modal";
 import { CopyWrapper } from "@/components/common/CopyWrapper";
@@ -29,10 +30,11 @@ import { useBalance } from "@/hooks/useBalance";
 import { useAaveWalletClient } from "@/hooks/useAaveWalletClient";
 import { useMembership } from "@/context/MembershipContext";
 import { formatPercent, formatUsd } from "@/lib/formatters";
-import { getHealthFactorStatusLabel } from "@/lib/healthFactor";
+import { formatHealthFactorDisplay, getHealthFactorStatusLabel } from "@/lib/healthFactor";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { AAVE_TARGET_CHAIN_ID } from "@/lib/config/aave";
 import { isAddress, type WalletClient } from "viem";
+import { toast } from "sonner";
 import type { Market, Reserve, MarketUserReserveSupplyPosition, MarketUserReserveBorrowPosition } from "@aave/react";
 
 const AAVE_USDC_RESERVE_URL =
@@ -388,6 +390,9 @@ export default function LendingPage() {
               walletClient={walletClient}
               reserve={baseReserve.reserve ?? undefined}
               hasUsdcSupply={hasUsdcSupply}
+              currentHealthFactor={userMarketState?.healthFactor ?? null}
+              supplyBalance={usdcSupplyPosition?.balance?.amount?.value ?? null}
+              hasBorrows={hasUsdcBorrow}
             />
           </PremiumGuard>
         </>
@@ -449,6 +454,9 @@ type LendingAdvancedSectionProps = {
   walletClient: WalletClient | undefined;
   reserve?: Reserve | null;
   hasUsdcSupply: boolean;
+  currentHealthFactor: number | string | null | undefined;
+  supplyBalance: string | null;
+  hasBorrows: boolean;
 };
 
 function LendingAdvancedSection({
@@ -458,10 +466,20 @@ function LendingAdvancedSection({
   walletClient,
   reserve,
   hasUsdcSupply,
+  currentHealthFactor,
+  supplyBalance,
+  hasBorrows,
 }: LendingAdvancedSectionProps) {
   const [previewAmount, setPreviewAmount] = useState("");
   const [healthPreview, healthPreviewRunning] = useAaveHealthFactorPreview();
   const [healthPreviewResult, setHealthPreviewResult] = useState<{ before: string | null; after: string | null } | null>(null);
+
+  const currentHealthLabel = formatHealthFactorDisplay(currentHealthFactor, hasBorrows);
+  const canUseMax = hasUsdcSupply && supplyBalance != null && Number(supplyBalance) > 0;
+
+  const handleUseMax = useCallback(() => {
+    if (supplyBalance != null) setPreviewAmount(supplyBalance);
+  }, [supplyBalance]);
 
   const handleHealthPreview = useCallback(async () => {
     const num = Number.parseFloat(previewAmount);
@@ -506,32 +524,63 @@ function LendingAdvancedSection({
               title={!hasUsdcSupply ? "Supply USDC first to use health factor preview" : undefined}
               aria-hidden={!hasUsdcSupply}
             >
-              <h3 className="mb-2 text-sm font-medium text-slate-700">Health factor preview</h3>
-              <p className="mb-2 text-xs text-slate-500">Preview health factor after supplying USDC.</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={previewAmount}
-                  onChange={(e) => setPreviewAmount(e.target.value)}
-                  placeholder="Amount (e.g. 100)"
-                  className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-900"
-                  aria-label="Preview supply amount"
-                  disabled={!hasUsdcSupply}
-                />
-                <button
-                  type="button"
-                  onClick={handleHealthPreview}
-                  disabled={!hasUsdcSupply || healthPreviewRunning.loading || !previewAmount}
-                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  {healthPreviewRunning.loading ? "Previewing…" : "Preview"}
-                </button>
+              <h3 className="mb-1 text-sm font-medium text-slate-700">Health factor preview</h3>
+              <p className="mb-3 text-xs text-slate-500">
+                See how your health factor would change if you supplied more USDC. This is most useful when you have an open borrow.
+              </p>
+
+              <div className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                <span className="font-medium">Current health factor: </span>
+                <span aria-label={`Current health factor is ${currentHealthLabel}`}>{currentHealthLabel}</span>
               </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-slate-500">Additional USDC to supply (preview)</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={previewAmount}
+                      onChange={(e) => setPreviewAmount(e.target.value)}
+                      placeholder="0"
+                      className="w-36 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
+                      aria-label="Preview supply amount in USDC"
+                      disabled={!hasUsdcSupply}
+                    />
+                    {canUseMax && (
+                      <button
+                        type="button"
+                        onClick={handleUseMax}
+                        className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                        aria-label="Use maximum supplied USDC balance"
+                      >
+                        Use max
+                      </button>
+                    )}
+                  </div>
+                </label>
+                <div className="flex items-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleHealthPreview}
+                    disabled={!hasUsdcSupply || healthPreviewRunning.loading || !previewAmount}
+                    className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {healthPreviewRunning.loading ? "Previewing…" : "Preview"}
+                  </button>
+                </div>
+              </div>
+
               {healthPreviewResult != null && (
-                <p className="mt-2 text-sm text-slate-600">
-                  Before: {healthPreviewResult.before ?? "—"} → After: {healthPreviewResult.after ?? "—"}
-                </p>
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                  <p className="font-medium text-slate-800">Preview result</p>
+                  <p className="mt-1 text-slate-600">
+                    Before: <strong>{formatHealthFactorDisplay(healthPreviewResult.before, hasBorrows)}</strong>
+                    {" → "}
+                    After: <strong>{formatHealthFactorDisplay(healthPreviewResult.after, hasBorrows)}</strong>
+                  </p>
+                </div>
               )}
             </div>
           )}
@@ -592,6 +641,8 @@ function CollateralToggle({
   );
 }
 
+const TX_CONFIRMATION_TIMEOUT_MS = 120_000;
+
 function SupplyModal({
   market,
   reserve,
@@ -611,10 +662,11 @@ function SupplyModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [supply, supplying] = useSupply();
-  const [sendTransaction, sending] = useSendTransaction(walletClient ?? undefined);
+  const [supply] = useSupply();
+  const publicClient = usePublicClient();
   const [amount, setAmount] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const permitSupported = reserve.permitSupported === true;
 
   const parsed = useMemo(() => {
@@ -626,38 +678,88 @@ function SupplyModal({
     setAmount(walletUsdcBalance);
   }, [walletUsdcBalance]);
 
+  const sendAndWait = useCallback(
+    async (tx: { to: string; data: string; value?: string }) => {
+      if (!walletClient || !publicClient) throw new Error("Wallet or RPC not available");
+      const valueBigInt = tx.value ? BigInt(tx.value) : 0n;
+      const hash = await walletClient.sendTransaction({
+        to: tx.to as `0x${string}`,
+        data: (tx.data || "0x") as `0x${string}`,
+        value: valueBigInt,
+        account: { address: sender, type: "json-rpc" },
+        chain: publicClient.chain,
+      });
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        timeout: TX_CONFIRMATION_TIMEOUT_MS,
+      });
+      return hash;
+    },
+    [walletClient, publicClient, sender],
+  );
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       setErrorMessage(null);
       if (parsed == null || !walletClient) return;
-      const result = await supply({
-        market: market.address,
-        amount: {
-          erc20: {
-            currency: reserve.underlyingToken.address,
-            value: bigDecimal(parsed),
-          },
-        },
-        sender,
-        chainId: AAVE_TARGET_CHAIN_ID,
-      }).andThen((plan) => {
-        if (plan.__typename === "InsufficientBalanceError") {
-          return errAsync(new Error(`Insufficient balance. Required: ${plan.required?.value} USDC.`));
-        }
-        if (plan.__typename === "TransactionRequest") {
-          return sendTransaction(plan);
-        }
-        return sendTransaction(plan.approval).andThen(() => sendTransaction(plan.originalTransaction));
-      });
-      if (result.isErr()) {
-        setErrorMessage(result.error?.message ?? "Supply failed");
+      if (!publicClient) {
+        setErrorMessage("Network unavailable. Please try again.");
         return;
       }
-      onSuccess();
-      onClose();
+      setIsSubmitting(true);
+      try {
+        const planResult = await supply({
+          market: market.address,
+          amount: {
+            erc20: {
+              currency: reserve.underlyingToken.address,
+              value: bigDecimal(parsed),
+            },
+          },
+          sender,
+          chainId: AAVE_TARGET_CHAIN_ID,
+        });
+
+        if (planResult.isErr()) {
+          setErrorMessage(planResult.error?.message ?? "Supply failed");
+          return;
+        }
+        const plan = planResult.value;
+        if (plan.__typename === "InsufficientBalanceError") {
+          setErrorMessage(`Insufficient balance. Required: ${plan.required?.value} USDC.`);
+          return;
+        }
+        if (plan.__typename === "TransactionRequest") {
+          await sendAndWait(plan);
+        } else {
+          await sendAndWait(plan.approval);
+          await sendAndWait(plan.originalTransaction);
+        }
+        toast.success("Supply complete", {
+          description: `${formatUsd(parsed)} USDC supplied successfully.`,
+        });
+        onSuccess();
+        onClose();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Supply failed";
+        setErrorMessage(message);
+      } finally {
+        setIsSubmitting(false);
+      }
     },
-    [parsed, walletClient, supply, sendTransaction, market.address, reserve.underlyingToken.address, sender, onSuccess, onClose],
+    [
+      parsed,
+      walletClient,
+      publicClient,
+      supply,
+      sendAndWait,
+      market.address,
+      reserve.underlyingToken.address,
+      sender,
+      onSuccess,
+      onClose,
+    ],
   );
 
   const balanceDisplay = isBalanceLoading ? "Loading…" : (parseFloat(walletUsdcBalance).toFixed(2));
@@ -696,10 +798,10 @@ function SupplyModal({
         <div className="flex gap-2">
           <button
             type="submit"
-            disabled={supplying.loading || sending.loading || parsed == null}
+            disabled={isSubmitting || parsed == null}
             className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {supplying.loading || sending.loading ? "Processing…" : "Supply"}
+            {isSubmitting ? "Processing…" : "Supply"}
           </button>
           <button type="button" onClick={onClose} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900">
             Cancel
@@ -727,11 +829,12 @@ function WithdrawModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [withdraw, withdrawing] = useWithdraw();
-  const [sendTransaction, sending] = useSendTransaction(walletClient ?? undefined);
+  const [withdraw] = useWithdraw();
+  const publicClient = usePublicClient();
   const [amount, setAmount] = useState("");
   const [useMax, setUseMax] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const parsed = useMemo(() => {
     if (useMax) return null;
@@ -739,38 +842,91 @@ function WithdrawModal({
     return Number.isNaN(n) || n <= 0 ? null : n;
   }, [amount, useMax]);
 
+  const sendAndWait = useCallback(
+    async (tx: { to: string; data: string; value?: string }) => {
+      if (!walletClient || !publicClient) throw new Error("Wallet or RPC not available");
+      const valueBigInt = tx.value ? BigInt(tx.value) : 0n;
+      const hash = await walletClient.sendTransaction({
+        to: tx.to as `0x${string}`,
+        data: (tx.data || "0x") as `0x${string}`,
+        value: valueBigInt,
+        account: { address: sender, type: "json-rpc" },
+        chain: publicClient.chain,
+      });
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        timeout: TX_CONFIRMATION_TIMEOUT_MS,
+      });
+      return hash;
+    },
+    [walletClient, publicClient, sender],
+  );
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       setErrorMessage(null);
       if (!walletClient) return;
-      const result = await withdraw({
-        market: market.address,
-        amount: {
-          erc20: {
-            currency: reserve.underlyingToken.address,
-            value: useMax ? { max: true } : { exact: bigDecimal(parsed!) },
-          },
-        },
-        sender,
-        chainId: AAVE_TARGET_CHAIN_ID,
-      }).andThen((plan) => {
-        if (plan.__typename === "InsufficientBalanceError") {
-          return errAsync(new Error(`Insufficient balance. Required: ${plan.required?.value} USDC.`));
-        }
-        if (plan.__typename === "TransactionRequest") {
-          return sendTransaction(plan);
-        }
-        return sendTransaction(plan.approval).andThen(() => sendTransaction(plan.originalTransaction));
-      });
-      if (result.isErr()) {
-        setErrorMessage(result.error?.message ?? "Withdraw failed");
+      if (!publicClient) {
+        setErrorMessage("Network unavailable. Please try again.");
         return;
       }
-      onSuccess();
-      onClose();
+      if (!useMax && parsed == null) return;
+      setIsSubmitting(true);
+      try {
+        const planResult = await withdraw({
+          market: market.address,
+          amount: {
+            erc20: {
+              currency: reserve.underlyingToken.address,
+              value: useMax ? { max: true } : { exact: bigDecimal(parsed!) },
+            },
+          },
+          sender,
+          chainId: AAVE_TARGET_CHAIN_ID,
+        });
+        if (planResult.isErr()) {
+          setErrorMessage(planResult.error?.message ?? "Withdraw failed");
+          return;
+        }
+        const plan = planResult.value;
+        if (plan.__typename === "InsufficientBalanceError") {
+          setErrorMessage(`Insufficient balance. Required: ${plan.required?.value} USDC.`);
+          return;
+        }
+        if (plan.__typename === "TransactionRequest") {
+          await sendAndWait(plan);
+        } else {
+          await sendAndWait(plan.approval);
+          await sendAndWait(plan.originalTransaction);
+        }
+        const amountLabel = useMax ? (supplyPosition?.balance?.amount?.value ?? "max") : String(parsed);
+        toast.success("Withdraw complete", {
+          description: `${formatUsd(amountLabel)} USDC withdrawn successfully.`,
+        });
+        onSuccess();
+        onClose();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Withdraw failed";
+        setErrorMessage(message);
+      } finally {
+        setIsSubmitting(false);
+      }
     },
-    [useMax, parsed, walletClient, withdraw, sendTransaction, market.address, reserve.underlyingToken.address, sender, onSuccess, onClose],
+    [
+      useMax,
+      parsed,
+      walletClient,
+      publicClient,
+      withdraw,
+      sendAndWait,
+      supplyPosition?.balance?.amount?.value,
+      market.address,
+      reserve.underlyingToken.address,
+      sender,
+      onSuccess,
+      onClose,
+    ],
   );
 
   const balance = supplyPosition?.balance?.amount?.value ?? "0";
@@ -797,10 +953,10 @@ function WithdrawModal({
         <div className="flex gap-2">
           <button
             type="submit"
-            disabled={withdrawing.loading || sending.loading || (!useMax && parsed == null)}
+            disabled={isSubmitting || (!useMax && parsed == null)}
             className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {withdrawing.loading || sending.loading ? "Processing…" : "Withdraw"}
+            {isSubmitting ? "Processing…" : "Withdraw"}
           </button>
           <button type="button" onClick={onClose} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900">
             Cancel
@@ -828,10 +984,11 @@ function BorrowModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [borrow, borrowing] = useBorrow();
-  const [sendTransaction, sending] = useSendTransaction(walletClient ?? undefined);
+  const [borrow] = useBorrow();
+  const publicClient = usePublicClient();
   const [amount, setAmount] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const parsed = useMemo(() => {
     const n = Number.parseFloat(amount);
@@ -844,38 +1001,87 @@ function BorrowModal({
     }
   }, [availableBorrowUsd]);
 
+  const sendAndWait = useCallback(
+    async (tx: { to: string; data: string; value?: string }) => {
+      if (!walletClient || !publicClient) throw new Error("Wallet or RPC not available");
+      const valueBigInt = tx.value ? BigInt(tx.value) : 0n;
+      const hash = await walletClient.sendTransaction({
+        to: tx.to as `0x${string}`,
+        data: (tx.data || "0x") as `0x${string}`,
+        value: valueBigInt,
+        account: { address: sender, type: "json-rpc" },
+        chain: publicClient.chain,
+      });
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        timeout: TX_CONFIRMATION_TIMEOUT_MS,
+      });
+      return hash;
+    },
+    [walletClient, publicClient, sender],
+  );
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       setErrorMessage(null);
       if (parsed == null || !walletClient) return;
-      const result = await borrow({
-        market: market.address,
-        amount: {
-          erc20: {
-            currency: reserve.underlyingToken.address,
-            value: bigDecimal(parsed),
-          },
-        },
-        sender,
-        chainId: AAVE_TARGET_CHAIN_ID,
-      }).andThen((plan) => {
-        if (plan.__typename === "InsufficientBalanceError") {
-          return errAsync(new Error(`Insufficient balance. Required: ${plan.required?.value} USDC.`));
-        }
-        if (plan.__typename === "TransactionRequest") {
-          return sendTransaction(plan);
-        }
-        return sendTransaction(plan.approval).andThen(() => sendTransaction(plan.originalTransaction));
-      });
-      if (result.isErr()) {
-        setErrorMessage(result.error?.message ?? "Borrow failed");
+      if (!publicClient) {
+        setErrorMessage("Network unavailable. Please try again.");
         return;
       }
-      onSuccess();
-      onClose();
+      setIsSubmitting(true);
+      try {
+        const planResult = await borrow({
+          market: market.address,
+          amount: {
+            erc20: {
+              currency: reserve.underlyingToken.address,
+              value: bigDecimal(parsed),
+            },
+          },
+          sender,
+          chainId: AAVE_TARGET_CHAIN_ID,
+        });
+        if (planResult.isErr()) {
+          setErrorMessage(planResult.error?.message ?? "Borrow failed");
+          return;
+        }
+        const plan = planResult.value;
+        if (plan.__typename === "InsufficientBalanceError") {
+          setErrorMessage(`Insufficient balance. Required: ${plan.required?.value} USDC.`);
+          return;
+        }
+        if (plan.__typename === "TransactionRequest") {
+          await sendAndWait(plan);
+        } else {
+          await sendAndWait(plan.approval);
+          await sendAndWait(plan.originalTransaction);
+        }
+        toast.success("Borrow complete", {
+          description: `${formatUsd(parsed)} USDC borrowed successfully.`,
+        });
+        onSuccess();
+        onClose();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Borrow failed";
+        setErrorMessage(message);
+      } finally {
+        setIsSubmitting(false);
+      }
     },
-    [parsed, walletClient, borrow, sendTransaction, market.address, reserve.underlyingToken.address, sender, onSuccess, onClose],
+    [
+      parsed,
+      walletClient,
+      publicClient,
+      borrow,
+      sendAndWait,
+      market.address,
+      reserve.underlyingToken.address,
+      sender,
+      onSuccess,
+      onClose,
+    ],
   );
 
   return (
@@ -920,10 +1126,10 @@ function BorrowModal({
         <div className="flex gap-2">
           <button
             type="submit"
-            disabled={borrowing.loading || sending.loading || parsed == null}
+            disabled={isSubmitting || parsed == null}
             className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {borrowing.loading || sending.loading ? "Processing…" : "Borrow"}
+            {isSubmitting ? "Processing…" : "Borrow"}
           </button>
           <button type="button" onClick={onClose} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900">
             Cancel
@@ -955,11 +1161,12 @@ function RepayModal({
 }) {
   const [repayForMode, setRepayForMode] = useState<RepayForMode>("self");
   const [otherBorrowerAddress, setOtherBorrowerAddress] = useState("");
-  const [repay, repaying] = useRepay();
-  const [sendTransaction, sending] = useSendTransaction(walletClient ?? undefined);
+  const [repay] = useRepay();
+  const publicClient = usePublicClient();
   const [amount, setAmount] = useState("");
   const [useMax, setUseMax] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const otherBorrowerEvm = useMemo(() => {
     if (repayForMode !== "other" || !otherBorrowerAddress.trim() || !isAddress(otherBorrowerAddress.trim())) return null;
@@ -991,50 +1198,94 @@ function RepayModal({
     return Number.isNaN(n) || n <= 0 ? null : n;
   }, [amount, useMax]);
 
+  const sendAndWait = useCallback(
+    async (tx: { to: string; data: string; value?: string }) => {
+      if (!walletClient || !publicClient) throw new Error("Wallet or RPC not available");
+      const valueBigInt = tx.value ? BigInt(tx.value) : 0n;
+      const hash = await walletClient.sendTransaction({
+        to: tx.to as `0x${string}`,
+        data: (tx.data || "0x") as `0x${string}`,
+        value: valueBigInt,
+        account: { address: sender, type: "json-rpc" },
+        chain: publicClient.chain,
+      });
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        timeout: TX_CONFIRMATION_TIMEOUT_MS,
+      });
+      return hash;
+    },
+    [walletClient, publicClient, sender],
+  );
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       setErrorMessage(null);
       if (!walletClient) return;
+      if (!publicClient) {
+        setErrorMessage("Network unavailable. Please try again.");
+        return;
+      }
       if (repayForMode === "other" && !otherBorrowerEvm) {
         setErrorMessage("Enter a valid borrower address.");
         return;
       }
-      const result = await repay({
-        market: market.address,
-        amount: {
-          erc20: {
-            currency: reserve.underlyingToken.address,
-            value: useMax ? { max: true } : { exact: bigDecimal(parsed!) },
+      if (!useMax && parsed == null) return;
+      if (repayForMode === "other" && !canRepayOther) return;
+      setIsSubmitting(true);
+      try {
+        const planResult = await repay({
+          market: market.address,
+          amount: {
+            erc20: {
+              currency: reserve.underlyingToken.address,
+              value: useMax ? { max: true } : { exact: bigDecimal(parsed!) },
+            },
           },
-        },
-        sender,
-        chainId: AAVE_TARGET_CHAIN_ID,
-        ...(repayForMode === "other" && otherBorrowerEvm && { onBehalfOf: otherBorrowerEvm }),
-      }).andThen((plan) => {
+          sender,
+          chainId: AAVE_TARGET_CHAIN_ID,
+          ...(repayForMode === "other" && otherBorrowerEvm && { onBehalfOf: otherBorrowerEvm }),
+        });
+        if (planResult.isErr()) {
+          setErrorMessage(planResult.error?.message ?? "Repay failed");
+          return;
+        }
+        const plan = planResult.value;
         if (plan.__typename === "InsufficientBalanceError") {
-          return errAsync(new Error(`Insufficient balance. Required: ${plan.required?.value} USDC.`));
+          setErrorMessage(`Insufficient balance. Required: ${plan.required?.value} USDC.`);
+          return;
         }
         if (plan.__typename === "TransactionRequest") {
-          return sendTransaction(plan);
+          await sendAndWait(plan);
+        } else {
+          await sendAndWait(plan.approval);
+          await sendAndWait(plan.originalTransaction);
         }
-        return sendTransaction(plan.approval).andThen(() => sendTransaction(plan.originalTransaction));
-      });
-      if (result.isErr()) {
-        setErrorMessage(result.error?.message ?? "Repay failed");
-        return;
+        const amountLabel = useMax ? debt : String(parsed);
+        toast.success("Repay complete", {
+          description: `${formatUsd(amountLabel)} USDC repaid successfully.`,
+        });
+        onSuccess();
+        onClose();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Repay failed";
+        setErrorMessage(message);
+      } finally {
+        setIsSubmitting(false);
       }
-      onSuccess();
-      onClose();
     },
     [
       repayForMode,
       otherBorrowerEvm,
       useMax,
       parsed,
+      canRepayOther,
       walletClient,
+      publicClient,
       repay,
-      sendTransaction,
+      sendAndWait,
+      debt,
       market.address,
       reserve.underlyingToken.address,
       sender,
@@ -1044,8 +1295,7 @@ function RepayModal({
   );
 
   const submitDisabled =
-    repaying.loading ||
-    sending.loading ||
+    isSubmitting ||
     (!useMax && parsed == null) ||
     (repayForMode === "other" && !canRepayOther);
 
@@ -1127,7 +1377,7 @@ function RepayModal({
             disabled={submitDisabled}
             className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {repaying.loading || sending.loading ? "Processing…" : "Repay"}
+            {isSubmitting ? "Processing…" : "Repay"}
           </button>
           <button type="button" onClick={onClose} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900">
             Cancel

@@ -7,6 +7,7 @@ import {
   CrossmintWalletProvider,
 } from "@crossmint/client-sdk-react-ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
 import { AaveProvider, AaveClient, production } from "@aave/react";
 
@@ -103,6 +104,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               >
                 <MembershipProvider>
                   {children}
+                  <Toaster richColors position="top-center" closeButton />
                 </MembershipProvider>
               </CrossmintWalletProvider>
             </CrossmintAuthProvider>
