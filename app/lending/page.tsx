@@ -17,7 +17,6 @@ import {
   useUserSupplies,
   useWithdraw,
 } from "@aave/react";
-import { useSendTransaction } from "@aave/react/viem";
 import { usePublicClient } from "wagmi";
 
 import { Modal } from "@/components/common/Modal";
@@ -30,7 +29,7 @@ import { useBalance } from "@/hooks/useBalance";
 import { useAaveWalletClient } from "@/hooks/useAaveWalletClient";
 import { useMembership } from "@/context/MembershipContext";
 import { formatPercent, formatUsd } from "@/lib/formatters";
-import { formatHealthFactorDisplay, getHealthFactorStatusLabel } from "@/lib/healthFactor";
+import { canSafelyDisableCollateral, formatHealthFactorDisplay, getHealthFactorStatusLabel } from "@/lib/healthFactor";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { AAVE_TARGET_CHAIN_ID } from "@/lib/config/aave";
 import { isAddress, type WalletClient } from "viem";
@@ -129,6 +128,12 @@ function LendingContent({
     usdcSupplyPosition &&
     usdcSupplyPosition.canBeCollateral != null &&
     (usdcSupplyPosition.isCollateral ? true : usdcSupplyPosition.canBeCollateral);
+
+  const disableCollateralBlocked =
+    canToggleCollateral &&
+    usdcSupplyPosition!.isCollateral &&
+    hasUsdcBorrow &&
+    !canSafelyDisableCollateral(userMarketState?.healthFactor, hasUsdcBorrow);
 
   const availableBorrowUsd = useMemo(() => {
     const raw = userMarketState?.availableBorrowsBase;
@@ -245,6 +250,7 @@ function LendingContent({
                       position={usdcSupplyPosition!}
                       userEvm={userEvm!}
                       walletClient={walletClient}
+                      disableCollateralBlocked={disableCollateralBlocked}
                       onSuccess={() => {}}
                     />
                   )}
@@ -636,59 +642,134 @@ function LendingAdvancedSection({
   );
 }
 
+const TX_CONFIRMATION_TIMEOUT_MS = 120_000;
+
+const COLLATERAL_TOOLTIP =
+  "Yield-Only Mode — Earn a return without putting this deposit on the line for loans. It won't be liquidated even if other borrow positions get risky.";
+
+const DISABLE_COLLATERAL_BLOCKED_MSG =
+  "Cannot disable: This asset is currently securing your active loan. Repay your debt first to unlock this protection.";
+
 function CollateralToggle({
   market,
   position,
   userEvm,
   walletClient,
+  disableCollateralBlocked,
   onSuccess,
 }: {
   market: Market;
   position: MarketUserReserveSupplyPosition;
   userEvm: ReturnType<typeof evmAddress>;
   walletClient: WalletClient | undefined;
+  disableCollateralBlocked?: boolean;
   onSuccess: () => void;
 }) {
-  const [toggleCollateral, toggling] = useCollateralToggle();
-  // Cast needed: walletClient from our viem and @aave/react/viem use different viem type resolutions (viem vs viem/_types)
-  const [sendTransaction, sending] = useSendTransaction((walletClient ?? undefined) as never);
+  const [toggleCollateral] = useCollateralToggle();
+  const publicClient = usePublicClient();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
+  const isDisableAction = position.isCollateral;
+  const buttonDisabled = isToggling || !walletClient || (isDisableAction && disableCollateralBlocked);
+
+  const sendAndWait = useCallback(
+    async (tx: { to: string; data: string; value?: string }) => {
+      if (!walletClient || !publicClient) throw new Error("Wallet or RPC not available");
+      const valueBigInt = tx.value ? BigInt(tx.value) : 0n;
+      const hash = await walletClient.sendTransaction({
+        to: tx.to as `0x${string}`,
+        data: (tx.data || "0x") as `0x${string}`,
+        value: valueBigInt,
+        account: { address: userEvm, type: "json-rpc" },
+        chain: publicClient.chain as never as import("viem").Chain,
+      });
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        timeout: TX_CONFIRMATION_TIMEOUT_MS,
+      });
+      return hash;
+    },
+    [walletClient, publicClient, userEvm],
+  );
 
   const handleToggle = useCallback(async () => {
     if (!walletClient) return;
     setErrorMsg(null);
-    const result = await toggleCollateral({
-      market: market.address,
-      underlyingToken: position.currency.address,
-      user: userEvm,
-      chainId: AAVE_TARGET_CHAIN_ID,
-    }).andThen(sendTransaction);
-    if (result.isErr()) {
-      setErrorMsg(result.error?.message ?? "Toggle failed");
-    } else {
+    setIsToggling(true);
+    try {
+      const result = await toggleCollateral({
+        market: market.address,
+        underlyingToken: position.currency.address,
+        user: userEvm,
+        chainId: AAVE_TARGET_CHAIN_ID,
+      });
+      if (result.isErr()) {
+        const message = result.error?.message ?? "Toggle failed";
+        setErrorMsg(message);
+        toast.error("Collateral update failed", { description: message });
+        return;
+      }
+      const plan = result.value;
+      await sendAndWait(plan);
+      toast.success("Collateral updated", {
+        description: position.isCollateral
+          ? "USDC is no longer used as collateral."
+          : "USDC is now used as collateral.",
+      });
       onSuccess();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Collateral update failed";
+      setErrorMsg(message);
+      toast.error("Collateral update failed", { description: message });
+    } finally {
+      setIsToggling(false);
     }
-  }, [market.address, position.currency.address, userEvm, walletClient, toggleCollateral, sendTransaction, onSuccess]);
+  }, [
+    market.address,
+    position.currency.address,
+    position.isCollateral,
+    userEvm,
+    walletClient,
+    toggleCollateral,
+    sendAndWait,
+    onSuccess,
+  ]);
 
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-slate-500">
         Collateral: {position.isCollateral ? "Enabled" : "Disabled"}
       </p>
+      <p className="text-xs text-slate-500">
+        {COLLATERAL_TOOLTIP}
+      </p>
+      <details className="text-xs text-slate-500">
+        <summary className="cursor-pointer font-medium text-slate-600 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-slate-500 rounded">
+          Learn more
+        </summary>
+        <p className="mt-1 text-slate-600">
+          When enabled, this asset increases your Borrowing Power but is subject to liquidation if your Health Factor drops. When disabled, it acts as a pure savings account—earning interest while remaining untouchable by the protocol&apos;s liquidation engine.
+        </p>
+      </details>
       <button
         type="button"
         onClick={handleToggle}
-        disabled={toggling.loading || sending.loading || !walletClient}
-        className="w-fit rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+        disabled={buttonDisabled}
+        title={isDisableAction ? COLLATERAL_TOOLTIP : undefined}
+        className="w-fit rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label={position.isCollateral ? "Disable collateral" : "Enable collateral"}
       >
-        {toggling.loading || sending.loading ? "Processing…" : position.isCollateral ? "Disable collateral" : "Enable collateral"}
+        {isToggling ? "Processing…" : position.isCollateral ? "Disable collateral" : "Enable collateral"}
       </button>
+      {disableCollateralBlocked && isDisableAction && (
+        <p className="text-sm text-amber-800" role="alert">
+          {DISABLE_COLLATERAL_BLOCKED_MSG}
+        </p>
+      )}
       {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
     </div>
   );
 }
-
-const TX_CONFIRMATION_TIMEOUT_MS = 120_000;
 
 function SupplyModal({
   market,
