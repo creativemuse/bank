@@ -14,6 +14,24 @@ export type HealthFactorStatusLabel = {
 const DANGER_THRESHOLD = 1;
 const WARNING_THRESHOLD = 1.2;
 
+/** Minimum health factor required to allow disabling an asset as collateral (when user has borrows). */
+export const DISABLE_COLLATERAL_MIN_HEALTH_FACTOR = 1.05;
+
+/**
+ * Returns true if the user can safely disable collateral: either they have no borrows,
+ * or their current health factor is at least DISABLE_COLLATERAL_MIN_HEALTH_FACTOR.
+ */
+export function canSafelyDisableCollateral(
+  healthFactor: number | string | null | undefined,
+  hasBorrows: boolean,
+): boolean {
+  if (!hasBorrows) return true;
+  if (healthFactor == null || healthFactor === "") return false;
+  const value = typeof healthFactor === "string" ? Number.parseFloat(healthFactor) : Number(healthFactor);
+  if (Number.isNaN(value)) return false;
+  return value >= DISABLE_COLLATERAL_MIN_HEALTH_FACTOR;
+}
+
 /**
  * Maps health factor and optional borrow state to a status for the Risk Meter.
  * Returns null when there is no supply/borrow or no health factor (e.g. no borrows).
