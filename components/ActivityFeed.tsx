@@ -13,7 +13,7 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
   const { data, isLoading, error } = useActivityFeed();
   const { wallet } = useWallet();
   return (
-    <Container className="flex min-h-[350px] max-h-[600px] w-full max-w-5xl flex-grow flex-col overflow-hidden">
+    <Container className="flex min-h-[280px] max-h-[70vh] w-full max-w-5xl flex-grow flex-col overflow-hidden sm:min-h-[350px] sm:max-h-[600px]">
       <div className="mb-2 flex-shrink-0 text-base text-slate-500">Last activity</div>
       <div
         className={`flex w-full flex-1 flex-col items-center overflow-hidden ${isLoading || !data?.events?.length ? "justify-center" : "justify-start"}`}
@@ -41,13 +41,16 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
           )}
           {error && <div className="text-center text-red-500">{error.message}</div>}
           {!isLoading && !error && data?.events?.length && data?.events?.length > 0 ? (
-            <ul className="w-full min-h-0 flex-1 overflow-y-auto pr-2 pt-2 pb-2">
+            <ul
+              className="w-full max-h-48 overflow-y-auto pr-2 pt-2 pb-2 sm:max-h-56 md:max-h-72"
+              aria-label="Last activity transaction history"
+            >
               {data?.events.map((event) => {
                 const isOutgoing =
                   event.from_address.toLowerCase() === wallet?.address.toLowerCase();
                 const counterparty = isOutgoing ? event.to_address : event.from_address;
                 return (
-                  <li key={event.transaction_hash} className="flex items-center gap-4 py-4">
+                  <li key={event.transaction_hash} className="flex items-center gap-4 py-3 sm:py-4">
                     <div className="flex h-[50px] w-[50px]  items-center justify-center rounded-full bg-slate-50">
                       {isOutgoing ? (
                         <Image src="/arrow-up-right-icon.svg" alt="Sent" width={24} height={24} />
