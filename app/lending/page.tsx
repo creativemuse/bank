@@ -710,16 +710,7 @@ function CollateralToggle({
         return;
       }
       const plan = result.value;
-      if (plan.__typename === "TransactionRequest") {
-        await sendAndWait(plan);
-      } else if (plan.__typename === "ApprovalRequired") {
-        await sendAndWait(plan.approval);
-        await sendAndWait(plan.originalTransaction);
-      } else {
-        setErrorMsg("Unexpected response from collateral toggle");
-        toast.error("Collateral update failed", { description: "Unexpected response." });
-        return;
-      }
+      await sendAndWait(plan);
       toast.success("Collateral updated", {
         description: position.isCollateral
           ? "USDC is no longer used as collateral."
