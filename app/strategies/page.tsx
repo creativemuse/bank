@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 
@@ -16,56 +16,24 @@ import { useKalaniApr } from "@/hooks/useKalaniApr";
 import { useBalance } from "@/hooks/useBalance";
 import { formatPercent, formatUsd } from "@/lib/formatters";
 import { KALANI_VAULT_ADDRESSES, CREATIVE_BANK_VAULT } from "@/lib/config/kalani";
-import { USDC_ADDRESS_BASE } from "@/lib/config/yearn";
 import { useMembership } from "@/context/MembershipContext";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { parseUnits, type Address } from "viem";
 import { CopyWrapper } from "@/components/common/CopyWrapper";
 
-export default function StrategiesPage() {
-  const [deployModalOpen, setDeployModalOpen] = useState(false);
-  const { wallet, status: walletStatus } = useWallet();
-  const { status: authStatus } = useAuth();
-  const membership = useMembership();
-
-  const baseReserve = useBaseUsdcReserve();
-  const kalani = useKalaniApr();
-  const { balances } = useBalance();
-
-  // Parse USDC balance for Yearn vault interactions
-  const userUsdcBalance = useMemo(() => {
-    if (!balances?.usdc?.amount) return BigInt(0);
-    try {
-      return parseUnits(balances.usdc.amount, 6);
-    } catch {
-      return BigInt(0);
-    }
-  }, [balances]);
-
-  const walletStatusLabel = useMemo(() => {
-    if (walletStatus === "in-progress" || authStatus === "initializing") {
-      return "Connecting...";
-    }
-
-    if (!wallet || authStatus !== "logged-in") {
-      return "Not connected";
-    }
-
-    const crossmintAddress = wallet.address;
-    if (!crossmintAddress) {
-      return "Not connected";
-    }
-
-    return shortenAddress(crossmintAddress);
-  }, [authStatus, wallet, walletStatus]);
-
-  const walletAddress = useMemo(() => {
-    if (!wallet || authStatus !== "logged-in" || !wallet.address) {
-      return null;
-    }
-    return wallet.address;
-  }, [authStatus, wallet]);
-
+function StrategiesContent({
+  walletAddress,
+  onDeployClick,
+  baseReserve,
+  kalani,
+  userUsdcBalance,
+}: {
+  walletAddress: string | null;
+  onDeployClick: () => void;
+  baseReserve: ReturnType<typeof useBaseUsdcReserve>;
+  kalani: ReturnType<typeof useKalaniApr>;
+  userUsdcBalance: bigint;
+}) {
   const { vaults: userPositionVaults, loading: userPositionsLoading } =
     useUserVaultPositions(walletAddress ?? undefined);
 
@@ -134,63 +102,7 @@ export default function StrategiesPage() {
   );
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
-      <header className="flex flex-col gap-6">
-        <div className="flex justify-end">
-          <Link
-            href="/"
-            aria-label="Return to Creative Bank home"
-            className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
-          >
-            Back to Home
-          </Link>
-        </div>
-        <div className="flex flex-col gap-3 rounded-3xl border border-white/40 bg-white/80 p-6 shadow-lg shadow-slate-900/10 backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-            Creative Bank DeFi Suite
-          </p>
-          <h1 className="text-center text-3xl font-semibold text-slate-900 md:text-4xl">
-            Programmatic Yield Strategies
-          </h1>
-          <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-slate-600">
-            Launch an Aave Earn Vault backed by the Base USDC reserve, deposit into Yearn V3
-            ERC-4626 compliant vaults, and unlock our token-gated Kalani premium strategies for
-            high-touch treasury automation.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-            Connected Wallet:{" "}
-            {walletAddress ? (
-              <CopyWrapper
-                toCopy={walletAddress}
-                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700"
-                iconPosition="right"
-              >
-                <span>{walletStatusLabel}</span>
-              </CopyWrapper>
-            ) : (
-              <span>{walletStatusLabel}</span>
-            )}
-          </span>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-            Membership Tier: {membership.isLoading ? "Checking..." : membership.tier ?? "None"}
-          </span>
-        </div>
-      </header>
-
-      {baseReserve.error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          Unable to load Aave market data: {baseReserve.error.message}
-        </div>
-      ) : null}
-
-      {kalani.error ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Kalani APR unavailable: {kalani.error}
-        </div>
-      ) : null}
-
+    <>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <StrategyCard
           title="Aave USDC Earn Vault"
@@ -200,11 +112,11 @@ export default function StrategiesPage() {
           description="Create an on-chain USDC vault with automated fee routing, transparent reporting, and direct integration to the Aave Base money market."
           actions={[
             {
-              id: "deploy-vault",
-              label: "Deploy Vault",
-              ariaLabel: "Deploy Aave USDC vault",
-              onClick: () => setDeployModalOpen(true),
-            },
+            id: "deploy-vault",
+            label: "Deploy Vault",
+            ariaLabel: "Deploy Aave USDC vault",
+            onClick: onDeployClick,
+          },
             {
               id: "view-reserve",
               label: "View Reserve",
@@ -316,6 +228,129 @@ export default function StrategiesPage() {
           </div>
         </div>
       </section> */}
+    </>
+  );
+}
+
+export default function StrategiesPage() {
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { wallet, status: walletStatus } = useWallet();
+  const { status: authStatus } = useAuth();
+  const membership = useMembership();
+
+  const baseReserve = useBaseUsdcReserve();
+  const kalani = useKalaniApr();
+  const { balances } = useBalance();
+
+  const userUsdcBalance = useMemo(() => {
+    if (!balances?.usdc?.amount) return BigInt(0);
+    try {
+      return parseUnits(balances.usdc.amount, 6);
+    } catch {
+      return BigInt(0);
+    }
+  }, [balances]);
+
+  const walletStatusLabel = useMemo(() => {
+    if (walletStatus === "in-progress" || authStatus === "initializing") {
+      return "Connecting...";
+    }
+    if (!wallet || authStatus !== "logged-in") {
+      return "Not connected";
+    }
+    const crossmintAddress = wallet.address;
+    if (!crossmintAddress) {
+      return "Not connected";
+    }
+    return shortenAddress(crossmintAddress);
+  }, [authStatus, wallet, walletStatus]);
+
+  const walletAddress = useMemo(() => {
+    if (!wallet || authStatus !== "logged-in" || !wallet.address) {
+      return null;
+    }
+    return wallet.address;
+  }, [authStatus, wallet]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
+
+  return (
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
+      <header className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link
+            href="/"
+            aria-label="Return to Creative Bank home"
+            className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+          >
+            Back to Home
+          </Link>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            aria-label="Refresh vault and position data"
+            className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+          >
+            Refresh
+          </button>
+        </div>
+        <div className="flex flex-col gap-3 rounded-3xl border border-white/40 bg-white/80 p-6 shadow-lg shadow-slate-900/10 backdrop-blur">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Creative Bank DeFi Suite
+          </p>
+          <h1 className="text-center text-3xl font-semibold text-slate-900 md:text-4xl">
+            Programmatic Yield Strategies
+          </h1>
+          <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-slate-600">
+            Launch an Aave Earn Vault backed by the Base USDC reserve, deposit into Yearn V3
+            ERC-4626 compliant vaults, and unlock our token-gated Kalani premium strategies for
+            high-touch treasury automation.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
+            Connected Wallet:{" "}
+            {walletAddress ? (
+              <CopyWrapper
+                toCopy={walletAddress}
+                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700"
+                iconPosition="right"
+              >
+                <span>{walletStatusLabel}</span>
+              </CopyWrapper>
+            ) : (
+              <span>{walletStatusLabel}</span>
+            )}
+          </span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
+            Membership Tier: {membership.isLoading ? "Checking..." : membership.tier ?? "None"}
+          </span>
+        </div>
+      </header>
+
+      {baseReserve.error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Unable to load Aave market data: {baseReserve.error.message}
+        </div>
+      ) : null}
+
+      {kalani.error ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Kalani APR unavailable: {kalani.error}
+        </div>
+      ) : null}
+
+      <StrategiesContent
+        key={refreshKey}
+        walletAddress={walletAddress}
+        onDeployClick={() => setDeployModalOpen(true)}
+        baseReserve={baseReserve}
+        kalani={kalani}
+        userUsdcBalance={userUsdcBalance}
+      />
 
       <VaultDeployModal
         open={deployModalOpen}

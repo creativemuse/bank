@@ -117,7 +117,11 @@ export const DeployedVaultCard = ({
   });
 
   // Get user's share balance
-  const { data: shareBalance, isLoading: isShareBalanceLoading } = useReadContract({
+  const {
+    data: shareBalance,
+    isLoading: isShareBalanceLoading,
+    refetch: refetchShareBalance,
+  } = useReadContract({
     address: vaultAddress,
     abi: [
       {
@@ -200,6 +204,11 @@ export const DeployedVaultCard = ({
     setModalMode("withdraw");
     setModalOpen(true);
   }, []);
+
+  const handleVaultSuccess = useCallback(() => {
+    refetchAssetBalance?.();
+    refetchShareBalance?.();
+  }, [refetchAssetBalance, refetchShareBalance]);
 
   // Calculate net APR from Aave reserve (after performance fee)
   const aprDisplay = useMemo(() => {
@@ -427,6 +436,7 @@ export const DeployedVaultCard = ({
         userAssetBalance={(userAssetBalance as bigint) ?? 0n}
         shareBalance={shareBalance ?? 0n}
         isBalanceLoading={isBalanceLoading}
+        onSuccess={handleVaultSuccess}
       />
 
       {vaultFromApi && (

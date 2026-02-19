@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Address, formatUnits } from "viem";
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import {
   bigDecimal,
@@ -12,11 +12,14 @@ import {
   useVaultDepositPreview,
   useVaultRedeemPreview,
 } from "@aave/react";
-import { useSendTransaction } from "@aave/react/viem";
 
 import { Modal } from "@/components/common/Modal";
 import { useAaveWalletClient } from "@/hooks/useAaveWalletClient";
 import { AAVE_TARGET_CHAIN_ID } from "@/lib/config/aave";
+import { formatUsd } from "@/lib/formatters";
+import { toast } from "sonner";
+
+const TX_CONFIRMATION_TIMEOUT_MS = 120_000;
 
 type AaveVaultModalProps = {
   open: boolean;
@@ -47,19 +50,20 @@ export function AaveVaultModal({
 }: AaveVaultModalProps) {
   const { address: wagmiAddress } = useAccount();
   const walletClient = useAaveWalletClient();
+  const publicClient = usePublicClient();
   const { status: authStatus } = useAuth();
   const { status: walletStatus } = useWallet();
 
-  const [deposit, depositState] = useVaultDeposit();
-  const [redeem, redeemState] = useVaultRedeemShares();
-  const [sendTransaction, sendState] = useSendTransaction(walletClient);
-  const [depositPreview, depositPreviewState] = useVaultDepositPreview();
-  const [redeemPreview, redeemPreviewState] = useVaultRedeemPreview();
+  const [deposit] = useVaultDeposit();
+  const [redeem] = useVaultRedeemShares();
+  const [depositPreview] = useVaultDepositPreview();
+  const [redeemPreview] = useVaultRedeemPreview();
 
   const [inputAmount, setInputAmount] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expectedShares, setExpectedShares] = useState<string | null>(null);
   const [expectedAssets, setExpectedAssets] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const parsedAmount = useMemo(() => {
     if (!inputAmount || inputAmount === ".") return null;
@@ -108,8 +112,26 @@ export function AaveVaultModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- redeemPreview is stable from hook
   }, [mode, parsedAmount, vaultAddress]);
 
-  const isSubmitting =
-    depositState.loading || redeemState.loading || sendState.loading;
+  const sendAndWait = useCallback(
+    async (tx: { to: string; data: string; value?: string }) => {
+      if (!walletClient || !publicClient || !userAddress)
+        throw new Error("Wallet or RPC not available");
+      const valueBigInt = tx.value ? BigInt(tx.value) : 0n;
+      const hash = await walletClient.sendTransaction({
+        to: tx.to as `0x${string}`,
+        data: (tx.data || "0x") as `0x${string}`,
+        value: valueBigInt,
+        account: { address: userAddress, type: "json-rpc" },
+        chain: publicClient.chain as never as import("viem").Chain,
+      });
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        timeout: TX_CONFIRMATION_TIMEOUT_MS,
+      });
+      return hash;
+    },
+    [walletClient, publicClient, userAddress],
+  );
 
   const resetForm = useCallback(() => {
     setInputAmount("");
@@ -160,88 +182,85 @@ export function AaveVaultModal({
         return;
       }
 
-      if (!walletClient || !userAddress || parsedAmount == null) {
+      if (!walletClient || !publicClient || !userAddress || parsedAmount == null) {
         setErrorMessage("Wallet or amount not ready.");
         return;
       }
 
-      if (mode === "deposit") {
-        const depositResult = await deposit({
-          chainId: AAVE_TARGET_CHAIN_ID,
-          vault: evmAddress(vaultAddress),
-          amount: { value: bigDecimal(parsedAmount) },
-          depositor: evmAddress(userAddress),
-        });
+      setIsSubmitting(true);
+      try {
+        if (mode === "deposit") {
+          const depositResult = await deposit({
+            chainId: AAVE_TARGET_CHAIN_ID,
+            vault: evmAddress(vaultAddress),
+            amount: { value: bigDecimal(parsedAmount) },
+            depositor: evmAddress(userAddress),
+          });
 
-        if (depositResult.isErr()) {
-          setErrorMessage(depositResult.error?.message ?? "Deposit failed");
-          return;
-        }
+          if (depositResult.isErr()) {
+            setErrorMessage(depositResult.error?.message ?? "Deposit failed");
+            return;
+          }
 
-        const plan = depositResult.value;
-        if (plan.__typename === "InsufficientBalanceError") {
-          setErrorMessage(`Insufficient balance. Required: ${plan.required?.value} ${assetSymbol}.`);
-          return;
-        }
+          const plan = depositResult.value;
+          if (plan.__typename === "InsufficientBalanceError") {
+            setErrorMessage(`Insufficient balance. Required: ${plan.required?.value} ${assetSymbol}.`);
+            return;
+          }
 
-        let sendResult;
-        if (plan.__typename === "TransactionRequest") {
-          sendResult = await sendTransaction(plan);
+          if (plan.__typename === "TransactionRequest") {
+            await sendAndWait(plan);
+          } else {
+            await sendAndWait(plan.approval);
+            await sendAndWait(plan.originalTransaction);
+          }
+
+          toast.success("Deposit complete", {
+            description: `${formatUsd(parsedAmount)} ${assetSymbol} deposited successfully.`,
+          });
         } else {
-          const approvalResult = await sendTransaction(plan.approval);
-          if (approvalResult.isErr()) {
+          const redeemResult = await redeem({
+            chainId: AAVE_TARGET_CHAIN_ID,
+            vault: evmAddress(vaultAddress),
+            shares: { amount: bigDecimal(parsedAmount) },
+            sharesOwner: evmAddress(userAddress),
+          });
+
+          if (redeemResult.isErr()) {
             setErrorMessage(
-              (approvalResult.error as Error)?.message ?? "Approval failed",
+              (redeemResult.error as Error)?.message ?? "Withdraw failed",
             );
             return;
           }
-          sendResult = await sendTransaction(plan.originalTransaction);
+
+          await sendAndWait(redeemResult.value);
+
+          toast.success("Withdraw complete", {
+            description: `${formatUsd(parsedAmount)} ${assetSymbol} withdrawn successfully.`,
+          });
         }
 
-        if (sendResult.isErr()) {
-          setErrorMessage(
-            (sendResult.error as Error)?.message ?? "Transaction failed",
-          );
-          return;
-        }
-      } else {
-        const redeemResult = await redeem({
-          chainId: AAVE_TARGET_CHAIN_ID,
-          vault: evmAddress(vaultAddress),
-          shares: { amount: bigDecimal(parsedAmount) },
-          sharesOwner: evmAddress(userAddress),
-        });
-
-        if (redeemResult.isErr()) {
-          setErrorMessage(
-            (redeemResult.error as Error)?.message ?? "Withdraw failed",
-          );
-          return;
-        }
-
-        const sendResult = await sendTransaction(redeemResult.value);
-        if (sendResult.isErr()) {
-          setErrorMessage(
-            (sendResult.error as Error)?.message ?? "Withdraw failed",
-          );
-          return;
-        }
+        resetForm();
+        onSuccess?.();
+        handleClose();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : mode === "deposit" ? "Deposit failed" : "Withdraw failed";
+        setErrorMessage(message);
+      } finally {
+        setIsSubmitting(false);
       }
-
-      resetForm();
-      onSuccess?.();
-      handleClose();
     },
     [
       validate,
       mode,
       walletClient,
+      publicClient,
       userAddress,
       parsedAmount,
       vaultAddress,
       deposit,
       redeem,
-      sendTransaction,
+      sendAndWait,
       assetSymbol,
       onSuccess,
       handleClose,

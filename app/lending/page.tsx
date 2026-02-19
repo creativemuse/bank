@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import {
@@ -42,28 +42,25 @@ const AAVE_USDC_RESERVE_URL =
 
 type ActionModalKind = "supply" | "withdraw" | "borrow" | "repay" | null;
 
-export default function LendingPage() {
-  const { wallet, status: walletStatus } = useWallet();
-  const { status: authStatus } = useAuth();
-  const membership = useMembership();
-  const baseReserve = useBaseUsdcReserve();
-  const walletClient = useAaveWalletClient();
-  const { balances, displayableBalance, isLoading: isBalanceLoading } = useBalance();
-  const [actionModal, setActionModal] = useState<ActionModalKind>(null);
+type LendingContentProps = {
+  baseReserve: ReturnType<typeof useBaseUsdcReserve>;
+  walletAddress: string | null;
+  walletClient: ReturnType<typeof useAaveWalletClient>;
+  walletUsdcBalance: string;
+  isBalanceLoading?: boolean;
+  actionModal: ActionModalKind;
+  setActionModal: (kind: ActionModalKind) => void;
+};
 
-  const walletUsdcBalance = balances?.usdc?.amount ?? "0";
-
-  const walletAddress = useMemo(() => {
-    if (!wallet || authStatus !== "logged-in" || !wallet.address) return null;
-    return wallet.address;
-  }, [authStatus, wallet]);
-
-  const walletStatusLabel = useMemo(() => {
-    if (walletStatus === "in-progress" || authStatus === "initializing") return "Connecting...";
-    if (!wallet || authStatus !== "logged-in") return "Not connected";
-    return shortenAddress(wallet.address ?? "");
-  }, [authStatus, wallet, walletStatus]);
-
+function LendingContent({
+  baseReserve,
+  walletAddress,
+  walletClient,
+  walletUsdcBalance,
+  isBalanceLoading,
+  actionModal,
+  setActionModal,
+}: LendingContentProps) {
   const marketsInput = useMemo(() => {
     if (!baseReserve.market?.address) return [];
     return [
@@ -144,97 +141,42 @@ export default function LendingPage() {
   }, [userMarketState?.availableBorrowsBase]);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-8 sm:px-6 sm:py-12">
-      <header className="flex flex-col gap-6">
-        <div className="flex justify-end">
-          <Link
-            href="/"
-            aria-label="Return to Creative Bank home"
-            className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
-          >
-            Back to Home
-          </Link>
+    <Fragment>
+      <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">USDC on Base</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <p className="text-xs text-slate-500">Supply APY</p>
+            <p className="text-lg font-semibold text-slate-900">
+              {formatPercent(baseReserve.reserve?.supplyInfo?.apy?.formatted)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Borrow APY</p>
+            <p className="text-lg font-semibold text-slate-900">
+              {formatPercent(baseReserve.reserve?.borrowInfo?.apy?.formatted)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Total size</p>
+            <p className="text-lg font-semibold text-slate-900">
+              {formatUsd(baseReserve.reserve?.size?.usd)}
+            </p>
+          </div>
+          <div className="flex items-end">
+            <a
+              href={AAVE_USDC_RESERVE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              View on Aave →
+            </a>
+          </div>
         </div>
-        <div className="flex flex-col gap-3 rounded-3xl border border-white/40 bg-white/80 p-6 shadow-lg shadow-slate-900/10 backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-            Aave Markets
-          </p>
-          <h1 className="text-center text-3xl font-semibold text-slate-900 md:text-4xl">
-            Lend & Borrow
-          </h1>
-          <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-slate-600">
-            Supply USDC to earn interest and borrow against your collateral on Aave V3 (Base). Manage
-            your positions and health factor in one place.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-            Connected Wallet:{" "}
-            {walletAddress ? (
-              <CopyWrapper
-                toCopy={walletAddress}
-                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700"
-                iconPosition="right"
-              >
-                <span>{walletStatusLabel}</span>
-              </CopyWrapper>
-            ) : (
-              <span>{walletStatusLabel}</span>
-            )}
-          </span>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-            Membership Tier: {membership.isLoading ? "Checking..." : membership.tier ?? "None"}
-          </span>
-        </div>
-      </header>
+      </section>
 
-      {baseReserve.error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          Unable to load Aave market data: {baseReserve.error.message}
-        </div>
-      ) : null}
-
-      {baseReserve.loading || !baseReserve.market || !baseReserve.reserve ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-          Loading market…
-        </div>
-      ) : (
-        <>
-          <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">USDC on Base</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <p className="text-xs text-slate-500">Supply APY</p>
-                <p className="text-lg font-semibold text-slate-900">
-                  {formatPercent(baseReserve.reserve?.supplyInfo?.apy?.formatted)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Borrow APY</p>
-                <p className="text-lg font-semibold text-slate-900">
-                  {formatPercent(baseReserve.reserve?.borrowInfo?.apy?.formatted)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Total size</p>
-                <p className="text-lg font-semibold text-slate-900">
-                  {formatUsd(baseReserve.reserve?.size?.usd)}
-                </p>
-              </div>
-              <div className="flex items-end">
-                <a
-                  href={AAVE_USDC_RESERVE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-primary hover:underline"
-                >
-                  View on Aave →
-                </a>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-slate-900">Your positions</h2>
             {!walletAddress ? (
               <p className="text-sm text-slate-500">Connect a wallet to view your positions and health factor.</p>
@@ -297,7 +239,7 @@ export default function LendingPage() {
                       )}
                     </div>
                   </div>
-                  {canToggleCollateral && (
+                  {canToggleCollateral && baseReserve.market && (
                     <CollateralToggle
                       market={baseReserve.market}
                       position={usdcSupplyPosition!}
@@ -395,8 +337,6 @@ export default function LendingPage() {
               hasBorrows={hasUsdcBorrow}
             />
           </PremiumGuard>
-        </>
-      )}
 
       {actionModal === "supply" && baseReserve.reserve && baseReserve.market && walletAddress && walletClient && (
         <SupplyModal
@@ -441,6 +381,112 @@ export default function LendingPage() {
           walletClient={walletClient ?? undefined}
           onClose={() => setActionModal(null)}
           onSuccess={() => setActionModal(null)}
+        />
+      )}
+    </Fragment>
+  );
+}
+
+export default function LendingPage() {
+  const { wallet, status: walletStatus } = useWallet();
+  const { status: authStatus } = useAuth();
+  const membership = useMembership();
+  const baseReserve = useBaseUsdcReserve();
+  const walletClient = useAaveWalletClient();
+  const { balances, displayableBalance, isLoading: isBalanceLoading } = useBalance();
+  const [actionModal, setActionModal] = useState<ActionModalKind>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const walletUsdcBalance = balances?.usdc?.amount ?? "0";
+
+  const walletAddress = useMemo(() => {
+    if (!wallet || authStatus !== "logged-in" || !wallet.address) return null;
+    return wallet.address;
+  }, [authStatus, wallet]);
+
+  const walletStatusLabel = useMemo(() => {
+    if (walletStatus === "in-progress" || authStatus === "initializing") return "Connecting...";
+    if (!wallet || authStatus !== "logged-in") return "Not connected";
+    return shortenAddress(wallet.address ?? "");
+  }, [authStatus, wallet, walletStatus]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
+
+  return (
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-8 sm:px-6 sm:py-12">
+      <header className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link
+            href="/"
+            aria-label="Return to Creative Bank home"
+            className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+          >
+            Back to Home
+          </Link>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            aria-label="Refresh positions and market data"
+            className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+          >
+            Refresh
+          </button>
+        </div>
+        <div className="flex flex-col gap-3 rounded-3xl border border-white/40 bg-white/80 p-6 shadow-lg shadow-slate-900/10 backdrop-blur">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Aave Markets
+          </p>
+          <h1 className="text-center text-3xl font-semibold text-slate-900 md:text-4xl">
+            Lend & Borrow
+          </h1>
+          <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-slate-600">
+            Supply USDC to earn interest and borrow against your collateral on Aave V3 (Base). Manage
+            your positions and health factor in one place.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
+            Connected Wallet:{" "}
+            {walletAddress ? (
+              <CopyWrapper
+                toCopy={walletAddress}
+                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700"
+                iconPosition="right"
+              >
+                <span>{walletStatusLabel}</span>
+              </CopyWrapper>
+            ) : (
+              <span>{walletStatusLabel}</span>
+            )}
+          </span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
+            Membership Tier: {membership.isLoading ? "Checking..." : membership.tier ?? "None"}
+          </span>
+        </div>
+      </header>
+
+      {baseReserve.error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Unable to load Aave market data: {baseReserve.error.message}
+        </div>
+      ) : null}
+
+      {baseReserve.loading || !baseReserve.market || !baseReserve.reserve ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
+          Loading market…
+        </div>
+      ) : (
+        <LendingContent
+          key={refreshKey}
+          baseReserve={baseReserve}
+          walletAddress={walletAddress}
+          walletClient={walletClient}
+          walletUsdcBalance={walletUsdcBalance}
+          isBalanceLoading={isBalanceLoading}
+          actionModal={actionModal}
+          setActionModal={setActionModal}
         />
       )}
     </main>
@@ -604,7 +650,8 @@ function CollateralToggle({
   onSuccess: () => void;
 }) {
   const [toggleCollateral, toggling] = useCollateralToggle();
-  const [sendTransaction, sending] = useSendTransaction(walletClient ?? undefined);
+  // Cast needed: walletClient from our viem and @aave/react/viem use different viem type resolutions (viem vs viem/_types)
+  const [sendTransaction, sending] = useSendTransaction((walletClient ?? undefined) as never);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleToggle = useCallback(async () => {
@@ -687,7 +734,7 @@ function SupplyModal({
         data: (tx.data || "0x") as `0x${string}`,
         value: valueBigInt,
         account: { address: sender, type: "json-rpc" },
-        chain: publicClient.chain,
+        chain: publicClient.chain as never as import("viem").Chain,
       });
       await publicClient.waitForTransactionReceipt({
         hash,
@@ -851,7 +898,7 @@ function WithdrawModal({
         data: (tx.data || "0x") as `0x${string}`,
         value: valueBigInt,
         account: { address: sender, type: "json-rpc" },
-        chain: publicClient.chain,
+        chain: publicClient.chain as never as import("viem").Chain,
       });
       await publicClient.waitForTransactionReceipt({
         hash,
@@ -1010,7 +1057,7 @@ function BorrowModal({
         data: (tx.data || "0x") as `0x${string}`,
         value: valueBigInt,
         account: { address: sender, type: "json-rpc" },
-        chain: publicClient.chain,
+        chain: publicClient.chain as never as import("viem").Chain,
       });
       await publicClient.waitForTransactionReceipt({
         hash,
@@ -1207,7 +1254,7 @@ function RepayModal({
         data: (tx.data || "0x") as `0x${string}`,
         value: valueBigInt,
         account: { address: sender, type: "json-rpc" },
-        chain: publicClient.chain,
+        chain: publicClient.chain as never as import("viem").Chain,
       });
       await publicClient.waitForTransactionReceipt({
         hash,
