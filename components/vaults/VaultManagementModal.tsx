@@ -173,124 +173,139 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
   ];
 
   return (
-    <Modal open={open} onClose={onClose} title="Manage vault">
-      <div className="flex flex-col gap-4">
-        <p className="text-sm text-slate-600">
-          Current fee: <strong>{currentFee}%</strong> · Fees balance: <strong>{feesBalanceValue}</strong> · Total fee revenue: <strong>{totalFeeRevenueValue}</strong>
-        </p>
-
-        <div className="flex gap-2 border-b border-slate-200 pb-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              aria-label={`${tab.label} tab`}
-              className={`rounded px-3 py-1.5 text-sm font-medium ${
-                activeTab === tab.id
-                  ? "bg-slate-800 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-              onClick={() => {
-                setActiveTab(tab.id);
-                setErrorMessage(null);
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {errorMessage && (
-          <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-            {errorMessage}
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Manage vault"
+      showCloseButton
+      className="max-w-2xl bg-white text-slate-900"
+    >
+      <div className="mt-6 flex w-full flex-col gap-5 text-sm text-slate-700">
+        <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <h4 className="text-base font-semibold text-slate-900">Vault summary</h4>
+          <p className="text-sm text-slate-600">
+            Current fee: <strong>{currentFee}%</strong> · Fees balance: <strong>{feesBalanceValue}</strong> · Total fee revenue: <strong>{totalFeeRevenueValue}</strong>
           </p>
-        )}
+        </section>
 
-        {activeTab === "fee" && (
-          <form onSubmit={handleSetFee} className="flex flex-col gap-3">
-            <label className="text-sm font-medium text-slate-700">
-              New performance fee (%)
-            </label>
-            <input
-              type="number"
-              min={10}
-              max={100}
-              step={1}
-              value={feeInput}
-              onChange={(e) => setFeeInput(e.target.value)}
-              placeholder="e.g. 15"
-              className="rounded border border-slate-300 px-3 py-2 text-slate-900"
-              aria-label="New fee percentage"
-            />
-            <p className="text-xs text-slate-500">Minimum 10%. Aave Labs retains 50% of the fee.</p>
-            <button
-              type="submit"
-              disabled={isBusy || !feeInput}
-              className="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {setFeeState.loading || sendState.loading ? "Processing…" : "Set fee"}
-            </button>
-          </form>
-        )}
-
-        {activeTab === "withdraw-fees" && (
-          <form onSubmit={handleWithdrawFees} className="flex flex-col gap-3">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={withdrawMax}
-                onChange={(e) => {
-                  setWithdrawMax(e.target.checked);
-                  if (e.target.checked) setWithdrawAmount("");
+        <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex gap-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                aria-label={`${tab.label} tab`}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 ${
+                  activeTab === tab.id
+                    ? "border border-slate-900 bg-slate-900 text-white"
+                    : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                }`}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setErrorMessage(null);
                 }}
-                aria-label="Withdraw maximum"
-              />
-              <span className="text-sm font-medium text-slate-700">Withdraw max</span>
-            </label>
-            {!withdrawMax && (
-              <input
-                type="text"
-                value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
-                placeholder="Amount to withdraw"
-                className="rounded border border-slate-300 px-3 py-2 text-slate-900"
-                aria-label="Withdraw amount"
-              />
-            )}
-            <p className="text-xs text-slate-500">Withdrawn fees are received as aTokens.</p>
-            <button
-              type="submit"
-              disabled={isBusy || (!withdrawMax && !withdrawAmount.trim())}
-              className="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {withdrawFeesState.loading || sendState.loading ? "Processing…" : "Withdraw fees"}
-            </button>
-          </form>
-        )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-        {activeTab === "transfer" && (
-          <form onSubmit={handleTransferOwnership} className="flex flex-col gap-3">
-            <label className="text-sm font-medium text-slate-700">
-              New owner address
-            </label>
-            <input
-              type="text"
-              value={newOwnerAddress}
-              onChange={(e) => setNewOwnerAddress(e.target.value)}
-              placeholder="0x..."
-              className="rounded border border-slate-300 px-3 py-2 font-mono text-sm text-slate-900"
-              aria-label="New owner address"
-            />
-            <p className="text-xs text-slate-500">This action is irreversible. You will lose owner privileges.</p>
-            <button
-              type="submit"
-              disabled={isBusy || !newOwnerAddress.trim()}
-              className="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {transferState.loading || sendState.loading ? "Processing…" : "Transfer ownership"}
-            </button>
-          </form>
-        )}
+          {errorMessage && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+              {errorMessage}
+            </p>
+          )}
+
+          {activeTab === "fee" && (
+            <form onSubmit={handleSetFee} className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium uppercase text-slate-500">New performance fee (%)</span>
+                <input
+                  type="number"
+                  min={10}
+                  max={100}
+                  step={1}
+                  value={feeInput}
+                  onChange={(e) => setFeeInput(e.target.value)}
+                  placeholder="e.g. 15"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                  aria-label="New fee percentage"
+                />
+              </label>
+              <p className="text-xs text-slate-500">Minimum 10%. Aave Labs retains 50% of the fee.</p>
+              <button
+                type="submit"
+                disabled={isBusy || !feeInput}
+                className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:border-slate-700 hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-400"
+              >
+                {setFeeState.loading || sendState.loading ? "Processing…" : "Set fee"}
+              </button>
+            </form>
+          )}
+
+          {activeTab === "withdraw-fees" && (
+            <form onSubmit={handleWithdrawFees} className="flex flex-col gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={withdrawMax}
+                  onChange={(e) => {
+                    setWithdrawMax(e.target.checked);
+                    if (e.target.checked) setWithdrawAmount("");
+                  }}
+                  className="rounded border-slate-300 focus:ring-slate-500"
+                  aria-label="Withdraw maximum"
+                />
+                <span className="text-sm font-medium text-slate-700">Withdraw max</span>
+              </label>
+              {!withdrawMax && (
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium uppercase text-slate-500">Amount to withdraw</span>
+                  <input
+                    type="text"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    placeholder="Amount to withdraw"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                    aria-label="Withdraw amount"
+                  />
+                </label>
+              )}
+              <p className="text-xs text-slate-500">Withdrawn fees are received as aTokens.</p>
+              <button
+                type="submit"
+                disabled={isBusy || (!withdrawMax && !withdrawAmount.trim())}
+                className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:border-slate-700 hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-400"
+              >
+                {withdrawFeesState.loading || sendState.loading ? "Processing…" : "Withdraw fees"}
+              </button>
+            </form>
+          )}
+
+          {activeTab === "transfer" && (
+            <form onSubmit={handleTransferOwnership} className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium uppercase text-slate-500">New owner address</span>
+                <input
+                  type="text"
+                  value={newOwnerAddress}
+                  onChange={(e) => setNewOwnerAddress(e.target.value)}
+                  placeholder="0x..."
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                  aria-label="New owner address"
+                />
+              </label>
+              <p className="text-xs text-slate-500">This action is irreversible. You will lose owner privileges.</p>
+              <button
+                type="submit"
+                disabled={isBusy || !newOwnerAddress.trim()}
+                className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:border-slate-700 hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-400"
+              >
+                {transferState.loading || sendState.loading ? "Processing…" : "Transfer ownership"}
+              </button>
+            </form>
+          )}
+        </section>
       </div>
     </Modal>
   );

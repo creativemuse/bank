@@ -61,16 +61,20 @@ export function VaultActivityModal({
   const breakdown = activityData?.breakdown ?? [];
 
   return (
-    <Modal open={open} onClose={onClose} title="Vault activity">
-      <div className="flex flex-col gap-6">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Vault activity"
+      showCloseButton
+      className="max-w-2xl bg-white text-slate-900"
+    >
+      <div className="mt-6 flex w-full flex-col gap-5 text-sm text-slate-700">
         {activityLoading ? (
           <p className="text-sm text-slate-500">Loading activity…</p>
         ) : earned != null ? (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Earned (period)
-            </p>
-            <p className="mt-1 text-lg font-semibold text-slate-900">
+          <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="text-base font-semibold text-slate-900">Earned (period)</h4>
+            <p className="text-lg font-semibold text-slate-900">
               {earned.amount?.value ?? "0"} {assetSymbol}
               {earned.usd != null && (
                 <span className="ml-2 text-sm font-normal text-slate-600">
@@ -78,17 +82,17 @@ export function VaultActivityModal({
                 </span>
               )}
             </p>
-          </div>
+          </section>
         ) : null}
 
         {breakdown.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-slate-700">Activity breakdown</h3>
-            <ul className="mt-2 space-y-2">
+          <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="text-base font-semibold text-slate-900">Activity breakdown</h4>
+            <ul className="space-y-2">
               {breakdown.slice(0, 7).map((row, i) => (
                 <li
                   key={String(row.date ?? i)}
-                  className="flex justify-between rounded border border-slate-100 bg-white px-3 py-2 text-xs"
+                  className="flex justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
                 >
                   <span className="text-slate-600">{String(row.date ?? "—")}</span>
                   <span className="text-slate-900">
@@ -98,21 +102,21 @@ export function VaultActivityModal({
                 </li>
               ))}
             </ul>
-          </div>
+          </section>
         )}
 
-        <div>
-          <h3 className="text-sm font-semibold text-slate-700">Recent transactions</h3>
+        <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <h4 className="text-base font-semibold text-slate-900">Recent transactions</h4>
           {historyLoading ? (
-            <p className="mt-2 text-sm text-slate-500">Loading…</p>
+            <p className="text-sm text-slate-500">Loading…</p>
           ) : items.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-500">No transactions yet.</p>
+            <p className="text-sm text-slate-500">No transactions yet.</p>
           ) : (
-            <ul className="mt-2 space-y-2" aria-label="Vault transaction history">
+            <ul className="space-y-2" aria-label="Vault transaction history">
               {items.map((item: { __typename?: string; txHash?: string; timestamp?: string; asset?: { amount?: { value?: string }; usd?: string }; shares?: { amount?: { value?: string } } }, i: number) => (
                 <li
                   key={item.txHash ?? i}
-                  className="flex flex-col gap-1 rounded border border-slate-100 bg-white px-3 py-2 text-xs"
+                  className="flex flex-col gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
                 >
                   <span className="font-medium text-slate-700">
                     {item.__typename === "VaultUserDepositItem" ? "Deposit" : "Withdraw"}
@@ -137,7 +141,7 @@ export function VaultActivityModal({
               ))}
             </ul>
           )}
-        </div>
+        </section>
       </div>
     </Modal>
   );
