@@ -45,7 +45,10 @@ const resolveVaultAddress = async (): Promise<Address> => {
     return cachedVaultAddress;
   }
 
-  const configured = process.env.KALANI_VAULT_ADDRESS;
+  // KALANI_VAULT_ADDRESS (server) or NEXT_PUBLIC_KALANI_VAULT_ADDRESS (e.g. Yearn USDC vault)
+  const configured =
+    process.env.KALANI_VAULT_ADDRESS ??
+    process.env.NEXT_PUBLIC_KALANI_VAULT_ADDRESS;
   if (configured) {
     cachedVaultAddress = configured as Address;
     return cachedVaultAddress;
