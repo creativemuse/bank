@@ -2,7 +2,7 @@ import { Address } from "viem";
 
 /**
  * Kalani Vault Deployment - Creative Bank on Base
- * 
+ *
  * Project ID: 0xb549b5f4ad020a1591e9c449c758d5d1e6f0b84d62b3aa133a98be87f2b51a9b
  * Deployed: Yearn V3 compatible multi-strategy vault
  */
@@ -12,7 +12,7 @@ export const KALANI_VAULT_ADDRESSES = {
   roleManagerFactory: "0xca12459a931643BF28388c67639b3F352fe9e5Ce" as Address,
   aprOracle: "0x1981AD9F44F2EA9aDd2dC4AD7D075c102C70aF92" as Address,
   addressProvider: "0x1e9778aAD41Aa3E0884C276fB4C2D03C4036Aa0B" as Address,
-  
+
   // Creative Bank USDC Vault (cbUSDC)
   creativeBankVault: "0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE" as Address,
   roleManager: "0xAE31C2098a42aAB31b447876E4DAa649c16A307b" as Address,
@@ -24,7 +24,15 @@ export const KALANI_VAULT_ADDRESSES = {
 export const KALANI_CHAIN_ID = 8453;
 
 /**
- * Creative Bank Vault Details
+ * Yearn V3 USDC Allocator Vault on Base (official endorsed vault).
+ * Use this address when integrating with the Yearn Registry or GOAT agent.
+ * ERC-4626 compliant; underlying asset: USDC.
+ */
+export const YEARN_USDC_VAULT_BASE =
+  "0xb13CF163d916917d9cD6E836905cA5f12a1dEF4B" as Address;
+
+/**
+ * Creative Bank Vault Details (Kalani / cbUSDC)
  */
 export const CREATIVE_BANK_VAULT = {
   address: "0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE" as Address,
@@ -35,4 +43,13 @@ export const CREATIVE_BANK_VAULT = {
   assetSymbol: "USDC",
   type: "Creative Bank Allocator", // Yearn V3 multi-strategy
 } as const;
+
+/**
+ * Creative Bank Bouncer (Deposit Limit Module)
+ * Set CREATIVE_BANK_BOUNCER_ADDRESS after deploying CreativeBankBouncer.sol
+ * with (brandNFT, investorNFT, creatorNFT) = Creative Brand, Creative Investor, Creative Creator lock addresses.
+ * Then call set_deposit_limit_module(bouncerAddress) on the Yearn vault.
+ */
+export const CREATIVE_BANK_BOUNCER_ADDRESS: Address | undefined =
+  process.env.NEXT_PUBLIC_CREATIVE_BANK_BOUNCER_ADDRESS as Address | undefined;
 

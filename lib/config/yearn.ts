@@ -265,3 +265,18 @@ export const calculateMaxLossBps = (percentLoss: number): number => {
  */
 export const USDC_ADDRESS_BASE = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" as Address;
 
+/**
+ * Creative Bank Bouncer ABI (Yearn V3 deposit limit module).
+ * Implements availableDepositLimit(user) - returns type(uint256).max if user has
+ * Creative Brand, Investor, or Creator NFT; 0 otherwise.
+ */
+export const CREATIVE_BANK_BOUNCER_ABI = [
+  {
+    inputs: [{ name: "user", type: "address" }],
+    name: "availableDepositLimit",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
