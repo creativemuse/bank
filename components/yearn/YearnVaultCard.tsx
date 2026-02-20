@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Address, formatUnits } from "viem";
 import { useAccount } from "wagmi";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { YearnVaultModal } from "./YearnVaultModal";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { useYearnVault, useYearnVaultBalance } from "@/hooks/useYearnVaults";
+import { useKalaniDepositEligibility } from "@/hooks/useKalaniDepositEligibility";
 import { formatPercentage, formatVaultShares } from "@/lib/yearnUtils";
 
 type YearnVaultCardProps = {
@@ -17,6 +19,8 @@ type YearnVaultCardProps = {
   description: string;
   estimatedApr?: number;
   userAssetBalance?: bigint;
+  /** When set, deposit is gated by bouncer (availableDepositLimit). */
+  bouncerAddress?: Address;
 };
 
 export const YearnVaultCard = ({
@@ -28,10 +32,20 @@ export const YearnVaultCard = ({
   description,
   estimatedApr,
   userAssetBalance = 0n,
+  bouncerAddress,
 }: YearnVaultCardProps) => {
-  const { address: userAddress } = useAccount();
+  const { address: wagmiAddress } = useAccount();
+  const { wallet: crossmintWallet } = useWallet();
+  const userAddress = useMemo(() => {
+    if (crossmintWallet?.address) return crossmintWallet.address as `0x${string}`;
+    return wagmiAddress ?? undefined;
+  }, [crossmintWallet?.address, wagmiAddress]);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"deposit" | "withdraw">("deposit");
+
+  const { isEligible: canDepositByBouncer, isLoading: bouncerLoading } =
+    useKalaniDepositEligibility(bouncerAddress);
 
   // Get vault details
   const { totalAssets, isLoading: vaultLoading } = useYearnVault(vaultAddress);
@@ -39,10 +53,18 @@ export const YearnVaultCard = ({
   // Get user's position
   const { shareBalance, assetValue } = useYearnVaultBalance(vaultAddress, userAddress);
 
+  const depositDisabled = Boolean(
+    bouncerAddress && (bouncerLoading || !canDepositByBouncer),
+  );
+  const depositTitle = bouncerAddress && !canDepositByBouncer && !bouncerLoading
+    ? "Kalani Vault is for members only. Get a Creative Brand, Investor, or Creator NFT to deposit."
+    : undefined;
+
   const handleOpenDeposit = useCallback(() => {
+    if (depositDisabled) return;
     setModalMode("deposit");
     setModalOpen(true);
-  }, []);
+  }, [depositDisabled]);
 
   const handleOpenWithdraw = useCallback(() => {
     setModalMode("withdraw");
@@ -76,9 +98,11 @@ export const YearnVaultCard = ({
         actions={[
           {
             id: "deposit",
-            label: "Deposit",
+            label: bouncerLoading ? "Checking access…" : "Deposit",
             ariaLabel: `Deposit ${assetSymbol} into ${name}`,
             onClick: handleOpenDeposit,
+            disabled: depositDisabled,
+            title: depositTitle,
           },
           ...(hasPosition
             ? [

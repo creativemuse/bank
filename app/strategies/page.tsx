@@ -15,7 +15,7 @@ import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { useKalaniApr } from "@/hooks/useKalaniApr";
 import { useBalance } from "@/hooks/useBalance";
 import { formatPercent, formatUsd } from "@/lib/formatters";
-import { KALANI_VAULT_ADDRESSES, CREATIVE_BANK_VAULT } from "@/lib/config/kalani";
+import { KALANI_VAULT_ADDRESSES, CREATIVE_BANK_VAULT, CREATIVE_BANK_BOUNCER_ADDRESS } from "@/lib/config/kalani";
 import { useMembership } from "@/context/MembershipContext";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { parseUnits, type Address } from "viem";
@@ -153,6 +153,7 @@ function StrategiesContent({
                   : kalani.apr
             }
             userAssetBalance={userUsdcBalance}
+            bouncerAddress={CREATIVE_BANK_BOUNCER_ADDRESS}
           />
         </PremiumGuard>
       </div>

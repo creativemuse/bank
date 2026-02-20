@@ -53,6 +53,18 @@ This prevents 403 errors from rate limiting.
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
 ```
 
+### Kalani Vault Bouncer (Optional)
+
+When using the Yearn Kalani vault with the on-chain deposit limit module (Creative Bank Bouncer), set this after deploying the bouncer contract:
+
+```bash
+# Deploy with: forge script script/DeployCreativeBankBouncer.s.sol --rpc-url base --broadcast
+# Then configure the vault's deposit_limit_module and set:
+NEXT_PUBLIC_CREATIVE_BANK_BOUNCER_ADDRESS=0x...
+```
+
+See `docs/KALANI_GOAT_INTEGRATION.md` for full setup.
+
 ## Membership Lock Contracts
 
 The following Unlock Protocol locks are deployed on **Base Mainnet (8453)**:

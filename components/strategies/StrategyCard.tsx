@@ -8,6 +8,8 @@ type StrategyAction = {
   onClick: () => void;
   ariaLabel?: string;
   disabled?: boolean;
+  /** Native tooltip when hovered (e.g. reason when disabled). */
+  title?: string;
 };
 
 type StrategyCardProps = {
@@ -80,6 +82,7 @@ export function StrategyCard({
                   }
                 }}
                 aria-label={action.ariaLabel ?? action.label}
+                title={action.title}
                 tabIndex={0}
                 disabled={action.disabled}
               >
