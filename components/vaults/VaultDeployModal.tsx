@@ -26,7 +26,7 @@ import { shortenAddress } from "@/utils/shortenAddress";
 type VaultDeployModalProps = {
   open: boolean;
   onClose: () => void;
-  onSuccess?: (vaultAddress?: string, txHash: string) => void;
+  onSuccess?: (txHash: string, vaultAddress?: string) => void;
   market?: Market;
   reserve?: Reserve;
 };
@@ -433,7 +433,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
               ? `Vault is live at ${shortenAddress(vaultAddress)}. It will appear in your list below.`
               : "Transaction confirmed. View on Basescan for vault address.",
           });
-          onSuccess?.(vaultAddress, txHash);
+          onSuccess?.(txHash, vaultAddress);
           if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
           closeTimeoutRef.current = setTimeout(() => {
             closeTimeoutRef.current = null;
@@ -449,7 +449,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
           toast.success("Vault deployed", {
             description: "Transaction confirmed. View on Basescan for vault address.",
           });
-          onSuccess?.(undefined, txHash);
+          onSuccess?.(txHash, undefined);
           if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
           closeTimeoutRef.current = setTimeout(() => {
             closeTimeoutRef.current = null;
@@ -467,7 +467,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
         toast.success("Vault deployed", {
           description: "Transaction submitted. View on Basescan to find the vault address.",
         });
-        onSuccess?.(undefined, txHash);
+        onSuccess?.(txHash, undefined);
         if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
         closeTimeoutRef.current = setTimeout(() => {
           closeTimeoutRef.current = null;
