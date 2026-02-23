@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkBotId } from "botid/server";
 
 const CROSSMINT_SERVER_SIDE_API_KEY = process.env.CROSSMINT_SERVER_SIDE_API_KEY as string;
 const CROSSMINT_ENV = process.env.CROSSMINT_ENV || "staging";
 const USDC_LOCATOR = `${process.env.NEXT_PUBLIC_CHAIN_ID}:${process.env.NEXT_PUBLIC_USDC_MINT}:${process.env.NEXT_PUBLIC_USDC_MINT}`;
 
 export async function POST(req: NextRequest) {
+  const verification = await checkBotId();
+  if (verification.isBot) {
+    return NextResponse.json({ error: "Access denied" }, { status: 403 });
+  }
+
   try {
     if (!CROSSMINT_SERVER_SIDE_API_KEY) {
       return NextResponse.json(

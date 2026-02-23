@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
+import { checkBotId } from "botid/server";
 import { initTransactionsTable } from "@/server-actions/initTableland";
 
 export async function POST() {
+  const verification = await checkBotId();
+  if (verification.isBot) {
+    return NextResponse.json({ error: "Access denied" }, { status: 403 });
+  }
+
   try {
     const tableName = await initTransactionsTable();
     return NextResponse.json({ 
