@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bigDecimal,
   evmAddress,
@@ -15,14 +15,18 @@ import { useWallet, useAuth, EVMWallet } from "@crossmint/client-sdk-react-ui";
 import { createWalletClient, custom, type WalletClient } from "viem";
 import { base, baseSepolia } from "viem/chains";
 
+import { toast } from "sonner";
+
 import { Modal } from "@/components/common/Modal";
 import { USDC_DECIMALS } from "@/lib/config/aave";
 import { formatPercent } from "@/lib/formatters";
 import { useMembership } from "@/context/MembershipContext";
+import { shortenAddress } from "@/utils/shortenAddress";
 
 type VaultDeployModalProps = {
   open: boolean;
   onClose: () => void;
+  onSuccess?: (vaultAddress?: string, txHash: string) => void;
   market?: Market;
   reserve?: Reserve;
 };
@@ -41,7 +45,7 @@ type SubmitState = {
 
 const CREATIVE_ADDRESS = "0xf46F1BA19A9280F752a451d0973b047D81c63D70";
 
-export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeployModalProps) {
+export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: VaultDeployModalProps) {
   const { address: wagmiAddress } = useAccount();
   const { data: wagmiWalletClient } = useWalletClient();
   const publicClient = usePublicClient();
@@ -163,6 +167,8 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
   const assetSymbol = reserve?.underlyingToken?.symbol ?? "USDC";
   const assetDecimals = reserve?.underlyingToken?.decimals ?? USDC_DECIMALS;
 
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const resetForm = useCallback(() => {
     setSubmitState({ status: "idle" });
     setPerformanceFee(12);
@@ -173,9 +179,26 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
   }, [getInitialRecipientInput, reserve]);
 
   const handleClose = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
     resetForm();
     onClose();
   }, [onClose, resetForm]);
+
+  const handleCloseRef = useRef(handleClose);
+  handleCloseRef.current = handleClose;
+
+  // Clear pending auto-close timeout on unmount to avoid calling handleClose after unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const validate = useCallback(() => {
     // Check if wallet is connected (either Crossmint or wagmi)
@@ -404,6 +427,18 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
               console.warn("Could not save vault to localStorage:", error);
             }
           }
+
+          toast.success("Vault deployed", {
+            description: vaultAddress
+              ? `Vault is live at ${shortenAddress(vaultAddress)}. It will appear in your list below.`
+              : "Transaction confirmed. View on Basescan for vault address.",
+          });
+          onSuccess?.(vaultAddress, txHash);
+          if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+          closeTimeoutRef.current = setTimeout(() => {
+            closeTimeoutRef.current = null;
+            handleCloseRef.current();
+          }, 2000);
         } else {
           // Fallback if public client not available
           setSubmitState({
@@ -411,6 +446,15 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
             txHash,
             message: "Vault deployment transaction submitted. Check Basescan to find the vault address in the transaction logs.",
           });
+          toast.success("Vault deployed", {
+            description: "Transaction confirmed. View on Basescan for vault address.",
+          });
+          onSuccess?.(undefined, txHash);
+          if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+          closeTimeoutRef.current = setTimeout(() => {
+            closeTimeoutRef.current = null;
+            handleCloseRef.current();
+          }, 2000);
         }
       } catch (error) {
         // If we can't get the receipt, still show success with transaction hash
@@ -420,6 +464,15 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
           txHash,
           message: "Vault deployment transaction submitted. Check Basescan to find the vault address.",
         });
+        toast.success("Vault deployed", {
+          description: "Transaction submitted. View on Basescan to find the vault address.",
+        });
+        onSuccess?.(undefined, txHash);
+        if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = setTimeout(() => {
+          closeTimeoutRef.current = null;
+          handleCloseRef.current();
+        }, 2000);
       }
     },
     [
@@ -427,6 +480,7 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
       deployVault,
       initialDeposit,
       market,
+      onSuccess,
       performanceFee,
       publicClient,
       recipients,
@@ -663,6 +717,20 @@ export function VaultDeployModal({ open, onClose, market, reserve }: VaultDeploy
               </div>
             </div>
           </section>
+        ) : null}
+
+        {submitState.status === "deploying" && submitState.txHash && submitState.message ? (
+          <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            {submitState.message}
+            <a
+              href={`https://basescan.org/tx/${submitState.txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-2 inline-block underline"
+            >
+              View on Basescan
+            </a>
+          </p>
         ) : null}
 
         {submitState.status === "error" && submitState.message ? (

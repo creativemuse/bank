@@ -356,6 +356,7 @@ export default function StrategiesPage() {
       <VaultDeployModal
         open={deployModalOpen}
         onClose={() => setDeployModalOpen(false)}
+        onSuccess={handleRefresh}
         market={baseReserve.market}
         reserve={baseReserve.reserve}
       />
