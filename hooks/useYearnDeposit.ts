@@ -5,7 +5,67 @@ import { useWriteContract, useReadContract, useAccount, usePublicClient, useWall
 import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { Address, type WalletClient } from "viem";
 import { encodeFunctionData } from "viem";
+import { base } from "viem/chains";
 import { ERC4626_ABI, ERC20_ABI } from "@/lib/config/yearn";
+
+function ensureTxHash(value: unknown): `0x${string}` {
+  if (typeof value === "string" && value.startsWith("0x") && value.length >= 64) {
+    return value as `0x${string}`;
+  }
+  if (value && typeof value === "object" && "hash" in value && typeof (value as { hash: unknown }).hash === "string") {
+    const h = (value as { hash: string }).hash;
+    return h as unknown as `0x${string}`;
+  }
+  throw new Error("Invalid transaction response: no hash returned. Please try again.");
+}
+
+/** Base mainnet – Yearn/Kalani vaults are on Base. */
+const YEARN_VAULT_CHAIN_ID = 8453;
+
+function normalizeDepositError(error: unknown): string {
+  const msg =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : error && typeof error === "object" && "message" in error
+          ? String((error as { message: unknown }).message)
+          : "Deposit failed";
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? (error as { code: unknown }).code
+      : undefined;
+  const codeStr = typeof code === "number" ? String(code) : typeof code === "string" ? code : "";
+  // User rejection
+  if (
+    msg.toLowerCase().includes("user rejected") ||
+    msg.toLowerCase().includes("user denied") ||
+    codeStr === "4001" ||
+    codeStr === "ACTION_REJECTED"
+  ) {
+    return "Transaction was cancelled";
+  }
+  // RPC / network
+  if (
+    codeStr === "NETWORK_ERROR" ||
+    codeStr === "ECONNRESET" ||
+    codeStr === "ETIMEDOUT" ||
+    msg.toLowerCase().includes("network") ||
+    msg.toLowerCase().includes("rpc") ||
+    msg.toLowerCase().includes("fetch failed")
+  ) {
+    return "Network error. Please check your connection and try again.";
+  }
+  // Already a clear message from our code
+  if (msg.startsWith("Deposit failed:") || msg.startsWith("Transaction") || msg.startsWith("Insufficient")) {
+    return msg;
+  }
+  // Generic revert
+  if (msg.includes("revert") || msg.includes("execution reverted")) {
+    return "Deposit failed: The transaction was reverted. The vault may be paused, at capacity, or you may not be eligible. Please try again or check the vault status.";
+  }
+  return msg.length > 120 ? `Deposit failed: ${msg.slice(0, 120)}…` : msg;
+}
 
 type DepositState = {
   status: "idle" | "approving" | "depositing" | "success" | "error";
@@ -32,7 +92,8 @@ export const useYearnDeposit = (
   const [state, setState] = useState<DepositState>({ status: "idle" });
   const { address: wagmiAddress } = useAccount();
   const { wallet: crossmintWallet } = useWallet();
-  const publicClient = usePublicClient();
+  // Use explicit Base chain so reads/estimates work when Crossmint is connected (no wagmi active chain)
+  const publicClient = usePublicClient({ chainId: YEARN_VAULT_CHAIN_ID });
   const { data: wagmiWalletClient } = useWalletClient();
 
   // Determine active address (Crossmint takes priority, fallback to wagmi)
@@ -50,7 +111,7 @@ export const useYearnDeposit = (
   const { writeContractAsync: writeApprove } = useWriteContract();
   const { writeContractAsync: writeDeposit } = useWriteContract();
 
-  // Check current allowance - allowance(owner, spender)
+  // Check current allowance - allowance(owner, spender) on Base
   const { data: currentAllowance, refetch: refetchAllowance } = useReadContract({
     address: assetAddress,
     abi: ERC20_ABI,
@@ -59,6 +120,7 @@ export const useYearnDeposit = (
       vaultAddress && assetAddress && ownerAddress
         ? [ownerAddress, vaultAddress]
         : undefined,
+    chainId: YEARN_VAULT_CHAIN_ID,
     query: {
       enabled: !!vaultAddress && !!assetAddress && !!ownerAddress,
     },
@@ -138,13 +200,14 @@ export const useYearnDeposit = (
               throw new Error("No account available in wallet");
             }
             
-            // Send transaction using wallet client
-            approveHash = await activeWalletClient.sendTransaction({
+            // Send transaction using wallet client (use Base when chain not set)
+            const approveResult = await activeWalletClient.sendTransaction({
               account,
               to: assetAddress,
               data,
-              chain: activeWalletClient.chain || null,
+              chain: activeWalletClient.chain ?? base,
             });
+            approveHash = ensureTxHash(approveResult);
           } else {
             const hash = await writeApprove({
               address: assetAddress,
@@ -261,15 +324,16 @@ export const useYearnDeposit = (
             throw new Error(`Transaction validation failed: ${errorMessage}`);
           }
           
-          // Send transaction using wallet client
+          // Send transaction using wallet client (use Base when chain not set)
           try {
-            depositHash = await activeWalletClient.sendTransaction({
+            const depositResult = await activeWalletClient.sendTransaction({
               account,
               to: vaultAddress,
               data,
-              chain: activeWalletClient.chain || null,
+              chain: activeWalletClient.chain ?? base,
               gas: gasEstimate ? (gasEstimate * 120n / 100n) : undefined, // Add 20% buffer
             });
+            depositHash = ensureTxHash(depositResult);
           } catch (txError: any) {
             // Parse transaction error
             const errorMessage = txError?.message || "Transaction failed";
@@ -333,21 +397,10 @@ export const useYearnDeposit = (
           txHash: depositHash,
         });
       } catch (error) {
-        // Log the full error for debugging
         console.error("Deposit error:", error);
-        
-        let errorMessage = "Deposit failed";
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        } else if (typeof error === "string") {
-          errorMessage = error;
-        } else if (error && typeof error === "object" && "message" in error) {
-          errorMessage = String(error.message);
-        }
-        
         setState({
           status: "error",
-          error: errorMessage,
+          error: normalizeDepositError(error),
         });
       }
     },

@@ -603,8 +603,12 @@ function LendingAdvancedSection({
                     {canUseMax && (
                       <button
                         type="button"
-                        onClick={handleUseMax}
-                        className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleUseMax();
+                        }}
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center py-2 text-xs font-medium text-primary hover:underline disabled:opacity-50 cursor-pointer touch-manipulation"
                         aria-label="Use maximum supplied USDC balance"
                       >
                         Use max
@@ -1073,7 +1077,16 @@ function WithdrawModal({
             disabled={useMax}
             className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900 disabled:bg-slate-100"
           />
-          <button type="button" onClick={() => setUseMax(true)} className="w-fit text-xs font-medium text-primary hover:underline">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setUseMax(true);
+            }}
+            className="min-h-[44px] w-fit -mb-1 self-start py-2 pr-2 text-left text-xs font-medium text-primary hover:underline cursor-pointer touch-manipulation"
+            aria-label="Use maximum USDC balance"
+          >
             Use max
           </button>
         </label>
@@ -1242,8 +1255,12 @@ function BorrowModal({
           {availableBorrowUsd != null && availableBorrowUsd > 0 && (
             <button
               type="button"
-              onClick={handleMaxClick}
-              className="w-fit text-xs font-medium text-primary hover:underline"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleMaxClick();
+              }}
+              className="min-h-[44px] w-fit -mb-1 self-start py-2 pr-2 text-left text-xs font-medium text-primary hover:underline cursor-pointer touch-manipulation"
               aria-label="Use maximum available to borrow"
             >
               Use max
@@ -1491,9 +1508,14 @@ function RepayModal({
           />
           <button
             type="button"
-            onClick={() => setUseMax(true)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setUseMax(true);
+            }}
             disabled={repayForMode === "other" && !canRepayOther}
-            className="w-fit text-xs font-medium text-primary hover:underline disabled:opacity-50"
+            className="min-h-[44px] w-fit -mb-1 self-start py-2 pr-2 text-left text-xs font-medium text-primary hover:underline disabled:opacity-50 cursor-pointer touch-manipulation"
+            aria-label="Repay maximum USDC debt"
           >
             Repay max
           </button>

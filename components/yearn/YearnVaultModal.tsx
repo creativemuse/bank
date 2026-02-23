@@ -455,15 +455,7 @@ export const YearnVaultModal = ({
         )}
 
         {/* Form Actions */}
-        <div className="flex flex-col gap-2 md:flex-row md:justify-end">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
-            tabIndex={0}
-          >
-            Cancel
-          </button>
+        <div className="flex flex-col gap-2 md:flex-row md:flex-row-reverse md:justify-end">
           <button
             type="submit"
             className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:border-slate-700 hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-400"
@@ -482,6 +474,14 @@ export const YearnVaultModal = ({
                     : mode === "deposit"
                       ? "Deposit"
                       : "Withdraw"}
+          </button>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
+            tabIndex={0}
+          >
+            Cancel
           </button>
         </div>
       </form>
