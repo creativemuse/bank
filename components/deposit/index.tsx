@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   CrossmintCheckoutProvider,
   CrossmintProvider,
@@ -33,6 +33,14 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
     setStep("options");
     setAmount("");
   };
+
+  // Reset to options whenever the modal is opened so reopening always shows a fresh flow
+  useEffect(() => {
+    if (open) {
+      setStep("options");
+      setAmount("");
+    }
+  }, [open]);
 
   const handleDone = () => {
     restartFlow();

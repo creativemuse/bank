@@ -173,25 +173,17 @@ export function CoinbaseOnrampCheckout({
               return;
             }
             
-            // Calculate how long popup was open
-            const popupDuration = popupOpenTimeRef.current 
-              ? Date.now() - popupOpenTimeRef.current 
-              : 0;
-            
-            // Only set processing if:
-            // 1. Payment was explicitly initiated (via message), OR
-            // 2. Popup was open for more than 3 seconds (user likely interacted)
-            // Otherwise, assume cancellation and reset to options
-            if (paymentInitiatedRef.current || popupDuration > 3000) {
-              onProcessingPayment();
-            } else {
-              // User closed popup quickly - likely canceled, reset to options
-              goBack();
+            // User closed popup without completing payment - always reset to options.
+            // We never transition to processing on close; only explicit postMessage
+            // (payment-initiated) in the message handler can show "Processing payment...".
+            if (messageHandlerRef.current) {
+              window.removeEventListener("message", messageHandlerRef.current);
+              messageHandlerRef.current = null;
             }
-            
-            // Reset flags
             paymentInitiatedRef.current = false;
+            paymentCompletedRef.current = false;
             popupOpenTimeRef.current = null;
+            goBack();
           }, 500); // 500ms delay to catch late-arriving messages
         }
       }, 1000);
@@ -206,7 +198,7 @@ export function CoinbaseOnrampCheckout({
           return;
         }
 
-        // Handle payment initiation events
+        // Handle payment initiation events - show "Processing payment..." when we have explicit proof
         if (
           event.data?.type === "payment-initiated" ||
           event.data?.type === "payment-started" ||
@@ -216,6 +208,7 @@ export function CoinbaseOnrampCheckout({
           event.data?.event === "purchase-started"
         ) {
           paymentInitiatedRef.current = true;
+          onProcessingPayment();
           return;
         }
 
