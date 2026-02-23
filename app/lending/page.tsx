@@ -1062,34 +1062,43 @@ function WithdrawModal({
   );
 
   const balance = supplyPosition?.balance?.amount?.value ?? "0";
+  const withdrawInputId = "withdraw-amount-usdc";
+
+  const handleUseMax = useCallback(() => {
+    setUseMax(true);
+  }, []);
 
   return (
     <Modal open title="Withdraw USDC" onClose={onClose} showCloseButton className="max-w-lg bg-white text-slate-900">
       <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-        <label className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-slate-500">Amount (USDC) — Balance: {balance}</span>
+        <div className="flex flex-col gap-2">
+          <label htmlFor={withdrawInputId} className="text-xs font-medium text-slate-500">
+            Amount (USDC) — Balance: {balance}
+          </label>
           <input
+            id={withdrawInputId}
             type="text"
             inputMode="decimal"
-            value={amount}
-            onChange={(e) => { setAmount(e.target.value); setUseMax(false); }}
+            value={useMax ? balance : amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setUseMax(false);
+            }}
             placeholder="0"
             disabled={useMax}
+            readOnly={useMax}
             className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900 disabled:bg-slate-100"
+            aria-label="Withdraw amount in USDC"
           />
           <button
             type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setUseMax(true);
-            }}
-            className="min-h-[44px] w-fit -mb-1 self-start py-2 pr-2 text-left text-xs font-medium text-primary hover:underline cursor-pointer touch-manipulation"
+            onClick={handleUseMax}
+            className="min-h-[44px] w-fit self-start py-2 pr-3 pl-0 text-left text-xs font-medium text-primary hover:underline cursor-pointer touch-manipulation active:opacity-80"
             aria-label="Use maximum USDC balance"
           >
             Use max
           </button>
-        </label>
+        </div>
         {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
         <div className="flex gap-2">
           <button
