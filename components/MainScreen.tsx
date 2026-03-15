@@ -32,14 +32,14 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
         {/* Mobile: Logo row */}
         <div className="relative mb-3 flex h-14 w-full max-w-5xl items-center justify-center px-2 md:hidden">
           <div className="flex items-center gap-2">
-            <Image src="/creative.svg" alt="Logo" width={54} height={54} style={{ height: "auto" }} />
+            <Image src="/creative_finance_logo.svg" alt="Creative Finance logo" width={54} height={54} style={{ height: "auto" }} />
             <h1 className="text-lg" style={{ fontFamily: "var(--font-conthrax), sans-serif" }}>
               CREATIVE
               <span
                 className="text-md ml-1 font-bold text-red-500"
                 style={{ fontFamily: "sans-serif" }}
               >
-                BANK
+                FINANCE
               </span>
             </h1>
           </div>
@@ -62,14 +62,14 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
         <div className="relative mb-3 hidden h-14 w-full max-w-5xl items-center justify-between px-2 md:flex">
           {/* Left: Logo */}
           <div className="flex items-center gap-2">
-            <Image src="/creative.svg" alt="Logo" width={54} height={54} style={{ height: "auto" }} />
+            <Image src="/creative_finance_logo.svg" alt="Creative Finance logo" width={54} height={54} style={{ height: "auto" }} />
             <h1 className="text-lg" style={{ fontFamily: "var(--font-conthrax), sans-serif" }}>
               CREATIVE
               <span
                 className="text-md ml-1 font-bold text-red-500"
                 style={{ fontFamily: "sans-serif" }}
               >
-                BANK
+                FINANCE
               </span>
             </h1>
           </div>
