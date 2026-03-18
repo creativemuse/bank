@@ -70,6 +70,8 @@ export function AaveVaultModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expectedShares, setExpectedShares] = useState<string | null>(null);
   const [expectedAssets, setExpectedAssets] = useState<string | null>(null);
+  const [expectedSharesToBurn, setExpectedSharesToBurn] = useState<string | null>(null);
+  const [expectedSharesToBurnDecimals, setExpectedSharesToBurnDecimals] = useState<number>(18);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [withdrawInputMode, setWithdrawInputMode] = useState<WithdrawInputMode>("shares");
   const [shareBalanceInUsdc, setShareBalanceInUsdc] = useState<string | null>(null);
@@ -150,6 +152,7 @@ export function AaveVaultModal({
       normalizedInputAmount != null
     ) {
       setExpectedShares(null);
+      setExpectedSharesToBurn(null);
       redeemPreview({
         vault: evmAddress(vaultAddress),
         chainId: AAVE_TARGET_CHAIN_ID,
@@ -168,19 +171,22 @@ export function AaveVaultModal({
       normalizedInputAmount != null
     ) {
       setExpectedShares(null);
+      setExpectedAssets(null);
       withdrawPreview({
         vault: evmAddress(vaultAddress),
         chainId: AAVE_TARGET_CHAIN_ID,
         amount: bigDecimal(normalizedInputAmount),
       }).then((result) => {
         if (result.isOk() && result.value?.amount?.value != null) {
-          setExpectedAssets(String(result.value.amount.value));
+          setExpectedSharesToBurn(String(result.value.amount.value));
+          setExpectedSharesToBurnDecimals(result.value.amount.decimals);
         } else {
-          setExpectedAssets(null);
+          setExpectedSharesToBurn(null);
         }
       });
     } else {
       setExpectedAssets(null);
+      setExpectedSharesToBurn(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- redeemPreview/withdrawPreview stable from hooks
   }, [mode, withdrawInputMode, hasPositiveInput, normalizedInputAmount, vaultAddress]);
@@ -223,6 +229,23 @@ export function AaveVaultModal({
       return null;
     }
   }, [shareBalanceInUsdc, assetDecimals]);
+
+  const expectedSharesToBurnNormalized = useMemo(() => {
+    if (expectedSharesToBurn == null) return null;
+    return normalizeAmountForBigDecimal(
+      expectedSharesToBurn,
+      expectedSharesToBurnDecimals,
+    );
+  }, [expectedSharesToBurn, expectedSharesToBurnDecimals, normalizeAmountForBigDecimal]);
+
+  const expectedSharesToBurnUnits = useMemo(() => {
+    if (expectedSharesToBurnNormalized == null) return null;
+    try {
+      return parseUnits(expectedSharesToBurnNormalized, expectedSharesToBurnDecimals);
+    } catch {
+      return null;
+    }
+  }, [expectedSharesToBurnNormalized, expectedSharesToBurnDecimals]);
 
   const sendAndWait = useCallback(
     async (tx: { to: string; data: string; value?: string }) => {
@@ -270,7 +293,9 @@ export function AaveVaultModal({
       } else {
         if (isShareBalanceUsdcLoading) return "Balance is loading...";
         if (shareBalanceInUsdcUnits == null) return "Balance is loading...";
-        if (shareBalanceInUsdcUnits === 0n) return "No shares to redeem.";
+        if (shareBalanceInUsdcUnits === 0n) {
+          return `Insufficient balance. Maximum withdrawable: ${shareBalanceInUsdc ?? "0"} ${assetSymbol}.`;
+        }
         if (inputUnits > shareBalanceInUsdcUnits) {
           return `Insufficient balance. Maximum withdrawable: ${shareBalanceInUsdc ?? "0"} ${assetSymbol}.`;
         }
@@ -562,10 +587,15 @@ export function AaveVaultModal({
             {mode === "withdraw" && withdrawInputMode === "asset" && (
               <p className="text-xs text-slate-500">
                 You will withdraw {normalizedInputAmount || "0"} {assetSymbol}
-                {expectedAssets != null && (
+                {expectedSharesToBurnUnits != null && (
                   <>
-                    {" "}
-                    (shares to burn calculated at execution)
+                    <br />
+                    Shares to burn:{" "}
+                    {formatVaultShares(
+                      expectedSharesToBurnUnits,
+                      expectedSharesToBurnDecimals,
+                    )}{" "}
+                    shares
                   </>
                 )}
               </p>
