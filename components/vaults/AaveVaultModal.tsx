@@ -11,13 +11,18 @@ import {
   useVaultRedeemShares,
   useVaultDepositPreview,
   useVaultRedeemPreview,
+  useVaultWithdraw,
+  useVaultWithdrawPreview,
 } from "@aave/react";
 
 import { Modal } from "@/components/common/Modal";
 import { useAaveWalletClient } from "@/hooks/useAaveWalletClient";
 import { AAVE_TARGET_CHAIN_ID } from "@/lib/config/aave";
 import { formatUsd } from "@/lib/formatters";
+import { formatVaultShares } from "@/lib/yearnUtils";
 import { toast } from "sonner";
+
+type WithdrawInputMode = "shares" | "asset";
 
 const TX_CONFIRMATION_TIMEOUT_MS = 120_000;
 
@@ -56,14 +61,19 @@ export function AaveVaultModal({
 
   const [deposit] = useVaultDeposit();
   const [redeem] = useVaultRedeemShares();
+  const [withdraw] = useVaultWithdraw();
   const [depositPreview] = useVaultDepositPreview();
   const [redeemPreview] = useVaultRedeemPreview();
+  const [withdrawPreview] = useVaultWithdrawPreview();
 
   const [inputAmount, setInputAmount] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expectedShares, setExpectedShares] = useState<string | null>(null);
   const [expectedAssets, setExpectedAssets] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [withdrawInputMode, setWithdrawInputMode] = useState<WithdrawInputMode>("shares");
+  const [shareBalanceInUsdc, setShareBalanceInUsdc] = useState<string | null>(null);
+  const [isShareBalanceUsdcLoading, setIsShareBalanceUsdcLoading] = useState(false);
 
   const parsedAmount = useMemo(() => {
     if (!inputAmount || inputAmount === ".") return null;
@@ -71,6 +81,8 @@ export function AaveVaultModal({
     if (Number.isNaN(num) || num <= 0) return null;
     return num;
   }, [inputAmount]);
+
+  const isWithdrawAssetMode = mode === "withdraw" && withdrawInputMode === "asset";
 
   useEffect(() => {
     if (mode === "deposit" && parsedAmount != null) {
@@ -93,9 +105,22 @@ export function AaveVaultModal({
   }, [mode, parsedAmount, vaultAddress]);
 
   useEffect(() => {
-    if (mode === "withdraw" && parsedAmount != null) {
+    if (mode === "withdraw" && withdrawInputMode === "shares" && parsedAmount != null) {
       setExpectedShares(null);
       redeemPreview({
+        vault: evmAddress(vaultAddress),
+        chainId: AAVE_TARGET_CHAIN_ID,
+        amount: bigDecimal(parsedAmount),
+      }).then((result) => {
+        if (result.isOk() && result.value?.amount?.value != null) {
+          setExpectedAssets(String(result.value.amount.value));
+        } else {
+          setExpectedAssets(null);
+        }
+      });
+    } else if (mode === "withdraw" && withdrawInputMode === "asset" && parsedAmount != null) {
+      setExpectedShares(null);
+      withdrawPreview({
         vault: evmAddress(vaultAddress),
         chainId: AAVE_TARGET_CHAIN_ID,
         amount: bigDecimal(parsedAmount),
@@ -109,8 +134,39 @@ export function AaveVaultModal({
     } else {
       setExpectedAssets(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- redeemPreview is stable from hook
-  }, [mode, parsedAmount, vaultAddress]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- redeemPreview/withdrawPreview stable from hooks
+  }, [mode, withdrawInputMode, parsedAmount, vaultAddress]);
+
+  useEffect(() => {
+    if (mode !== "withdraw" || !shareBalance || shareBalance === 0n) {
+      setShareBalanceInUsdc(null);
+      return;
+    }
+    const shareAmountStr = formatUnits(shareBalance, 18);
+    const shareAmountNum = Number.parseFloat(shareAmountStr);
+    if (Number.isNaN(shareAmountNum)) {
+      setShareBalanceInUsdc(null);
+      return;
+    }
+    setIsShareBalanceUsdcLoading(true);
+    void Promise.resolve(
+      redeemPreview({
+        vault: evmAddress(vaultAddress),
+        chainId: AAVE_TARGET_CHAIN_ID,
+        amount: bigDecimal(shareAmountNum),
+      }),
+    )
+      .then((result) => {
+        if (result.isOk() && result.value?.amount?.value != null) {
+          setShareBalanceInUsdc(String(result.value.amount.value));
+        } else {
+          setShareBalanceInUsdc(null);
+        }
+      })
+      .catch(() => setShareBalanceInUsdc(null))
+      .finally(() => setIsShareBalanceUsdcLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- redeemPreview stable from hook
+  }, [mode, shareBalance, vaultAddress]);
 
   const sendAndWait = useCallback(
     async (tx: { to: string; data: string; value?: string }) => {
@@ -154,15 +210,26 @@ export function AaveVaultModal({
       const required = BigInt(Math.floor(parsedAmount * 10 ** assetDecimals));
       if (userAssetBalance < required) return `Insufficient ${assetSymbol} balance.`;
     } else {
-      const sharesWei = BigInt(Math.floor(parsedAmount * 1e18));
-      if (shareBalance < sharesWei) return "Insufficient vault shares.";
+      if (withdrawInputMode === "shares") {
+        const sharesWei = BigInt(Math.floor(parsedAmount * 1e18));
+        if (shareBalance < sharesWei) return "Insufficient vault shares.";
+      } else {
+        if (isShareBalanceUsdcLoading) return "Balance is loading...";
+        const maxUsdc = shareBalanceInUsdc != null ? Number.parseFloat(shareBalanceInUsdc) : 0;
+        if (Number.isNaN(maxUsdc) || parsedAmount > maxUsdc) {
+          return `Insufficient balance. Maximum withdrawable: ${shareBalanceInUsdc ?? "0"} ${assetSymbol}.`;
+        }
+      }
     }
     return null;
   }, [
     userAddress,
     parsedAmount,
     mode,
+    withdrawInputMode,
     isBalanceLoading,
+    isShareBalanceUsdcLoading,
+    shareBalanceInUsdc,
     userAssetBalance,
     shareBalance,
     assetDecimals,
@@ -219,21 +286,39 @@ export function AaveVaultModal({
             description: `${formatUsd(parsedAmount)} ${assetSymbol} deposited successfully.`,
           });
         } else {
-          const redeemResult = await redeem({
-            chainId: AAVE_TARGET_CHAIN_ID,
-            vault: evmAddress(vaultAddress),
-            shares: { amount: bigDecimal(parsedAmount) },
-            sharesOwner: evmAddress(userAddress),
-          });
+          if (withdrawInputMode === "shares") {
+            const redeemResult = await redeem({
+              chainId: AAVE_TARGET_CHAIN_ID,
+              vault: evmAddress(vaultAddress),
+              shares: { amount: bigDecimal(parsedAmount) },
+              sharesOwner: evmAddress(userAddress),
+            });
 
-          if (redeemResult.isErr()) {
-            setErrorMessage(
-              (redeemResult.error as Error)?.message ?? "Withdraw failed",
-            );
-            return;
+            if (redeemResult.isErr()) {
+              setErrorMessage(
+                (redeemResult.error as Error)?.message ?? "Withdraw failed",
+              );
+              return;
+            }
+
+            await sendAndWait(redeemResult.value);
+          } else {
+            const withdrawResult = await withdraw({
+              chainId: AAVE_TARGET_CHAIN_ID,
+              vault: evmAddress(vaultAddress),
+              amount: { value: bigDecimal(parsedAmount) },
+              sharesOwner: evmAddress(userAddress),
+            });
+
+            if (withdrawResult.isErr()) {
+              setErrorMessage(
+                (withdrawResult.error as Error)?.message ?? "Withdraw failed",
+              );
+              return;
+            }
+
+            await sendAndWait(withdrawResult.value);
           }
-
-          await sendAndWait(redeemResult.value);
 
           toast.success("Withdraw complete", {
             description: `${formatUsd(parsedAmount)} ${assetSymbol} withdrawn successfully.`,
@@ -253,6 +338,7 @@ export function AaveVaultModal({
     [
       validate,
       mode,
+      withdrawInputMode,
       walletClient,
       publicClient,
       userAddress,
@@ -260,6 +346,7 @@ export function AaveVaultModal({
       vaultAddress,
       deposit,
       redeem,
+      withdraw,
       sendAndWait,
       assetSymbol,
       onSuccess,
@@ -271,10 +358,14 @@ export function AaveVaultModal({
   const handleMaxClick = useCallback(() => {
     if (mode === "deposit" && userAssetBalance !== undefined) {
       setInputAmount(formatUnits(userAssetBalance, assetDecimals));
-    } else if (mode === "withdraw" && shareBalance !== undefined) {
-      setInputAmount(formatUnits(shareBalance, 18));
+    } else if (mode === "withdraw") {
+      if (withdrawInputMode === "shares" && shareBalance !== undefined) {
+        setInputAmount(formatUnits(shareBalance, 18));
+      } else if (withdrawInputMode === "asset" && shareBalanceInUsdc != null) {
+        setInputAmount(shareBalanceInUsdc);
+      }
     }
-  }, [mode, userAssetBalance, shareBalance, assetDecimals]);
+  }, [mode, withdrawInputMode, userAssetBalance, shareBalance, shareBalanceInUsdc, assetDecimals]);
 
   if (!open) return null;
 
@@ -289,11 +380,62 @@ export function AaveVaultModal({
       className="max-w-lg bg-white text-slate-900"
     >
       <form className="mt-6 flex w-full flex-col gap-5 text-sm text-slate-700" onSubmit={handleSubmit}>
+        {mode === "withdraw" && (
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium uppercase text-slate-500">
+              Withdraw by
+            </span>
+            <div
+              className="flex rounded-lg border border-slate-200 bg-slate-100 p-0.5"
+              role="group"
+              aria-label="Withdraw input mode"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setWithdrawInputMode("shares");
+                  setInputAmount("");
+                }}
+                className={
+                  "flex-1 rounded-md px-3 py-2 text-sm font-medium transition " +
+                  (withdrawInputMode === "shares"
+                    ? "bg-white text-slate-900 shadow"
+                    : "text-slate-600 hover:text-slate-900")
+                }
+                aria-pressed={withdrawInputMode === "shares"}
+                aria-label="Enter amount in shares"
+              >
+                Shares
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setWithdrawInputMode("asset");
+                  setInputAmount("");
+                }}
+                className={
+                  "flex-1 rounded-md px-3 py-2 text-sm font-medium transition " +
+                  (withdrawInputMode === "asset"
+                    ? "bg-white text-slate-900 shadow"
+                    : "text-slate-600 hover:text-slate-900")
+                }
+                aria-pressed={withdrawInputMode === "asset"}
+                aria-label={`Enter amount in ${assetSymbol}`}
+              >
+                {assetSymbol}
+              </button>
+            </div>
+          </div>
+        )}
         <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <label className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium uppercase text-slate-500">
-                {mode === "deposit" ? `${assetSymbol} Amount` : "Shares to Redeem"}
+                {mode === "deposit"
+                  ? `${assetSymbol} Amount`
+                  : isWithdrawAssetMode
+                    ? `${assetSymbol} to Withdraw`
+                    : "Shares to Redeem"}
               </span>
               <span className="text-xs text-slate-500">
                 Balance:{" "}
@@ -301,7 +443,11 @@ export function AaveVaultModal({
                   ? isBalanceLoading
                     ? "Loading..."
                     : formatUnits(userAssetBalance, assetDecimals)
-                  : formatUnits(shareBalance, 18)}
+                  : isShareBalanceUsdcLoading
+                    ? "Loading..."
+                    : shareBalance === 0n
+                      ? `0 shares`
+                      : `${formatVaultShares(shareBalance)} shares${shareBalanceInUsdc != null ? ` (≈ ${Number(shareBalanceInUsdc).toLocaleString("en-US", { maximumFractionDigits: assetDecimals })} ${assetSymbol})` : ""}`}
               </span>
             </div>
             <input
@@ -311,12 +457,19 @@ export function AaveVaultModal({
               onChange={(e) => setInputAmount(e.target.value)}
               placeholder="0.00"
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
-              aria-label={mode === "deposit" ? "Amount to deposit" : "Shares to redeem"}
+              aria-label={
+                mode === "deposit"
+                  ? "Amount to deposit"
+                  : isWithdrawAssetMode
+                    ? `${assetSymbol} amount to withdraw`
+                    : "Shares to redeem"
+              }
             />
             <button
               type="button"
               onClick={handleMaxClick}
-              className="self-end text-xs font-medium text-slate-600 underline hover:text-slate-800"
+              disabled={mode === "withdraw" && withdrawInputMode === "asset" && (shareBalanceInUsdc == null || isShareBalanceUsdcLoading)}
+              className="self-end text-xs font-medium text-slate-600 underline hover:text-slate-800 disabled:opacity-50 disabled:no-underline"
             >
               Max
             </button>
@@ -325,9 +478,26 @@ export function AaveVaultModal({
                 You will receive approximately {expectedShares} vault shares
               </p>
             )}
-            {mode === "withdraw" && expectedAssets != null && (
+            {mode === "withdraw" && withdrawInputMode === "shares" && expectedAssets != null && (
               <p className="text-xs text-slate-500">
+                {inputAmount && parsedAmount != null && (
+                  <>
+                    {parsedAmount} shares ≈ {expectedAssets} {assetSymbol}
+                    <br />
+                  </>
+                )}
                 You will receive approximately {expectedAssets} {assetSymbol}
+              </p>
+            )}
+            {mode === "withdraw" && withdrawInputMode === "asset" && (
+              <p className="text-xs text-slate-500">
+                You will withdraw {inputAmount || "0"} {assetSymbol}
+                {expectedAssets != null && (
+                  <>
+                    {" "}
+                    (shares to burn calculated at execution)
+                  </>
+                )}
               </p>
             )}
           </label>
