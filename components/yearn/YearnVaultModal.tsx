@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useMemo, useState } from "react";
 import { Address, formatUnits, createWalletClient, custom, type WalletClient } from "viem";
 import { useAccount, useWalletClient } from "wagmi";
 import { useWallet, useAuth, EVMWallet } from "@crossmint/client-sdk-react-ui";
-import { base, baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 
 import { Modal } from "@/components/common/Modal";
 import { useYearnDeposit } from "@/hooks/useYearnDeposit";
@@ -55,8 +55,9 @@ export const YearnVaultModal = ({
     if (crossmintWallet) {
       try {
         const evmWallet = EVMWallet.from(crossmintWallet);
-        const chain = process.env.NODE_ENV === "production" ? base : baseSepolia;
-        
+        // Yearn/Kalani vaults are on Base mainnet only; always use base for this modal
+        const chain = base;
+
         // Create a custom wallet client that uses Crossmint's EVMWallet for transactions
         return createWalletClient({
           chain,
