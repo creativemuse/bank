@@ -31,11 +31,20 @@ export const KALANI_CHAIN_ID = 8453;
 export const YEARN_USDC_VAULT_BASE =
   "0xb13CF163d916917d9cD6E836905cA5f12a1dEF4B" as Address;
 
+/** Fallback vault address when NEXT_PUBLIC_CREATIVE_BANK_YEARN_VAULT_ADDRESS is not set (legacy Kalani). */
+const CREATIVE_BANK_VAULT_ADDRESS_FALLBACK =
+  "0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE" as Address;
+
 /**
- * Creative Bank Vault Details (Kalani / cbUSDC)
+ * Creative Bank Vault Details (Yearn V3 USDC allocator on Base).
+ * Set NEXT_PUBLIC_CREATIVE_BANK_YEARN_VAULT_ADDRESS to the vault that has
+ * set_deposit_limit_module(bouncer) so the UI and on-chain gating match.
  */
 export const CREATIVE_BANK_VAULT = {
-  address: "0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE" as Address,
+  get address(): Address {
+    const env = process.env.NEXT_PUBLIC_CREATIVE_BANK_YEARN_VAULT_ADDRESS;
+    return (env as Address) || CREATIVE_BANK_VAULT_ADDRESS_FALLBACK;
+  },
   name: "USDC Creative Bank",
   symbol: "cbUSDC",
   asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address, // USDC

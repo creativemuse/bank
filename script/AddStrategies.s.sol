@@ -3,15 +3,15 @@ pragma solidity ^0.8.26;
 
 import {Script, console} from "@forge-std/Script.sol";
 
-// Interface for Yearn V3 Vault
+// Interface for Yearn V3 Vault (snake_case per Yearn V3 API)
 interface IVault {
-    function addStrategy(address strategy) external;
-    function updateMaxDebtForStrategy(address strategy, uint256 maxDebt) external;
+    function add_strategy(address strategy) external;
+    function update_max_debt_for_strategy(address strategy, uint256 maxDebt) external;
 }
 
 /**
  * @title AddStrategies
- * @notice Script to add all 4 strategies to the deployed vault and configure allocations
+ * @notice Script to add strategies to the deployed vault and configure allocations
  */
 contract AddStrategies is Script {
 
@@ -25,6 +25,8 @@ contract AddStrategies is Script {
         address compoundStrategy = vm.envAddress("COMPOUND_STRATEGY");
         address curveStrategy = vm.envAddress("CURVE_STRATEGY");
         address sparkStrategy = vm.envAddress("SPARK_STRATEGY");
+        address morphoStrategy = vm.envAddress("MORPHO_STRATEGY");
+        address aerodromeStrategy = vm.envAddress("AERODROME_STRATEGY");
 
         IVault vault = IVault(vaultAddress);
 
@@ -34,19 +36,27 @@ contract AddStrategies is Script {
         console.log("  - Compound V3:", compoundStrategy);
         console.log("  - Curve:", curveStrategy);
         console.log("  - Spark:", sparkStrategy);
+        console.log("  - Morpho:", morphoStrategy);
+        console.log("  - Aerodrome:", aerodromeStrategy);
 
         // Add all strategies
         console.log("\nAdding Aave V3 Strategy...");
-        vault.addStrategy(aaveStrategy);
+        vault.add_strategy(aaveStrategy);
 
         console.log("Adding Compound V3 Strategy...");
-        vault.addStrategy(compoundStrategy);
+        vault.add_strategy(compoundStrategy);
 
         console.log("Adding Curve Strategy...");
-        vault.addStrategy(curveStrategy);
+        vault.add_strategy(curveStrategy);
 
         console.log("Adding Spark Strategy...");
-        vault.addStrategy(sparkStrategy);
+        vault.add_strategy(sparkStrategy);
+
+        console.log("Adding Morpho Strategy...");
+        vault.add_strategy(morphoStrategy);
+
+        console.log("Adding Aerodrome Strategy...");
+        vault.add_strategy(aerodromeStrategy);
 
         // Set max debt for each strategy (25% each = 25% of total vault capacity)
         // Max debt is in asset units (USDC), using 1e6 for USDC decimals
@@ -57,13 +67,15 @@ contract AddStrategies is Script {
         console.log("\nSetting max debt for strategies...");
         console.log("Max debt per strategy:", maxDebtPerStrategy);
 
-        vault.updateMaxDebtForStrategy(aaveStrategy, maxDebtPerStrategy);
-        vault.updateMaxDebtForStrategy(compoundStrategy, maxDebtPerStrategy);
-        vault.updateMaxDebtForStrategy(curveStrategy, maxDebtPerStrategy);
-        vault.updateMaxDebtForStrategy(sparkStrategy, maxDebtPerStrategy);
+        vault.update_max_debt_for_strategy(aaveStrategy, maxDebtPerStrategy);
+        vault.update_max_debt_for_strategy(compoundStrategy, maxDebtPerStrategy);
+        vault.update_max_debt_for_strategy(curveStrategy, maxDebtPerStrategy);
+        vault.update_max_debt_for_strategy(sparkStrategy, maxDebtPerStrategy);
+        vault.update_max_debt_for_strategy(morphoStrategy, maxDebtPerStrategy);
+        vault.update_max_debt_for_strategy(aerodromeStrategy, maxDebtPerStrategy);
 
         console.log("\n=== Strategies Added Successfully ===");
-        console.log("All 4 strategies are now available in the vault");
+        console.log("All strategies are now available in the vault");
 
         vm.stopBroadcast();
     }
