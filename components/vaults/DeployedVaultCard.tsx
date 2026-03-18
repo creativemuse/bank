@@ -140,6 +140,29 @@ export const DeployedVaultCard = ({
     },
   });
 
+  // Read vault share token decimals (ERC-20 `decimals()`).
+  // For TokenizedStrategy-based vaults, this is set from the underlying asset decimals.
+  // This is required for correct share formatting and share<->asset conversion.
+  const { data: shareDecimalsRaw } = useReadContract({
+    address: vaultAddress,
+    abi: [
+      {
+        inputs: [],
+        name: "decimals",
+        outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ],
+    functionName: "decimals",
+    chainId: 8453, // Base mainnet
+    query: {
+      enabled: !!vaultAddress,
+    },
+  });
+
+  const shareDecimals = shareDecimalsRaw != null ? Number(shareDecimalsRaw) : undefined;
+
   // Calculate user's asset value from shares
   const { data: convertToAssets } = useReadContract({
     address: vaultAddress,
@@ -395,7 +418,7 @@ export const DeployedVaultCard = ({
                 Your Position: {Number(positionValue).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 6,
-                })} {assetSymbol} ({formatVaultShares(shareBalance)} shares)
+                })} {assetSymbol} ({formatVaultShares(shareBalance, shareDecimals ?? 18)} shares)
               </div>
             )}
             {aTokenBalanceDisplay && (
@@ -431,6 +454,7 @@ export const DeployedVaultCard = ({
         vaultAddress={vaultAddress}
         assetSymbol={assetSymbol}
         assetDecimals={assetDecimals}
+        shareDecimals={shareDecimals}
         mode={modalMode}
         userAddress={userAddress ?? undefined}
         userAssetBalance={(userAssetBalance as bigint) ?? 0n}
