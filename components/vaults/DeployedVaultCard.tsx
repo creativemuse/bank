@@ -8,7 +8,9 @@ import type { Vault } from "@aave/react";
 import { AaveVaultModal } from "@/components/vaults/AaveVaultModal";
 import { VaultManagementModal } from "@/components/vaults/VaultManagementModal";
 import { VaultActivityModal } from "@/components/vaults/VaultActivityModal";
+import { NexusCoverModal } from "@/components/nexus/NexusCoverModal";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
+import { NEXUS_AAVE_V3_PRODUCT_ID } from "@/lib/config/nexus-mutual";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { formatPercent } from "@/lib/formatters";
 import { formatVaultShares } from "@/lib/yearnUtils";
@@ -70,6 +72,7 @@ export const DeployedVaultCard = ({
   const [modalMode, setModalMode] = useState<"deposit" | "withdraw">("deposit");
   const [managementModalOpen, setManagementModalOpen] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [coverModalOpen, setCoverModalOpen] = useState(false);
 
   // When vault is from API, use its usedReserve; otherwise fall back to Base USDC reserve
   const { reserve: baseReserve, loading: reserveLoading } = useBaseUsdcReserve();
@@ -383,6 +386,12 @@ export const DeployedVaultCard = ({
         disabled: isWithdrawDisabled,
       },
       {
+        id: "buy-cover",
+        label: "Buy Cover",
+        ariaLabel: "Protect position with Nexus Mutual cover",
+        onClick: () => setCoverModalOpen(true),
+      },
+      {
         id: "view-vault",
         label: "View on Basescan",
         ariaLabel: "View vault on Basescan",
@@ -515,6 +524,17 @@ export const DeployedVaultCard = ({
         assetSymbol={assetSymbol}
         currentAssetValueWei={convertToAssets ?? undefined}
         assetDecimals={assetDecimals}
+      />
+
+      <NexusCoverModal
+        open={coverModalOpen}
+        onClose={() => setCoverModalOpen(false)}
+        productId={NEXUS_AAVE_V3_PRODUCT_ID}
+        productLabel="Aave v3"
+        assetSymbol={assetSymbol}
+        assetDecimals={assetDecimals ?? 6}
+        suggestedAmountWei={convertToAssets ?? undefined}
+        buyerAddress={userAddress ?? undefined}
       />
     </>
   );

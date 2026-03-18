@@ -1,6 +1,6 @@
 import { createConfig, createStorage, fallback, http, noopStorage } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
-import { base, baseSepolia } from "wagmi/chains";
+import { base, baseSepolia, mainnet } from "wagmi/chains";
 
 // Public RPC endpoints for Base - these are free and rate-limited
 const DEFAULT_BASE_RPC_URL = "https://mainnet.base.org";
@@ -129,6 +129,23 @@ const buildBaseSepoliaRpcEndpoints = () => {
   return endpoints;
 };
 
+// Ethereum mainnet transport for Nexus Mutual CoverBroker (cover is purchased on mainnet, protects Base positions)
+const buildEthereumRpcEndpoints = () => {
+  const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+  const endpoints = [];
+  if (alchemyKey && alchemyKey.trim().length >= 20) {
+    endpoints.push(
+      http(`https://eth-mainnet.g.alchemy.com/v2/${alchemyKey}`, {
+        batch: { wait: 50 },
+        retryCount: 2,
+      })
+    );
+  }
+  endpoints.push(http("https://eth.llamarpc.com", { retryCount: 2 }));
+  endpoints.push(http("https://1rpc.io/eth", { retryCount: 1 }));
+  return endpoints;
+};
+
 const transports = {
   [base.id]: fallback(buildBaseRpcEndpoints(), {
     rank: true, // Rank transports by speed
@@ -136,6 +153,7 @@ const transports = {
   [baseSepolia.id]: fallback(buildBaseSepoliaRpcEndpoints(), {
     rank: true,
   }),
+  [mainnet.id]: fallback(buildEthereumRpcEndpoints(), { rank: true }),
 };
 
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
@@ -163,7 +181,7 @@ const connectors = [
 ];
 
 export const wagmiConfig = createConfig({
-  chains: [base, baseSepolia],
+  chains: [base, baseSepolia, mainnet],
   transports,
   connectors,
   ssr: true,
