@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Address, formatUnits } from "viem";
+import { Address, formatUnits, parseUnits } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
 import type { Vault } from "@aave/react";
@@ -137,6 +137,7 @@ export const DeployedVaultCard = ({
     chainId: 8453, // Base mainnet
     query: {
       enabled: !!userAddress,
+      refetchInterval: 10000, // Refetch every 10 seconds to keep share balance fresh
     },
   });
 
@@ -163,6 +164,31 @@ export const DeployedVaultCard = ({
 
   const shareDecimals = shareDecimalsRaw != null ? Number(shareDecimalsRaw) : undefined;
 
+  // If onchain `balanceOf(user)` is temporarily stale/0 after deposits, use Aave's API-provided
+  // `userShares` as a fallback so the UI can still enable withdrawals.
+  const apiShareBalance = useMemo((): bigint | undefined => {
+    if (shareDecimals == null) return undefined;
+    const apiValue = (vaultFromApi as any)?.userShares?.shares?.amount?.value as string | undefined;
+    if (!apiValue) return undefined;
+
+    try {
+      return parseUnits(String(apiValue), shareDecimals);
+    } catch {
+      return undefined;
+    }
+  }, [vaultFromApi, shareDecimals]);
+
+  const resolvedShareBalance = useMemo((): bigint | undefined => {
+    if (shareBalance !== undefined && shareBalance > 0n) return shareBalance;
+    if (apiShareBalance !== undefined && apiShareBalance > 0n) return apiShareBalance;
+    return shareBalance;
+  }, [shareBalance, apiShareBalance]);
+
+  const resolvedShareBalanceForConvertToAssets = useMemo(() => {
+    if (resolvedShareBalance === undefined || resolvedShareBalance === 0n) return undefined;
+    return resolvedShareBalance;
+  }, [resolvedShareBalance]);
+
   // Calculate user's asset value from shares
   const { data: convertToAssets } = useReadContract({
     address: vaultAddress,
@@ -176,10 +202,10 @@ export const DeployedVaultCard = ({
       },
     ],
     functionName: "convertToAssets",
-    args: shareBalance ? [shareBalance] : undefined,
+    args: resolvedShareBalanceForConvertToAssets ? [resolvedShareBalanceForConvertToAssets] : undefined,
     chainId: 8453, // Base mainnet
     query: {
-      enabled: !!shareBalance && shareBalance > 0n,
+      enabled: resolvedShareBalanceForConvertToAssets !== undefined,
     },
   });
 
@@ -226,7 +252,9 @@ export const DeployedVaultCard = ({
   const handleOpenWithdraw = useCallback(() => {
     setModalMode("withdraw");
     setModalOpen(true);
-  }, []);
+    // Ensure `balanceOf(user)` is fresh so the withdraw form shows correct balances.
+    if (refetchShareBalance) refetchShareBalance();
+  }, [refetchShareBalance]);
 
   const handleVaultSuccess = useCallback(() => {
     refetchAssetBalance?.();
@@ -307,13 +335,20 @@ export const DeployedVaultCard = ({
 
   // Check if user has a position (shares > 0)
   // Only consider hasPosition true if we've loaded the balance and it's > 0
-  const hasPosition = !isShareBalanceLoading && shareBalance !== undefined && shareBalance > 0n;
+  const hasPosition =
+    resolvedShareBalance !== undefined &&
+    resolvedShareBalance > 0n &&
+    // If we have the onchain conversion value, ensure it doesn't exceed total vault assets
+    // (sanity check against parsing/shape mismatches in `apiShareBalance`).
+    (convertToAssets !== undefined && totalAssets !== undefined ? convertToAssets <= totalAssets : true) &&
+    !isShareBalanceLoading;
   
   // Disable withdraw button only if:
   // 1. No wallet connected, OR
   // 2. We've finished loading AND confirmed user has no shares
   // Keep button enabled during loading to avoid showing inactive state when user actually has shares
-  const isWithdrawDisabled = !userAddress || (!isShareBalanceLoading && (shareBalance === undefined || shareBalance === 0n));
+  const isWithdrawDisabled =
+    !userAddress || (!isShareBalanceLoading && !hasPosition);
   
   const positionValue = hasPosition && convertToAssets
     ? formatUnits(convertToAssets, assetDecimals)
@@ -418,7 +453,7 @@ export const DeployedVaultCard = ({
                 Your Position: {Number(positionValue).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 6,
-                })} {assetSymbol} ({formatVaultShares(shareBalance, shareDecimals ?? 18)} shares)
+                })} {assetSymbol} ({formatVaultShares(resolvedShareBalance ?? 0n, shareDecimals ?? 18)} shares)
               </div>
             )}
             {aTokenBalanceDisplay && (
@@ -458,7 +493,7 @@ export const DeployedVaultCard = ({
         mode={modalMode}
         userAddress={userAddress ?? undefined}
         userAssetBalance={(userAssetBalance as bigint) ?? 0n}
-        shareBalance={shareBalance ?? 0n}
+        shareBalance={resolvedShareBalance ?? 0n}
         isBalanceLoading={isBalanceLoading}
         onSuccess={handleVaultSuccess}
       />
