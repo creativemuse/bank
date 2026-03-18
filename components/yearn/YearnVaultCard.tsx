@@ -5,7 +5,9 @@ import { Address, formatUnits } from "viem";
 import { useAccount } from "wagmi";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { YearnVaultModal } from "./YearnVaultModal";
+import { NexusCoverModal } from "@/components/nexus/NexusCoverModal";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
+import { NEXUS_YEARN_V3_PRODUCT_ID } from "@/lib/config/nexus-mutual";
 import { useYearnVault, useYearnVaultBalance } from "@/hooks/useYearnVaults";
 import { useKalaniDepositEligibility } from "@/hooks/useKalaniDepositEligibility";
 import { formatPercentage, formatVaultShares } from "@/lib/yearnUtils";
@@ -43,6 +45,7 @@ export const YearnVaultCard = ({
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"deposit" | "withdraw">("deposit");
+  const [coverModalOpen, setCoverModalOpen] = useState(false);
 
   const { isEligible: canDepositByBouncer, isLoading: bouncerLoading } =
     useKalaniDepositEligibility(bouncerAddress);
@@ -114,6 +117,12 @@ export const YearnVaultCard = ({
                 },
               ]
             : []),
+          {
+            id: "buy-cover",
+            label: "Buy Cover",
+            ariaLabel: "Protect position with Nexus Mutual cover",
+            onClick: () => setCoverModalOpen(true),
+          },
         ]}
         footnote={
           hasPosition ? (
@@ -141,6 +150,17 @@ export const YearnVaultCard = ({
         mode={modalMode}
         userAssetBalance={userAssetBalance}
         assetDecimals={assetDecimals}
+      />
+
+      <NexusCoverModal
+        open={coverModalOpen}
+        onClose={() => setCoverModalOpen(false)}
+        productId={NEXUS_YEARN_V3_PRODUCT_ID}
+        productLabel="Yearn v3"
+        assetSymbol={assetSymbol}
+        assetDecimals={assetDecimals}
+        suggestedAmountWei={assetValue ?? undefined}
+        buyerAddress={userAddress}
       />
     </>
   );
