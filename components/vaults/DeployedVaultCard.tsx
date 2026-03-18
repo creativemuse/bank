@@ -454,6 +454,8 @@ export const DeployedVaultCard = ({
         chainId={8453}
         userAddress={userAddress ?? undefined}
         assetSymbol={assetSymbol}
+        currentAssetValueWei={convertToAssets ?? undefined}
+        assetDecimals={assetDecimals}
       />
     </>
   );
