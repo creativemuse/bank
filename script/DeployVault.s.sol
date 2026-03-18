@@ -44,13 +44,13 @@ contract DeployVault is Script {
         IRoleManagerFactory factory = IRoleManagerFactory(ROLE_MANAGER_FACTORY);
 
         console.log("Deploying Role Manager...");
-        console.log("Project Name: Creative Bank");
+        console.log("Project Name: Creative Bank V2");
         console.log("Governance:", governance);
         console.log("Management:", management);
 
-        // Deploy new Role Manager for Creative Bank project
+        // Deploy new Role Manager (distinct from existing "Creative Bank" / "Creative Finance")
         address roleManager = factory.newProject(
-            "Creative Bank",
+            "Creative Bank V2",
             governance,
             management
         );

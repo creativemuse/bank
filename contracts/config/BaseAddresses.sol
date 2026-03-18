@@ -29,4 +29,15 @@ library BaseAddresses {
     address public constant ROLE_MANAGER_FACTORY = 0xca12459a931643BF28388c67639b3F352fe9e5Ce;
     address public constant PROTOCOL_ADDRESS_PROVIDER = 0x775F09d6f3c8D2182DFA8bce8628acf51105653c;
     address public constant TOKENIZED_STRATEGY = 0xD377919FA87120584B21279a491F82D5265A139c; // Version 3.0.4
+
+    // Morpho Blue (MetaMorpho ERC-4626 wrapper)
+    // Note: Morpho's core is constant across chains, but the MetaMorpho vault
+    // address is the ERC-4626 wrapper that Yearn strategies can interact with.
+    address public constant MORPHO_BLUE_CORE = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
+    address public constant MORPHO_META_MORPHO_USDC_VAULT =
+        0xBEEFE94c8aD530842bfE7d8B397938fFc1cb83b2;
+
+    // Beefy mooToken (Aerodrome auto-compounding vault wrapper)
+    address public constant AERODROME_BEEFY_VAULT =
+        0x597258C05054E8078a220eFE98e63334A1216f8C;
 }

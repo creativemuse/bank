@@ -6,11 +6,13 @@ import {AaveV3Strategy} from "../contracts/strategies/AaveV3Strategy.sol";
 import {CompoundV3Strategy} from "../contracts/strategies/CompoundV3Strategy.sol";
 import {CurveStrategy} from "../contracts/strategies/CurveStrategy.sol";
 import {SparkStrategy} from "../contracts/strategies/SparkStrategy.sol";
+import {MorphoV3Strategy} from "../contracts/strategies/MorphoV3Strategy.sol";
+import {AerodromeBeefyStrategy} from "../contracts/strategies/AerodromeBeefyStrategy.sol";
 import {BaseAddresses} from "../contracts/config/BaseAddresses.sol";
 
 /**
  * @title DeployStrategies
- * @notice Script to deploy all 4 Tokenized Strategies on Base
+ * @notice Script to deploy all 6 Tokenized Strategies on Base
  */
 contract DeployStrategies is Script {
     function run() external {
@@ -47,6 +49,22 @@ contract DeployStrategies is Script {
         );
         console.log("Spark Strategy deployed at:", address(sparkStrategy));
 
+        // Deploy Morpho Strategy (MetaMorpho ERC-4626 wrapper)
+        MorphoV3Strategy morphoStrategy = new MorphoV3Strategy(
+            usdc,
+            BaseAddresses.MORPHO_META_MORPHO_USDC_VAULT,
+            "Creative Bank Morpho MetaMorpho USDC Strategy"
+        );
+        console.log("Morpho Strategy deployed at:", address(morphoStrategy));
+
+        // Deploy Aerodrome Strategy (Beefy auto-compounding vault wrapper)
+        AerodromeBeefyStrategy aerodromeStrategy = new AerodromeBeefyStrategy(
+            usdc,
+            BaseAddresses.AERODROME_BEEFY_VAULT,
+            "Creative Bank Aerodrome Beefy USDC Strategy"
+        );
+        console.log("Aerodrome Strategy deployed at:", address(aerodromeStrategy));
+
         vm.stopBroadcast();
 
         // Output addresses for frontend integration
@@ -55,5 +73,7 @@ contract DeployStrategies is Script {
         console.log("Compound V3 Strategy:", address(compoundStrategy));
         console.log("Curve Strategy:", address(curveStrategy));
         console.log("Spark Strategy:", address(sparkStrategy));
+        console.log("Morpho Strategy:", address(morphoStrategy));
+        console.log("Aerodrome Strategy:", address(aerodromeStrategy));
     }
 }
