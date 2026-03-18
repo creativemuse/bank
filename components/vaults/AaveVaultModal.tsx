@@ -32,6 +32,7 @@ type AaveVaultModalProps = {
   vaultAddress: Address;
   assetSymbol?: string;
   assetDecimals?: number;
+  shareDecimals?: number;
   mode: "deposit" | "withdraw";
   userAddress: Address | undefined;
   userAssetBalance?: bigint;
@@ -46,6 +47,7 @@ export function AaveVaultModal({
   vaultAddress,
   assetSymbol = "USDC",
   assetDecimals = 6,
+  shareDecimals,
   mode,
   userAddress,
   userAssetBalance = 0n,
@@ -79,11 +81,16 @@ export function AaveVaultModal({
 
   const isWithdrawAssetMode = mode === "withdraw" && withdrawInputMode === "asset";
 
+  const resolvedShareDecimals = shareDecimals;
+  const isShareDecimalsLoading = mode === "withdraw" && resolvedShareDecimals == null;
+
   const inputDecimals = useMemo(() => {
     if (mode === "deposit") return assetDecimals;
-    if (mode === "withdraw") return withdrawInputMode === "shares" ? 18 : assetDecimals;
+    if (mode === "withdraw") {
+      return withdrawInputMode === "shares" ? resolvedShareDecimals ?? 18 : assetDecimals;
+    }
     return assetDecimals;
-  }, [mode, withdrawInputMode, assetDecimals]);
+  }, [mode, withdrawInputMode, assetDecimals, resolvedShareDecimals]);
 
   const normalizeAmountForBigDecimal = useCallback(
     (raw: string, decimals: number): string | null => {
@@ -151,6 +158,11 @@ export function AaveVaultModal({
       hasPositiveInput &&
       normalizedInputAmount != null
     ) {
+      if (resolvedShareDecimals == null) {
+        setExpectedAssets(null);
+        setExpectedShares(null);
+        return;
+      }
       setExpectedShares(null);
       setExpectedSharesToBurn(null);
       redeemPreview({
@@ -170,6 +182,11 @@ export function AaveVaultModal({
       hasPositiveInput &&
       normalizedInputAmount != null
     ) {
+      if (resolvedShareDecimals == null) {
+        setExpectedAssets(null);
+        setExpectedSharesToBurn(null);
+        return;
+      }
       setExpectedShares(null);
       setExpectedAssets(null);
       withdrawPreview({
@@ -196,12 +213,16 @@ export function AaveVaultModal({
       setShareBalanceInUsdc(null);
       return;
     }
+    if (resolvedShareDecimals == null) {
+      setShareBalanceInUsdc(null);
+      return;
+    }
     setIsShareBalanceUsdcLoading(true);
     void Promise.resolve(
       redeemPreview({
         vault: evmAddress(vaultAddress),
         chainId: AAVE_TARGET_CHAIN_ID,
-        amount: bigDecimal(formatUnits(shareBalance, 18)),
+        amount: bigDecimal(formatUnits(shareBalance, resolvedShareDecimals)),
       }),
     )
       .then((result) => {
@@ -219,7 +240,7 @@ export function AaveVaultModal({
       .catch(() => setShareBalanceInUsdc(null))
       .finally(() => setIsShareBalanceUsdcLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps -- redeemPreview stable from hook
-  }, [mode, shareBalance, vaultAddress, assetDecimals, normalizeAmountForBigDecimal]);
+  }, [mode, shareBalance, vaultAddress, assetDecimals, normalizeAmountForBigDecimal, resolvedShareDecimals]);
 
   const shareBalanceInUsdcUnits = useMemo(() => {
     if (shareBalanceInUsdc == null) return null;
@@ -283,6 +304,7 @@ export function AaveVaultModal({
       if (authStatus === "initializing" || walletStatus === "in-progress") return "Wallet is connecting...";
       return "Connect a wallet to continue.";
     }
+    if (mode === "withdraw" && isShareDecimalsLoading) return "Loading share decimals...";
     if (!hasPositiveInput || inputUnits == null) return "Please enter a valid amount.";
     if (mode === "deposit") {
       if (isBalanceLoading) return "Balance is loading...";
@@ -308,6 +330,7 @@ export function AaveVaultModal({
     inputUnits,
     mode,
     withdrawInputMode,
+    isShareDecimalsLoading,
     isBalanceLoading,
     isShareBalanceUsdcLoading,
     shareBalanceInUsdcUnits,
@@ -389,6 +412,8 @@ export function AaveVaultModal({
               return;
             }
 
+            // For Aave `useVaultRedeemShares`, the hook is typed to return a TransactionRequest.
+            // Handle any failures via `redeemResult.isErr()` above.
             await sendAndWait(redeemResult.value);
           } else {
             const withdrawResult = await withdraw({
@@ -405,6 +430,8 @@ export function AaveVaultModal({
               return;
             }
 
+            // For Aave `useVaultWithdraw`, the hook is typed to return a TransactionRequest.
+            // Handle any failures via `withdrawResult.isErr()` above.
             await sendAndWait(withdrawResult.value);
           }
 
@@ -449,12 +476,12 @@ export function AaveVaultModal({
       setInputAmount(formatUnits(userAssetBalance, assetDecimals));
     } else if (mode === "withdraw") {
       if (withdrawInputMode === "shares" && shareBalance !== undefined) {
-        setInputAmount(formatUnits(shareBalance, 18));
+        setInputAmount(formatUnits(shareBalance, resolvedShareDecimals ?? 18));
       } else if (withdrawInputMode === "asset" && shareBalanceInUsdc != null) {
         setInputAmount(shareBalanceInUsdc);
       }
     }
-  }, [mode, withdrawInputMode, userAssetBalance, shareBalance, shareBalanceInUsdc, assetDecimals]);
+  }, [mode, withdrawInputMode, userAssetBalance, shareBalance, shareBalanceInUsdc, assetDecimals, resolvedShareDecimals]);
 
   if (!open) return null;
 
@@ -536,9 +563,11 @@ export function AaveVaultModal({
                     ? "Loading..."
                     : shareBalance === 0n
                       ? `0 shares`
-                      : `${formatVaultShares(shareBalance)} shares${
-                        shareBalanceInUsdc != null ? ` (≈ ${shareBalanceInUsdc} ${assetSymbol})` : ""
-                      }`}
+                      : isShareDecimalsLoading
+                        ? "Loading shares..."
+                        : `${formatVaultShares(shareBalance, resolvedShareDecimals ?? 18)} shares${
+                            shareBalanceInUsdc != null ? ` (≈ ${shareBalanceInUsdc} ${assetSymbol})` : ""
+                          }`}
               </span>
             </div>
             <input
@@ -561,8 +590,11 @@ export function AaveVaultModal({
               onClick={handleMaxClick}
               disabled={
                 mode === "withdraw" &&
-                withdrawInputMode === "asset" &&
-                (shareBalanceInUsdcUnits == null || isShareBalanceUsdcLoading || shareBalanceInUsdcUnits === 0n)
+                (isShareDecimalsLoading ||
+                  (withdrawInputMode === "asset" &&
+                    (shareBalanceInUsdcUnits == null ||
+                      isShareBalanceUsdcLoading ||
+                      shareBalanceInUsdcUnits === 0n)))
               }
               className="self-end text-xs font-medium text-slate-600 underline hover:text-slate-800 disabled:opacity-50 disabled:no-underline"
             >
@@ -619,7 +651,12 @@ export function AaveVaultModal({
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || !hasPositiveInput || inputUnits == null}
+            disabled={
+              isSubmitting ||
+              !hasPositiveInput ||
+              inputUnits == null ||
+              (mode === "withdraw" && isShareDecimalsLoading)
+            }
             className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
           >
             {isSubmitting ? "Confirming..." : mode === "deposit" ? "Deposit" : "Withdraw"}
