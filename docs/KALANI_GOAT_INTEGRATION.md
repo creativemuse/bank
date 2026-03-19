@@ -75,7 +75,7 @@ Replace `[YOUR_DEPLOYED_BOUNCER_ADDRESS]` with the deployed Creative Bank Bounce
 
 ## 5. Real-time data (yDaemon)
 
-To show “Live APY” or “Total earnings” in the Creative Bank app without heavy on-chain logic, use the [Yearn yDaemon API](https://docs.yearn.fi/). Query the vault by address (e.g. `0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE` or `0xb13CF163d916917d9cD6E836905cA5f12a1dEF4B`) for current yield and historical returns. The app already uses `useKalaniApr` for estimated APR; you can extend it to use yDaemon for consistency.
+To show “Live APY” or “Total earnings” in the Creative Bank app without heavy on-chain logic, use the [Yearn yDaemon API](https://docs.yearn.fi/). Query the vault by address (e.g. `0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE` or `0xb13CF163d916917d9cD6E836905cA5f12a1dEF4B`) for current yield and historical returns. The app already uses `useKalaniApr` for estimated APY; you can extend it to use yDaemon for consistency.
 
 ## 6. Bouncer deployment and vault configuration
 

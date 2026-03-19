@@ -151,13 +151,13 @@ function LendingContent({
         <h2 className="mb-4 text-lg font-semibold text-slate-900">USDC on Base</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <p className="text-xs text-slate-500">Supply APY</p>
+            <p className="text-xs text-slate-500">Supply APR</p>
             <p className="text-lg font-semibold text-slate-900">
               {formatPercent(baseReserve.reserve?.supplyInfo?.apy?.formatted)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">Borrow APY</p>
+            <p className="text-xs text-slate-500">Borrow APR</p>
             <p className="text-lg font-semibold text-slate-900">
               {formatPercent(baseReserve.reserve?.borrowInfo?.apy?.formatted)}
             </p>

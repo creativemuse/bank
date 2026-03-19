@@ -285,10 +285,10 @@ Result: Prompted to upgrade membership
 - **Solution**: Purchase membership NFT via Unlock Protocol
 - **Verify**: Check membership in context
 
-**Issue: "APR shows 'Pending oracle update'"**
+**Issue: "APY shows 'Pending oracle update'"**
 - **Cause**: Oracle hasn't updated yet
 - **Solution**: Wait for next oracle update (usually 24h)
-- **Fallback**: Show estimated APR from Aave base rate
+- **Fallback**: Show estimated APY from Aave base rate
 
 **Issue: "Shares calculation seems wrong"**
 - **Cause**: First depositor gets 1:1, later depositors get priced shares
