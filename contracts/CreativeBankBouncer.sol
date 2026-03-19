@@ -29,6 +29,18 @@ contract CreativeBankBouncer {
      * @return The maximum amount they can deposit (type(uint256).max if they have an NFT, 0 otherwise).
      */
     function availableDepositLimit(address user) external view returns (uint256) {
+        return _availableDepositLimit(user);
+    }
+
+    /**
+     * @notice Yearn V3 deposit_limit_module hook (snake_case).
+     * @dev Some Yearn V3 vault implementations call this exact name.
+     */
+    function available_deposit_limit(address user) external view returns (uint256) {
+        return _availableDepositLimit(user);
+    }
+
+    function _availableDepositLimit(address user) internal view returns (uint256) {
         bool hasAccess =
             IERC721(brandNFT).balanceOf(user) > 0 ||
             IERC721(investorNFT).balanceOf(user) > 0 ||

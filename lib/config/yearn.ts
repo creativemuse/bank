@@ -273,7 +273,7 @@ export const USDC_ADDRESS_BASE = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" as
 export const CREATIVE_BANK_BOUNCER_ABI = [
   {
     inputs: [{ name: "user", type: "address" }],
-    name: "availableDepositLimit",
+    name: "available_deposit_limit",
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
