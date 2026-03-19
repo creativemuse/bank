@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useCallback, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Address, formatUnits, createWalletClient, custom, type WalletClient } from "viem";
 import { useAccount, useWalletClient } from "wagmi";
 import { useWallet, useAuth, EVMWallet } from "@crossmint/client-sdk-react-ui";
 import { base } from "viem/chains";
+import { toast } from "sonner";
 
 import { Modal } from "@/components/common/Modal";
 import { useYearnDeposit } from "@/hooks/useYearnDeposit";
@@ -186,6 +187,65 @@ export const YearnVaultModal = ({
     resetForm();
     onClose();
   }, [onClose, resetForm]);
+
+  const handledSuccessTxHashRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    if (state.status !== "success") return;
+    if (!state.txHash) return;
+    if (handledSuccessTxHashRef.current === state.txHash) return;
+
+    handledSuccessTxHashRef.current = state.txHash;
+
+    const vaultShort = vaultAddress
+      ? `${vaultAddress.slice(0, 6)}...${vaultAddress.slice(-4)}`
+      : "this vault";
+
+    if (mode === "deposit") {
+      const depositAssetsWei = parsedAmount ?? 0n;
+      const depositAssetsFormatted = formatUnits(depositAssetsWei, assetDecimals);
+      const expectedSharesFormatted =
+        expectedShares != null ? formatVaultShares(expectedShares, shareDecimals) : undefined;
+
+      toast.success("Deposit complete", {
+        description: expectedSharesFormatted
+          ? `${depositAssetsFormatted} ${assetSymbol} deposited into ${vaultShort}. Expected ${expectedSharesFormatted} shares.`
+          : `${depositAssetsFormatted} ${assetSymbol} deposited into ${vaultShort}.`,
+      });
+    } else {
+      const redeemedSharesWei = parsedAmount ?? 0n;
+      const redeemedSharesFormatted = formatVaultShares(redeemedSharesWei, shareDecimals);
+      const expectedWithdrawAssetsFormatted =
+        expectedAssets != null ? formatUnits(expectedAssets, assetDecimals) : undefined;
+
+      toast.success("Withdraw complete", {
+        description: expectedWithdrawAssetsFormatted
+          ? `Redeemed ${redeemedSharesFormatted} shares for ~${expectedWithdrawAssetsFormatted} ${assetSymbol} from ${vaultShort}.`
+          : `Redeemed ${redeemedSharesFormatted} shares from ${vaultShort}.`,
+      });
+    }
+
+    const timer = window.setTimeout(() => {
+      handleClose();
+    }, 900);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    open,
+    state.status,
+    state.txHash,
+    mode,
+    parsedAmount,
+    vaultAddress,
+    assetDecimals,
+    assetSymbol,
+    expectedShares,
+    expectedAssets,
+    shareDecimals,
+    handleClose,
+  ]);
 
   const validate = useCallback(() => {
     if (!userAddress) {

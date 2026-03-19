@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useWriteContract, useWalletClient } from "wagmi";
+import { usePublicClient, useWriteContract, useWalletClient } from "wagmi";
 import { Address, type WalletClient, encodeFunctionData } from "viem";
-import { ERC4626_ABI, MAX_LOSS_BPS } from "@/lib/config/yearn";
+import { ERC4626_ABI, MAX_LOSS_BPS, YEARN_CHAIN_ID } from "@/lib/config/yearn";
 
 type WithdrawState = {
   status: "idle" | "redeeming" | "success" | "error";
@@ -31,6 +31,7 @@ export const useYearnWithdraw = (
 ): UseYearnWithdrawReturn => {
   const [state, setState] = useState<WithdrawState>({ status: "idle" });
 
+  const publicClient = usePublicClient({ chainId: YEARN_CHAIN_ID });
   const { data: wagmiWalletClient } = useWalletClient();
   const { writeContractAsync: writeRedeem } = useWriteContract();
 
@@ -158,10 +159,20 @@ export const useYearnWithdraw = (
           throw new Error("Redeem transaction failed");
         }
 
-        setState({
-          status: "success",
-          txHash: redeemHash,
+        if (!publicClient) {
+          throw new Error("Public client unavailable while confirming withdrawal");
+        }
+
+        // Wait for confirmation so the modal can close after a real success.
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: redeemHash,
+          timeout: 120_000,
         });
+        if (receipt.status === "reverted") {
+          throw new Error("Withdrawal transaction reverted");
+        }
+
+        setState({ status: "success", txHash: redeemHash });
       } catch (error) {
         setState({
           status: "error",
@@ -191,6 +202,7 @@ export const useYearnWithdrawAssets = (
 ): UseYearnWithdrawReturn => {
   const [state, setState] = useState<WithdrawState>({ status: "idle" });
 
+  const publicClient = usePublicClient({ chainId: YEARN_CHAIN_ID });
   const { writeContractAsync: writeWithdraw } = useWriteContract();
 
   const reset = useCallback(() => {
@@ -227,10 +239,19 @@ export const useYearnWithdrawAssets = (
           throw new Error("Withdraw transaction failed");
         }
 
-        setState({
-          status: "success",
-          txHash: withdrawHash,
+        if (!publicClient) {
+          throw new Error("Public client unavailable while confirming withdraw");
+        }
+
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: withdrawHash,
+          timeout: 120_000,
         });
+        if (receipt.status === "reverted") {
+          throw new Error("Withdraw transaction reverted");
+        }
+
+        setState({ status: "success", txHash: withdrawHash });
       } catch (error) {
         setState({
           status: "error",
