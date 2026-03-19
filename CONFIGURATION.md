@@ -31,7 +31,7 @@ NEXT_PUBLIC_UNLOCK_CLIENT_ID=creative-bank
 # Alchemy API Key (RECOMMENDED - provides higher rate limits)
 # Get a free API key at: https://www.alchemy.com/
 # Without this, you'll use public RPCs which are rate-limited
-NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key
+ALCHEMY_API_KEY=your_alchemy_api_key
 
 # Custom RPC URLs (optional - overrides default public RPCs)
 NEXT_PUBLIC_BASE_RPC_URL=https://mainnet.base.org
@@ -229,12 +229,13 @@ base-mainnet.g.alchemy.com/v2/xxx: Failed to load resource: 403
 
 1. **Get an Alchemy API Key (Recommended)**
    - Sign up at https://www.alchemy.com/ (free tier available)
-   - Create a new app for Base Mainnet
+   - Create apps for the networks you use (Base + Ethereum mainnet if needed)
    - Copy your API key
-   - Add to `.env.local`:
+   - Add to `.env.local` as a **server-only** env var:
      ```bash
-     NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key_here
+     ALCHEMY_API_KEY=your_alchemy_api_key_here
      ```
+   - The app proxies JSON-RPC through same-origin routes (e.g. `/api/rpc/mainnet`) so the browser does **not** call Alchemy directly.
 
 2. **Automatic Fallback**
    - The app now automatically falls back to multiple public RPC endpoints

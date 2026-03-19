@@ -131,19 +131,13 @@ const buildBaseSepoliaRpcEndpoints = () => {
 
 // Ethereum mainnet transport for Nexus Mutual CoverBroker (cover is purchased on mainnet, protects Base positions)
 const buildEthereumRpcEndpoints = () => {
-  const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
-  const endpoints = [];
-  if (alchemyKey && alchemyKey.trim().length >= 20) {
-    endpoints.push(
-      http(`https://eth-mainnet.g.alchemy.com/v2/${alchemyKey}`, {
-        batch: { wait: 50 },
-        retryCount: 2,
-      })
-    );
-  }
-  endpoints.push(http("https://eth.llamarpc.com", { retryCount: 2 }));
-  endpoints.push(http("https://1rpc.io/eth", { retryCount: 1 }));
-  return endpoints;
+  return [
+    http("/api/rpc/mainnet", {
+      batch: { wait: 50 },
+      retryCount: 2,
+      retryDelay: 500,
+    }),
+  ];
 };
 
 const transports = {

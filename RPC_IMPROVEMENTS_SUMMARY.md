@@ -41,7 +41,7 @@ Add to your `.env.local` file:
 
 ```bash
 # RECOMMENDED: Get your own free Alchemy API key
-NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key
+ALCHEMY_API_KEY=your_alchemy_api_key
 
 # Optional: Use a different primary RPC
 NEXT_PUBLIC_BASE_RPC_URL=https://your-rpc-provider.com
@@ -72,7 +72,7 @@ NEXT_PUBLIC_BASE_RPC_URL=https://your-rpc-provider.com
 3. **Copy API Key** from the app dashboard
 4. **Add to `.env.local`:**
    ```bash
-   NEXT_PUBLIC_ALCHEMY_API_KEY=your_key_here
+   ALCHEMY_API_KEY=your_key_here
    ```
 5. **Restart dev server:** `pnpm dev`
 

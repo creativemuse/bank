@@ -36,7 +36,7 @@ export const useKalaniDepositEligibility = (
   const { data: depositLimit, isLoading, error } = useReadContract({
     address: bouncerAddress,
     abi: CREATIVE_BANK_BOUNCER_ABI,
-    functionName: "availableDepositLimit",
+    functionName: "available_deposit_limit",
     args: userAddress ? [userAddress] : undefined,
     query: {
       enabled: Boolean(bouncerAddress && userAddress),
