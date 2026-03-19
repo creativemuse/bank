@@ -215,8 +215,17 @@ export const useYearnVaultBalance = (
   });
 
   const refetch = () => {
-    refetchShares();
-    refetchValue();
+    // Note: wagmi refetch() returns a promise, but the existing callers
+    // (e.g. deposit/withdraw modals) don't require awaiting.
+    // Interest tracking uses the returned values.
+    return Promise.all([refetchShares(), refetchValue()]).then(([sharesRes, valueRes]) => {
+      const sharesData = (sharesRes as { data?: unknown } | undefined)?.data;
+      const valueData = (valueRes as { data?: unknown } | undefined)?.data;
+      return {
+        shareBalance: sharesData as bigint | undefined,
+        assetValue: valueData as bigint | undefined,
+      };
+    });
   };
 
   return {

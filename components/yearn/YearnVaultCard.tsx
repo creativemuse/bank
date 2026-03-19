@@ -11,6 +11,7 @@ import { NEXUS_YEARN_V3_PRODUCT_ID } from "@/lib/config/nexus-mutual";
 import { useYearnVault, useYearnVaultBalance } from "@/hooks/useYearnVaults";
 import { useKalaniDepositEligibility } from "@/hooks/useKalaniDepositEligibility";
 import { formatPercentage, formatVaultShares } from "@/lib/yearnUtils";
+import { YearnVaultInterestModal } from "./YearnVaultInterestModal";
 
 type YearnVaultCardProps = {
   vaultAddress: Address;
@@ -46,6 +47,7 @@ export const YearnVaultCard = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"deposit" | "withdraw">("deposit");
   const [coverModalOpen, setCoverModalOpen] = useState(false);
+  const [interestModalOpen, setInterestModalOpen] = useState(false);
 
   const { isEligible: canDepositByBouncer, isLoading: bouncerLoading } =
     useKalaniDepositEligibility(bouncerAddress);
@@ -139,6 +141,12 @@ export const YearnVaultCard = ({
                   ariaLabel: "Protect position with Nexus Mutual cover",
                   onClick: () => setCoverModalOpen(true),
                 },
+                {
+                  id: "interest",
+                  label: "Interest",
+                  ariaLabel: "View net profit and interest over time",
+                  onClick: () => setInterestModalOpen(true),
+                },
               ]
             : []),
         ]}
@@ -180,6 +188,15 @@ export const YearnVaultCard = ({
         assetDecimals={assetDecimals}
         suggestedAmountWei={assetValue ?? undefined}
         buyerAddress={userAddress}
+      />
+
+      <YearnVaultInterestModal
+        open={interestModalOpen}
+        onClose={() => setInterestModalOpen(false)}
+        vaultAddress={vaultAddress}
+        userAddress={userAddress}
+        assetSymbol={assetSymbol}
+        assetDecimals={assetDecimals}
       />
     </>
   );

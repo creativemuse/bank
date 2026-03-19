@@ -140,7 +140,7 @@ export function NexusCoverModal({
       onClose={handleClose}
       title={`Protect ${productLabel} with Nexus Mutual`}
       showCloseButton
-      className="bg-white"
+      className="bg-white text-slate-900"
     >
       <div className="mt-4 flex w-full max-w-md flex-col gap-6">
         <p className="text-sm text-slate-600">
