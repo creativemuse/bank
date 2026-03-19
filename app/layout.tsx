@@ -37,12 +37,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/152x152.png", sizes: "152x152", type: "image/png" },
+      { url: "/icons/v2/white_bg/white_creative_icon_192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/v2/white_bg/white_creative_products-152x152.png", sizes: "152x152", type: "image/png" },
     ],
     apple: [
-      { url: "/icons/creative_icons-180x180.png", sizes: "180x180", type: "image/png" },
-      { url: "/icons/152x152.png", sizes: "152x152", type: "image/png" },
+      { url: "/icons/v2/white_bg/white_creative_icons-180x180.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/v2/white_bg/white_creative_products-152x152.png", sizes: "152x152", type: "image/png" },
     ],
   },
   openGraph: {

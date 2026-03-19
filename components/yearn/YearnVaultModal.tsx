@@ -22,6 +22,8 @@ type YearnVaultModalProps = {
   mode: "deposit" | "withdraw";
   userAssetBalance?: bigint;
   assetDecimals?: number;
+  /** Vault share token decimals (from vault decimals()). Used so share display matches USDC scale. */
+  shareDecimals?: number;
   isBalanceLoading?: boolean;
 };
 
@@ -34,6 +36,7 @@ export const YearnVaultModal = ({
   mode,
   userAssetBalance = 0n,
   assetDecimals = 6,
+  shareDecimals = 18,
   isBalanceLoading = false,
 }: YearnVaultModalProps) => {
   const { address: wagmiAddress } = useAccount();
@@ -143,12 +146,12 @@ export const YearnVaultModal = ({
   );
 
   // Parse input amount to bigint
-  // In withdraw mode, we're entering shares (18 decimals)
+  // In withdraw mode, we're entering shares (shareDecimals)
   // In deposit mode, we're entering assets (assetDecimals)
   const parsedAmount = useMemo(() => {
-    const decimals = mode === "withdraw" ? 18 : assetDecimals;
+    const decimals = mode === "withdraw" ? shareDecimals : assetDecimals;
     return parseInputAmount(inputAmount, decimals);
-  }, [inputAmount, assetDecimals, mode]);
+  }, [inputAmount, assetDecimals, shareDecimals, mode]);
 
   // Preview deposit (get expected shares)
   const { expectedShares } = usePreviewDeposit(
@@ -306,9 +309,9 @@ export const YearnVaultModal = ({
     if (mode === "deposit") {
       setInputAmount(formatUnits(userAssetBalance, assetDecimals));
     } else if (shareBalance) {
-      setInputAmount(formatUnits(shareBalance, 18)); // Vault shares are typically 18 decimals
+      setInputAmount(formatUnits(shareBalance, shareDecimals));
     }
-  }, [mode, userAssetBalance, assetDecimals, shareBalance]);
+  }, [mode, userAssetBalance, assetDecimals, shareBalance, shareDecimals]);
 
   if (!open) {
     return null;
@@ -339,7 +342,7 @@ export const YearnVaultModal = ({
                     ? "Loading..."
                     : formatUnits(userAssetBalance, assetDecimals)
                   : shareBalance
-                    ? formatVaultShares(shareBalance)
+                    ? formatVaultShares(shareBalance, shareDecimals)
                     : "0"}
               </span>
             </div>
@@ -366,7 +369,7 @@ export const YearnVaultModal = ({
           {mode === "deposit" && expectedShares && (
             <div className="flex items-center justify-between rounded-lg bg-white p-3 text-sm">
               <span className="text-slate-500">Expected Shares:</span>
-              <span className="font-medium text-slate-900">{formatVaultShares(expectedShares)}</span>
+              <span className="font-medium text-slate-900">{formatVaultShares(expectedShares, shareDecimals)}</span>
             </div>
           )}
 

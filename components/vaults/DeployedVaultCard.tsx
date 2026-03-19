@@ -265,36 +265,39 @@ export const DeployedVaultCard = ({
   }, [refetchAssetBalance, refetchShareBalance]);
 
   // Calculate net APR from Aave reserve (after performance fee)
+  // Use .formatted when present (percent string e.g. "2.20"); .value may be decimal (0.022) so scale by 100
   const aprDisplay = useMemo(() => {
     if (reserveLoading || !reserve) return "Loading...";
-    
-    const supplyApyValue = reserve.supplyInfo.apy?.value;
-    if (!supplyApyValue) return "—";
-    
-    // Convert to number if it's a string
-    const supplyApy = typeof supplyApyValue === "string" 
-      ? Number.parseFloat(supplyApyValue) 
-      : Number(supplyApyValue);
-    
-    if (Number.isNaN(supplyApy)) return "—";
-    
+
+    const apy = reserve.supplyInfo.apy;
+    const formatted = apy?.formatted;
+    const valueRaw = apy?.value;
+
+    let grossPercent: number;
+    if (formatted != null && formatted !== "") {
+      grossPercent = typeof formatted === "string" ? Number.parseFloat(formatted) : Number(formatted);
+    } else if (valueRaw != null) {
+      const num = typeof valueRaw === "string" ? Number.parseFloat(valueRaw) : Number(valueRaw);
+      if (Number.isNaN(num)) return "—";
+      // Aave .value is often decimal (0.022 = 2.2%); if in 0–1 range treat as decimal
+      grossPercent = num > 0 && num <= 1 ? num * 100 : num;
+    } else {
+      return "—";
+    }
+
+    if (Number.isNaN(grossPercent)) return "—";
+
     // If we have the performance fee, calculate net APR
     // Aave Labs takes 50% of the performance fee, so:
     // Net APR = Gross APR * (1 - (performanceFee / 2) / 100)
-    // Example: 12% fee = 6% goes to Aave Labs, 6% to vault manager
-    // Net APR = Gross APR * (1 - 0.06) = Gross APR * 0.94
     if (performanceFee !== undefined && performanceFee > 0) {
-      // Convert percentage to decimal (e.g., 12% -> 0.12)
       const feeDecimal = performanceFee / 100;
-      // Aave Labs takes 50% of the fee
       const aaveLabsFeeShare = feeDecimal / 2;
-      // Net APR after fees
-      const netApy = supplyApy * (1 - aaveLabsFeeShare);
-      return formatPercent(netApy);
+      const netPercent = grossPercent * (1 - aaveLabsFeeShare);
+      return formatPercent(netPercent);
     }
-    
-    // If no performance fee available, show gross APR
-    return formatPercent(supplyApy);
+
+    return formatPercent(grossPercent);
   }, [reserve, reserveLoading, performanceFee]);
 
   const tvlDisplay = vaultLoading
@@ -386,12 +389,6 @@ export const DeployedVaultCard = ({
         disabled: isWithdrawDisabled,
       },
       {
-        id: "buy-cover",
-        label: "Buy Cover",
-        ariaLabel: "Protect position with Nexus Mutual cover",
-        onClick: () => setCoverModalOpen(true),
-      },
-      {
         id: "view-vault",
         label: "View on Basescan",
         ariaLabel: "View vault on Basescan",
@@ -412,6 +409,12 @@ export const DeployedVaultCard = ({
       });
     }
     if (hasPosition) {
+      actions.splice(actions.findIndex((a) => a.id === "view-vault"), 0, {
+        id: "buy-cover",
+        label: "Buy Cover",
+        ariaLabel: "Protect position with Nexus Mutual cover",
+        onClick: () => setCoverModalOpen(true),
+      });
       actions.splice(actions.findIndex((a) => a.id === "view-vault"), 0, {
         id: "activity",
         label: "Activity",
