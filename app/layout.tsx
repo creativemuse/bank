@@ -20,6 +20,9 @@ const conthrax = localFont({
   display: "swap",
 });
 
+const SOCIAL_IMAGE_URL =
+  "https://bank.creativeplatform.xyz/icons/v2/white_bg/white_creative_icon_192x192.png";
+
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ||
@@ -27,13 +30,13 @@ export const metadata: Metadata = {
         ? "https://creativeplatform.xyz"
         : "http://localhost:3000")
   ),
-  title: "Creative Bank",
+  title: "Creative Finance",
   description:
     "Banking designed for creatives. Manage your income, track expenses, and save for your dreams.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Creative Bank",
+    title: "Creative Finance",
   },
   icons: {
     icon: [
@@ -47,25 +50,26 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: "Creative Bank",
-    title: "Creative Bank",
+    url: "https://bank.creativeplatform.xyz",
+    siteName: "Creative Finance",
+    title: "Creative Finance",
     description:
       "Banking designed for creatives. Manage your income, track expenses, and save for your dreams.",
     images: [
       {
-        url: "/Creative_Bank.png",
-        width: 1200,
-        height: 630,
-        alt: "Creative Bank",
+        url: SOCIAL_IMAGE_URL,
+        width: 192,
+        height: 192,
+        alt: "Creative Finance",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Creative Bank",
+    title: "Creative Finance",
     description:
       "Banking designed for creatives. Manage your income, track expenses, and save for your dreams.",
-    images: ["/Creative_Bank.png"],
+    images: [SOCIAL_IMAGE_URL],
   },
 };
 
