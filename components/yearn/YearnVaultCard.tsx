@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { Address, formatUnits } from "viem";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { YearnVaultModal } from "./YearnVaultModal";
 import { NexusCoverModal } from "@/components/nexus/NexusCoverModal";
@@ -52,6 +52,24 @@ export const YearnVaultCard = ({
 
   // Get vault details
   const { totalAssets, isLoading: vaultLoading } = useYearnVault(vaultAddress);
+
+  // Read vault share token decimals (ERC-20 decimals()) so share display matches USDC scale
+  const { data: shareDecimalsRaw } = useReadContract({
+    address: vaultAddress,
+    abi: [
+      {
+        inputs: [],
+        name: "decimals",
+        outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ],
+    functionName: "decimals",
+    chainId: 8453,
+    query: { enabled: !!vaultAddress },
+  });
+  const shareDecimals = shareDecimalsRaw != null ? Number(shareDecimalsRaw) : 18;
 
   // Get user's position
   const { shareBalance, assetValue } = useYearnVaultBalance(vaultAddress, userAddress);
@@ -115,21 +133,21 @@ export const YearnVaultCard = ({
                   ariaLabel: `Withdraw ${assetSymbol} from ${name}`,
                   onClick: handleOpenWithdraw,
                 },
+                {
+                  id: "buy-cover",
+                  label: "Buy Cover",
+                  ariaLabel: "Protect position with Nexus Mutual cover",
+                  onClick: () => setCoverModalOpen(true),
+                },
               ]
             : []),
-          {
-            id: "buy-cover",
-            label: "Buy Cover",
-            ariaLabel: "Protect position with Nexus Mutual cover",
-            onClick: () => setCoverModalOpen(true),
-          },
         ]}
         footnote={
           hasPosition ? (
             <div className="flex flex-col gap-1">
               <span className="font-semibold text-slate-900">Your Position</span>
               <p className="text-xs text-slate-500">
-                {formatVaultShares(shareBalance)} shares ≈ {positionValue} {assetSymbol}
+                {formatVaultShares(shareBalance, shareDecimals)} shares ≈ {positionValue} {assetSymbol}
               </p>
             </div>
           ) : (
@@ -150,6 +168,7 @@ export const YearnVaultCard = ({
         mode={modalMode}
         userAssetBalance={userAssetBalance}
         assetDecimals={assetDecimals}
+        shareDecimals={shareDecimals}
       />
 
       <NexusCoverModal
