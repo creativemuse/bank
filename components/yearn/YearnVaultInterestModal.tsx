@@ -157,8 +157,14 @@ export function YearnVaultInterestModal({
     if (assetValue == null) return;
     if (cashflowsLoading) return;
     if (cashflowPoints.length === 0) {
-      setCashflowMessage("Cashflow history is not available yet. Try again in a moment.");
-      return;
+      // Goldsky can lag for very recent deposits/withdrawals.
+      // Still sample the position value so the user sees a number (likely 0 earned) while indexing catches up.
+      const msg = cashflowsError
+        ? `Cashflow history failed to load: ${cashflowsError.message}`
+        : "Money earned will update shortly (cashflow indexer is syncing your deposit/withdraw history).";
+      setCashflowMessage(msg);
+    } else {
+      setCashflowMessage(null);
     }
 
     try {
@@ -167,8 +173,10 @@ export function YearnVaultInterestModal({
       const latestPositionValueWei = refetchRes.assetValue ?? assetValue;
       if (latestPositionValueWei == null) return;
 
-      const netDepositsWeiAtBlock = getNetDepositsWeiAtBlock(currentBlockNumber);
-      const netProfitWei = latestPositionValueWei - netDepositsWeiAtBlock;
+      const netProfitWei =
+        cashflowPoints.length === 0
+          ? 0n
+          : latestPositionValueWei - getNetDepositsWeiAtBlock(currentBlockNumber);
       setCashflowMessage(null);
 
       setSnapshots((prev) => {
@@ -298,7 +306,7 @@ export function YearnVaultInterestModal({
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
                   {latestPositionValueDisplay} {assetSymbol}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">Derived from `convertToAssets(shares)`.</p>
+              {/* Keep this card copy short: the modal title and numbers already explain the source. */}
               </div>
             </section>
 
