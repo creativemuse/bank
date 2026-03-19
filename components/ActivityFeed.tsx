@@ -14,7 +14,7 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
   const { wallet } = useWallet();
   return (
     <Container className="flex min-h-[280px] max-h-[70vh] w-full max-w-5xl flex-grow flex-col overflow-hidden sm:min-h-[350px] sm:max-h-[600px]">
-      <div className="mb-2 flex-shrink-0 text-base text-slate-500">Last activity</div>
+      <div className="mb-2 flex-shrink-0 text-base text-slate-600">Last activity</div>
       <div
         className={`flex w-full flex-1 flex-col items-center overflow-hidden ${isLoading || !data?.events?.length ? "justify-center" : "justify-start"}`}
       >
@@ -23,7 +23,7 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
             <div className="mb-2 text-center text-base font-semibold text-slate-900">
               Your activity feed
             </div>
-            <div className="mb-7 max-w-xl text-center text-slate-500">
+            <div className="mb-7 max-w-xl text-center text-slate-600">
               When you add, send and receive money it shows up here.
               <br />
               Get started with making a deposit to your account
@@ -62,17 +62,17 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
                       <div className="text-base font-medium text-slate-900">
                         {counterparty.slice(0, 6)}...{counterparty.slice(-4)}
                       </div>
-                      <div className="text-sm text-slate-500">
+                      <div className="text-sm text-slate-600">
                         {new Date(event.timestamp).toLocaleString()}
                       </div>
                     </div>
                     <div>
                       <div
-                        className={`text-base font-semibold ${isOutgoing ? "text-slate-700" : "text-emerald-500"}`}
+                        className={`text-base font-semibold ${isOutgoing ? "text-slate-700" : "text-emerald-800"}`}
                       >
                         {isOutgoing ? "-" : "+"} {Number(event.amount).toFixed(2)}
                       </div>
-                      <div className="text-right text-sm text-slate-500">
+                      <div className="text-right text-sm text-slate-600">
                         {event.token_symbol ? event.token_symbol : "USDC"}
                       </div>
                     </div>

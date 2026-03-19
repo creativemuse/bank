@@ -71,7 +71,7 @@ const NewProduct = ({ title, description, image, ctaLabel, ctaHref }: NewProduct
         </div>
         <div>
           <div className="text-base font-semibold">{title}</div>
-          <div className="text-sm text-slate-500">{description}</div>
+          <div className="text-sm text-slate-600">{description}</div>
         </div>
       </div>
       <div className="flex flex-col items-end justify-start md:justify-center">
