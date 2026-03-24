@@ -1,13 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { type Address } from "viem";
+import { type Address, type PublicClient, parseAbiItem } from "viem";
 import { usePublicClient } from "wagmi";
 
-import { YEARN_CHAIN_ID } from "@/lib/config/yearn";
+import { YEARN_CASHFLOW_RPC_FROM_BLOCK, YEARN_CHAIN_ID } from "@/lib/config/yearn";
 
 const GOLD_SKY_ENDPOINT =
   "https://api.goldsky.com/api/public/project_cmh0iv6s500dbw2p22vsxcfo6/subgraphs/usdc-finance-yearn-v3/1.0.0/gn";
+
+const ERC4626_DEPOSIT_EVENT = parseAbiItem(
+  "event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares)",
+);
+const ERC4626_WITHDRAW_EVENT = parseAbiItem(
+  "event Withdraw(address indexed sender, address indexed owner, address indexed receiver, uint256 assets, uint256 shares)",
+);
+
+/** Stay under typical provider eth_getLogs window limits (e.g. 8k blocks). */
+const RPC_LOG_CHUNK_BLOCKS = 7999n;
 
 type YearnVaultCashflowPoint = {
   blockNumber: bigint;
@@ -81,11 +91,16 @@ function toNumberBlock(block: bigint | undefined): number | undefined {
   return n;
 }
 
+function effectiveRpcFromBlock(fromBlockNum: number | undefined): bigint {
+  if (fromBlockNum != null) return BigInt(fromBlockNum);
+  return YEARN_CASHFLOW_RPC_FROM_BLOCK;
+}
+
 async function fetchGoldskyDeposits(params: {
   where: Record<string, unknown>;
   first: number;
   skip: number;
-}): Promise<GoldskyDeposit[]> {
+}): Promise<{ rows: GoldskyDeposit[]; graphqlErrors: boolean }> {
   const query = `
     query Deposits($where: Deposit_filter, $first: Int, $skip: Int) {
       deposits(first: $first, skip: $skip, where: $where, orderBy: block_number, orderDirection: asc) {
@@ -114,16 +129,20 @@ async function fetchGoldskyDeposits(params: {
     }),
   });
 
-  const json = (await res.json()) as { data?: { deposits?: GoldskyDeposit[] }; errors?: unknown };
-  if (!json.data?.deposits) return [];
-  return json.data.deposits;
+  const json = (await res.json()) as {
+    data?: { deposits?: GoldskyDeposit[] };
+    errors?: unknown;
+  };
+  const graphqlErrors = Boolean(json.errors) || !res.ok;
+  if (!json.data?.deposits) return { rows: [], graphqlErrors };
+  return { rows: json.data.deposits, graphqlErrors };
 }
 
 async function fetchGoldskyWithdraws(params: {
   where: Record<string, unknown>;
   first: number;
   skip: number;
-}): Promise<GoldskyWithdraw[]> {
+}): Promise<{ rows: GoldskyWithdraw[]; graphqlErrors: boolean }> {
   const query = `
     query Withdraws($where: Withdraw_filter, $first: Int, $skip: Int) {
       withdraws(first: $first, skip: $skip, where: $where, orderBy: block_number, orderDirection: asc) {
@@ -153,9 +172,13 @@ async function fetchGoldskyWithdraws(params: {
     }),
   });
 
-  const json = (await res.json()) as { data?: { withdraws?: GoldskyWithdraw[] }; errors?: unknown };
-  if (!json.data?.withdraws) return [];
-  return json.data.withdraws;
+  const json = (await res.json()) as {
+    data?: { withdraws?: GoldskyWithdraw[] };
+    errors?: unknown;
+  };
+  const graphqlErrors = Boolean(json.errors) || !res.ok;
+  if (!json.data?.withdraws) return { rows: [], graphqlErrors };
+  return { rows: json.data.withdraws, graphqlErrors };
 }
 
 async function fetchAllGoldskyCashflows(params: {
@@ -184,10 +207,9 @@ async function fetchAllGoldskyCashflows(params: {
 
   const deposits: GoldskyDeposit[] = [];
   const withdrawals: GoldskyWithdraw[] = [];
-
   // Deposits
   for (let skip = 0; ; skip += PAGE_SIZE) {
-    const page = await fetchGoldskyDeposits({
+    const { rows: page } = await fetchGoldskyDeposits({
       where: baseDepositWhere,
       first: PAGE_SIZE,
       skip,
@@ -199,7 +221,7 @@ async function fetchAllGoldskyCashflows(params: {
 
   // Withdraws
   for (let skip = 0; ; skip += PAGE_SIZE) {
-    const page = await fetchGoldskyWithdraws({
+    const { rows: page } = await fetchGoldskyWithdraws({
       where: baseWithdrawWhere,
       first: PAGE_SIZE,
       skip,
@@ -241,6 +263,84 @@ async function fetchAllGoldskyCashflows(params: {
   return deltas;
 }
 
+async function fetchCashflowsFromRpc(params: {
+  publicClient: PublicClient;
+  vaultAddress: Address;
+  userAddress: Address;
+  fromBlock: bigint;
+  toBlock: bigint;
+}): Promise<Array<{ blockNumber: bigint; deltaWei: bigint; sortKey: string }>> {
+  const { publicClient, vaultAddress, userAddress, fromBlock, toBlock } = params;
+  const deltas: Array<{ blockNumber: bigint; deltaWei: bigint; sortKey: string }> = [];
+
+  let cursor = fromBlock;
+  while (cursor <= toBlock) {
+    const chunkEnd = cursor + RPC_LOG_CHUNK_BLOCKS > toBlock ? toBlock : cursor + RPC_LOG_CHUNK_BLOCKS;
+
+    const [depositLogs, withdrawLogs] = await Promise.all([
+      publicClient.getLogs({
+        address: vaultAddress,
+        event: ERC4626_DEPOSIT_EVENT,
+        args: { owner: userAddress },
+        fromBlock: cursor,
+        toBlock: chunkEnd,
+      }),
+      publicClient.getLogs({
+        address: vaultAddress,
+        event: ERC4626_WITHDRAW_EVENT,
+        args: { owner: userAddress },
+        fromBlock: cursor,
+        toBlock: chunkEnd,
+      }),
+    ]);
+
+    for (const log of depositLogs) {
+      const assets = log.args?.assets;
+      if (assets == null) continue;
+      deltas.push({
+        blockNumber: log.blockNumber,
+        deltaWei: assets,
+        sortKey: `${log.transactionHash}-${log.logIndex}`,
+      });
+    }
+
+    for (const log of withdrawLogs) {
+      const assets = log.args?.assets;
+      if (assets == null) continue;
+      deltas.push({
+        blockNumber: log.blockNumber,
+        deltaWei: -assets,
+        sortKey: `${log.transactionHash}-${log.logIndex}`,
+      });
+    }
+
+    cursor = chunkEnd + 1n;
+  }
+
+  deltas.sort((a, b) => {
+    if (a.blockNumber !== b.blockNumber) return a.blockNumber < b.blockNumber ? -1 : 1;
+    if (a.sortKey === b.sortKey) return 0;
+    return a.sortKey < b.sortKey ? -1 : 1;
+  });
+
+  return deltas;
+}
+
+function deltasToPoints(
+  deltas: Array<{ blockNumber: bigint; deltaWei: bigint }>,
+): YearnVaultCashflowPoint[] {
+  let cumulative = 0n;
+  const computedPoints: YearnVaultCashflowPoint[] = [];
+  for (const d of deltas) {
+    cumulative += d.deltaWei;
+    computedPoints.push({
+      blockNumber: d.blockNumber,
+      netDepositsWei: cumulative,
+    });
+  }
+  return computedPoints;
+}
+
 export function useYearnVaultCashflows(
   vaultAddress: Address | undefined,
   userAddress: Address | undefined,
@@ -255,22 +355,6 @@ export function useYearnVaultCashflows(
 
   const fromBlockNum = useMemo(() => toNumberBlock(fromBlock), [fromBlock]);
 
-  const buildPoints = useCallback(
-    (deltas: Array<{ blockNumber: bigint; deltaWei: bigint }>): YearnVaultCashflowPoint[] => {
-      let cumulative = 0n;
-      const built: YearnVaultCashflowPoint[] = [];
-      for (const d of deltas) {
-        cumulative += d.deltaWei;
-        built.push({
-          blockNumber: d.blockNumber,
-          netDepositsWei: cumulative,
-        });
-      }
-      return built;
-    },
-    [],
-  );
-
   const fetchAndBuild = useCallback(
     async (toBlock?: bigint) => {
       if (!vaultAddress || !userAddress) return;
@@ -283,24 +367,28 @@ export function useYearnVaultCashflows(
         const resolvedToBlock = toBlock ?? (await publicClient.getBlockNumber());
         const toBlockNum = toNumberBlock(resolvedToBlock);
 
-        const deltas = await fetchAllGoldskyCashflows({
+        const goldskyDeltas = await fetchAllGoldskyCashflows({
           vaultAddress,
           userAddress,
           fromBlock: fromBlockNum,
           toBlock: toBlockNum,
         });
 
-        // Convert deltas to points
-        let cumulative = 0n;
-        const computedPoints: YearnVaultCashflowPoint[] = [];
-        for (const d of deltas) {
-          cumulative += d.deltaWei;
-          computedPoints.push({
-            blockNumber: d.blockNumber,
-            netDepositsWei: cumulative,
+        let finalDeltas = goldskyDeltas;
+
+        if (goldskyDeltas.length === 0) {
+          const rpcFrom = effectiveRpcFromBlock(fromBlockNum);
+          const rpcDeltas = await fetchCashflowsFromRpc({
+            publicClient,
+            vaultAddress,
+            userAddress,
+            fromBlock: rpcFrom,
+            toBlock: resolvedToBlock,
           });
+          finalDeltas = rpcDeltas;
         }
 
+        const computedPoints = deltasToPoints(finalDeltas);
         setPoints(computedPoints);
         setLastToBlock(resolvedToBlock);
       } catch (e) {
@@ -343,4 +431,3 @@ export function useYearnVaultCashflows(
     lastToBlock,
   };
 }
-

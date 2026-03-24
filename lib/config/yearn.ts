@@ -22,6 +22,18 @@ export const YEARN_V3_ADDRESSES = {
 export const YEARN_CHAIN_ID = 8453; // Base Mainnet
 
 /**
+ * When Goldsky returns no deposit/withdraw rows, the hook falls back to RPC `getLogs` from this
+ * block through latest (chunked). Set `NEXT_PUBLIC_YEARN_CASHFLOW_RPC_FROM_BLOCK` if scans miss
+ * older history (must be before the user's first vault interaction).
+ */
+export const YEARN_CASHFLOW_RPC_FROM_BLOCK = BigInt(
+  process.env.NEXT_PUBLIC_YEARN_CASHFLOW_RPC_FROM_BLOCK ?? "15000000",
+);
+
+/** Base mainnet contract URL for explorers. */
+export const BASE_BLOCK_EXPLORER_ADDRESS_URL = "https://basescan.org/address" as const;
+
+/**
  * Vault Categories
  * Category 1 vaults are generally the lowest risk and most similar to V2 style vaults
  */
