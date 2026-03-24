@@ -1,13 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Address, formatUnits } from "viem";
 import { usePublicClient } from "wagmi";
 
 import { Modal } from "@/components/common/Modal";
 import { useYearnVaultBalance } from "@/hooks/useYearnVaults";
 import { useYearnVaultCashflows } from "@/hooks/useYearnVaultCashflows";
-import { YEARN_CHAIN_ID } from "@/lib/config/yearn";
+import { BASE_BLOCK_EXPLORER_ADDRESS_URL, YEARN_CHAIN_ID } from "@/lib/config/yearn";
+
+const formatMoneyEarnedDisplay = (wei: bigint, decimals: number): string => {
+  if (wei === 0n) return "0";
+  const n = Number(formatUnits(wei, decimals));
+  if (!Number.isFinite(n)) return formatUnits(wei, decimals);
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: 6,
+    maximumFractionDigits: 10,
+  });
+};
 
 type YearnInterestSnapshot = {
   timestamp: number;
@@ -157,11 +168,11 @@ export function YearnVaultInterestModal({
     if (assetValue == null) return;
     if (cashflowsLoading) return;
     if (cashflowPoints.length === 0) {
-      // Goldsky can lag for very recent deposits/withdrawals.
-      // Still sample the position value so the user sees a number (likely 0 earned) while indexing catches up.
       const msg = cashflowsError
         ? `Cashflow history failed to load: ${cashflowsError.message}`
-        : "Money earned will update shortly (cashflow indexer is syncing your deposit/withdraw history).";
+        : cashflowsLoading
+          ? "Loading your deposit and withdraw history…"
+          : "No deposit/withdraw history found for this wallet on this vault. If you already deposited, set NEXT_PUBLIC_YEARN_CASHFLOW_RPC_FROM_BLOCK to an earlier Base block (env) and tap Refresh.";
       setCashflowMessage(msg);
     } else {
       setCashflowMessage(null);
@@ -177,7 +188,10 @@ export function YearnVaultInterestModal({
         cashflowPoints.length === 0
           ? 0n
           : latestPositionValueWei - getNetDepositsWeiAtBlock(currentBlockNumber);
-      setCashflowMessage(null);
+
+      if (cashflowPoints.length > 0) {
+        setCashflowMessage(null);
+      }
 
       setSnapshots((prev) => {
         const last = prev[prev.length - 1];
@@ -219,6 +233,7 @@ export function YearnVaultInterestModal({
     assetValue,
     cashflowsLoading,
     cashflowPoints.length,
+    cashflowsError,
     getNetDepositsWeiAtBlock,
     storageKey,
     persistSession,
@@ -241,9 +256,24 @@ export function YearnVaultInterestModal({
 
   const latest = snapshots[snapshots.length - 1];
 
-  const latestNetProfitDisplay = latest?.netProfitWei == null ? "—" : formatUnits(latest.netProfitWei, assetDecimals);
+  const latestNetProfitDisplay =
+    latest?.netProfitWei == null
+      ? "—"
+      : formatMoneyEarnedDisplay(latest.netProfitWei, assetDecimals);
   const latestPositionValueDisplay =
-    latest?.positionValueWei == null ? "—" : formatUnits(latest.positionValueWei, assetDecimals);
+    latest?.positionValueWei == null
+      ? "—"
+      : formatMoneyEarnedDisplay(latest.positionValueWei, assetDecimals);
+
+  const netDepositsTrackedWei = useMemo(() => {
+    if (!cashflowPoints.length || latest?.blockNumber == null) return null;
+    return getNetDepositsWeiAtBlock(latest.blockNumber);
+  }, [cashflowPoints.length, latest?.blockNumber, getNetDepositsWeiAtBlock]);
+
+  const netDepositsTrackedDisplay =
+    netDepositsTrackedWei == null
+      ? null
+      : formatMoneyEarnedDisplay(netDepositsTrackedWei, assetDecimals);
 
   const profitPointsForChart = snapshots
     .slice(-100)
@@ -297,6 +327,11 @@ export function YearnVaultInterestModal({
                   {latestNetProfitDisplay} {assetSymbol}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">Includes realized + unrealized (withdrawals included).</p>
+                {netDepositsTrackedDisplay != null ? (
+                  <p className="mt-2 text-xs text-slate-600">
+                    Net deposits tracked: {netDepositsTrackedDisplay} {assetSymbol}
+                  </p>
+                ) : null}
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -378,13 +413,15 @@ export function YearnVaultInterestModal({
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-xs text-slate-600">Money earned</span>
                           <span className="text-sm font-semibold text-slate-900">
-                            {s.netProfitWei == null ? "—" : `${formatUnits(s.netProfitWei, assetDecimals)} ${assetSymbol}`}
+                            {s.netProfitWei == null
+                              ? "—"
+                              : `${formatMoneyEarnedDisplay(s.netProfitWei, assetDecimals)} ${assetSymbol}`}
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-xs text-slate-600">Position value</span>
                           <span className="text-sm font-semibold text-slate-900">
-                            {`${formatUnits(s.positionValueWei, assetDecimals)} ${assetSymbol}`}
+                            {`${formatMoneyEarnedDisplay(s.positionValueWei, assetDecimals)} ${assetSymbol}`}
                           </span>
                         </div>
                       </li>
@@ -407,6 +444,17 @@ export function YearnVaultInterestModal({
                 </button>
               </div>
             </section>
+
+            <p className="text-center text-xs text-slate-500">
+              <Link
+                href={`${BASE_BLOCK_EXPLORER_ADDRESS_URL}/${vaultAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-slate-800"
+              >
+                View vault on Basescan
+              </Link>
+            </p>
           </>
         )}
       </div>

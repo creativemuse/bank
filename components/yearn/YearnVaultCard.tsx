@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { Address, formatUnits } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
+import { BASE_BLOCK_EXPLORER_ADDRESS_URL } from "@/lib/config/yearn";
 import { YearnVaultModal } from "./YearnVaultModal";
 import { NexusCoverModal } from "@/components/nexus/NexusCoverModal";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
@@ -127,6 +129,17 @@ export const YearnVaultCard = ({
             disabled: depositDisabled,
             title: depositTitle,
           },
+          {
+            id: "view-basescan",
+            label: "View on Basescan",
+            ariaLabel: `View ${name} vault contract on Basescan`,
+            onClick: () =>
+              window.open(
+                `${BASE_BLOCK_EXPLORER_ADDRESS_URL}/${vaultAddress}`,
+                "_blank",
+                "noopener,noreferrer",
+              ),
+          },
           ...(hasPosition
             ? [
                 {
@@ -151,19 +164,32 @@ export const YearnVaultCard = ({
             : []),
         ]}
         footnote={
-          hasPosition ? (
-            <div className="flex flex-col gap-1">
-              <span className="font-semibold text-slate-900">Your Position</span>
-              <p className="text-xs text-slate-500">
-                {formatVaultShares(shareBalance, shareDecimals)} shares ≈ {positionValue} {assetSymbol}
-              </p>
+          <div className="flex flex-col gap-2 text-xs text-slate-500">
+            <div>
+              <span className="font-semibold text-slate-700">Vault address: </span>
+              <Link
+                href={`${BASE_BLOCK_EXPLORER_ADDRESS_URL}/${vaultAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-all text-slate-600 underline underline-offset-2 hover:text-slate-900"
+              >
+                {vaultAddress}
+              </Link>
             </div>
-          ) : (
-            <p className="text-xs text-slate-500">
-              Fully ERC-4626 compliant. All deposits are secured by Yearn&apos;s V3 multi-strategy
-              architecture.
-            </p>
-          )
+            {hasPosition ? (
+              <div className="flex flex-col gap-1 border-t border-slate-200 pt-2">
+                <span className="font-semibold text-slate-900">Your position</span>
+                <p>
+                  {formatVaultShares(shareBalance, shareDecimals)} shares ≈ {positionValue}{" "}
+                  {assetSymbol}
+                </p>
+              </div>
+            ) : (
+              <p>
+                Fully ERC-4626 compliant. Deposits use Yearn&apos;s V3 multi-strategy architecture.
+              </p>
+            )}
+          </div>
         }
       />
 
