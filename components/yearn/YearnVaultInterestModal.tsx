@@ -309,24 +309,43 @@ export function YearnVaultInterestModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Money earned over time"
+      title="Interest Earned"
       showCloseButton
       className="max-w-2xl bg-white text-slate-900"
     >
       <div className="mt-6 flex w-full flex-col gap-5 text-sm">
         {!userAddress ? (
-          <p className="text-sm text-slate-600">Connect a wallet to see your Yearn V3 money earned history.</p>
+          <p className="text-sm text-slate-600">Connect a wallet to see your Yearn V3 interest earned history.</p>
+        ) : cashflowsLoading && snapshots.length === 0 ? (
+          <div className="flex flex-col gap-5 animate-pulse">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="h-3 w-32 rounded bg-slate-200" />
+                <div className="mt-3 h-8 w-40 rounded bg-slate-200" />
+                <div className="mt-2 h-3 w-48 rounded bg-slate-200" />
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="h-3 w-32 rounded bg-slate-200" />
+                <div className="mt-3 h-8 w-40 rounded bg-slate-200" />
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="h-4 w-36 rounded bg-slate-200" />
+              <div className="mt-4 h-[180px] w-full rounded bg-slate-100" />
+            </div>
+            <p className="text-center text-xs text-slate-500">Loading interest data...</p>
+          </div>
         ) : (
           <>
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h4 className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Money earned (Total Growth)
+                  Interest Earned (Total Growth)
                 </h4>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
                   {latestNetProfitDisplay} {assetSymbol}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">Includes realized + unrealized (withdrawals included).</p>
+                <p className="mt-1 text-xs text-slate-500">Total interest earned including realized and unrealized gains.</p>
                 {netDepositsTrackedDisplay != null ? (
                   <p className="mt-2 text-xs text-slate-600">
                     Net deposits tracked: {netDepositsTrackedDisplay} {assetSymbol}
@@ -353,7 +372,7 @@ export function YearnVaultInterestModal({
 
             <section className="rounded-xl border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between gap-3">
-                <h4 className="text-base font-semibold text-slate-900">Money earned trend</h4>
+                <h4 className="text-base font-semibold text-slate-900">Interest earned trend</h4>
                 <p className="text-xs text-slate-500">Sampled ~every minute</p>
               </div>
 
@@ -363,7 +382,7 @@ export function YearnVaultInterestModal({
                     width="100%"
                     viewBox={`0 0 ${chart.chartWidth} ${chart.chartHeight}`}
                     role="img"
-                    aria-label="Money earned over time chart"
+                    aria-label="Interest earned over time chart"
                     className="h-[220px] w-full"
                   >
                     <polyline fill="none" stroke="#0f766e" strokeWidth="3" points={chart.polyPoints} />
@@ -411,7 +430,7 @@ export function YearnVaultInterestModal({
                           <span className="text-xs text-slate-500">Block {s.blockNumber.toString()}</span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs text-slate-600">Money earned</span>
+                          <span className="text-xs text-slate-600">Interest earned</span>
                           <span className="text-sm font-semibold text-slate-900">
                             {s.netProfitWei == null
                               ? "—"
