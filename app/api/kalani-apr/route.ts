@@ -2,23 +2,13 @@ import { NextResponse } from "next/server";
 import { base } from "viem/chains";
 import { Address, createPublicClient, fallback, http } from "viem";
 
-import { KALANI_VAULT_ADDRESSES } from "@/lib/config/kalani";
+import { CREATIVE_BANK_VAULT, KALANI_VAULT_ADDRESSES } from "@/lib/config/kalani";
 
 const KALANI_ORACLE_ABI = [
   {
     inputs: [{ internalType: "address", name: "_vault", type: "address" }],
     name: "getCurrentApr",
     outputs: [{ internalType: "uint256", name: "apr", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const ROLE_MANAGER_ABI = [
-  {
-    inputs: [],
-    name: "getAllVaults",
-    outputs: [{ internalType: "address[]", name: "", type: "address[]" }],
     stateMutability: "view",
     type: "function",
   },
@@ -38,39 +28,20 @@ const publicClient = createPublicClient({
   transport: fallback(transports),
 });
 
-let cachedVaultAddress: Address | undefined;
-
-const resolveVaultAddress = async (): Promise<Address> => {
-  if (cachedVaultAddress) {
-    return cachedVaultAddress;
-  }
-
-  // KALANI_VAULT_ADDRESS (server) or NEXT_PUBLIC_KALANI_VAULT_ADDRESS (e.g. Yearn USDC vault)
+/**
+ * Vault whose APR we read from the on-chain oracle. Must match the Creative Bank Yearn card
+ * (`CREATIVE_BANK_VAULT` / `NEXT_PUBLIC_CREATIVE_BANK_YEARN_VAULT_ADDRESS`), not an arbitrary
+ * `getAllVaults()[0]` entry (which often reports 0% from the oracle).
+ */
+const resolveVaultAddress = (): Address => {
   const configured =
     process.env.KALANI_VAULT_ADDRESS ??
     process.env.NEXT_PUBLIC_KALANI_VAULT_ADDRESS;
   if (configured) {
-    cachedVaultAddress = configured as Address;
-    return cachedVaultAddress;
+    return configured as Address;
   }
 
-  try {
-    const vaults = (await publicClient.readContract({
-      abi: ROLE_MANAGER_ABI,
-      address: KALANI_VAULT_ADDRESSES.roleManager,
-      functionName: "getAllVaults",
-    })) as Address[];
-
-    if (vaults.length === 0) {
-      throw new Error("Role manager returned no vaults.");
-    }
-
-    cachedVaultAddress = vaults[0];
-    return cachedVaultAddress;
-  } catch (error) {
-    console.error("Kalani vault discovery failed", error);
-    throw error;
-  }
+  return CREATIVE_BANK_VAULT.address;
 };
 
 const normalizeApr = (rawApr: bigint | number | string) => {
@@ -93,7 +64,7 @@ const normalizeApr = (rawApr: bigint | number | string) => {
 
 export const GET = async () => {
   try {
-    const vaultAddress = await resolveVaultAddress();
+    const vaultAddress = resolveVaultAddress();
 
     const rawApr = await publicClient.readContract({
       abi: KALANI_ORACLE_ABI,
