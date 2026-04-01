@@ -90,11 +90,14 @@ export function VaultActivityModal({
     return { totalDeposited: deposited, totalWithdrawn: withdrawn };
   }, [items]);
 
+  const hasTransactionHistory = items.length > 0;
+
   const earnedAllTime = useMemo(() => {
     if (
       currentAssetValueWei == null ||
       currentAssetValueWei === 0n ||
-      assetDecimals == null
+      assetDecimals == null ||
+      !hasTransactionHistory
     ) {
       return null;
     }
@@ -102,10 +105,15 @@ export function VaultActivityModal({
     const netDeposits = totalDeposited - totalWithdrawn;
     const value = currentValue - netDeposits;
     return value < 0 ? 0 : value;
-  }, [currentAssetValueWei, assetDecimals, totalDeposited, totalWithdrawn]);
+  }, [currentAssetValueWei, assetDecimals, totalDeposited, totalWithdrawn, hasTransactionHistory]);
 
   const showEarnedAllTimeFallback =
-    apiEarnedIsZero && earnedAllTime != null && items.length > 0;
+    apiEarnedIsZero && earnedAllTime != null && earnedAllTime > 0;
+
+  const currentPositionFormatted = useMemo(() => {
+    if (currentAssetValueWei == null || currentAssetValueWei === 0n || assetDecimals == null) return null;
+    return parseFloat(formatUnits(currentAssetValueWei, assetDecimals));
+  }, [currentAssetValueWei, assetDecimals]);
 
   return (
     <Modal
@@ -133,8 +141,9 @@ export function VaultActivityModal({
                 )}
               </p>
               {apiEarnedIsZero && (
-                <p className="text-xs text-slate-500">
-                  From Aave. If this shows 0, see “Earned (all time)” below.
+                <p className=”text-xs text-slate-500”>
+                  Weekly earnings data may take time to update.
+                  {showEarnedAllTimeFallback && ' See “Earned (all time)” below for your total earnings.'}
                 </p>
               )}
             </section>
@@ -153,6 +162,24 @@ export function VaultActivityModal({
                 </p>
                 <p className="text-xs text-slate-500">
                   Computed from your current balance and deposit/withdraw history.
+                </p>
+              </section>
+            )}
+
+            {apiEarnedIsZero && !showEarnedAllTimeFallback && currentPositionFormatted != null && (
+              <section className="flex flex-col gap-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                <h4 className="text-base font-semibold text-slate-900">
+                  Your position
+                </h4>
+                <p className="text-lg font-semibold text-slate-900">
+                  {currentPositionFormatted.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 6,
+                  })}{" "}
+                  {assetSymbol}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Your vault balance is earning interest. Detailed earnings data will appear once activity is indexed.
                 </p>
               </section>
             )}
@@ -181,9 +208,9 @@ export function VaultActivityModal({
                   </ul>
                 </div>
                 {apiEarnedIsZero && (
-                  <p className="text-xs text-slate-500">
-                    Daily earned is from Aave; if it shows 0, see “Earned (all
-                    time)” above.
+                  <p className=”text-xs text-slate-500”>
+                    Daily earned data may take time to update.
+                    {showEarnedAllTimeFallback && ' See “Earned (all time)” above for your total earnings.'}
                   </p>
                 )}
               </section>
