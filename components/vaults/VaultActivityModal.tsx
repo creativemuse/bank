@@ -141,9 +141,10 @@ export function VaultActivityModal({
                 )}
               </p>
               {apiEarnedIsZero && (
-                <p className=”text-xs text-slate-500”>
+                <p className="text-xs text-slate-500">
                   Weekly earnings data may take time to update.
-                  {showEarnedAllTimeFallback && ' See “Earned (all time)” below for your total earnings.'}
+                  {showEarnedAllTimeFallback &&
+                    ' See "Earned (all time)" below for your total earnings.'}
                 </p>
               )}
             </section>
@@ -208,9 +209,10 @@ export function VaultActivityModal({
                   </ul>
                 </div>
                 {apiEarnedIsZero && (
-                  <p className=”text-xs text-slate-500”>
+                  <p className="text-xs text-slate-500">
                     Daily earned data may take time to update.
-                    {showEarnedAllTimeFallback && ' See “Earned (all time)” above for your total earnings.'}
+                    {showEarnedAllTimeFallback &&
+                      ' See "Earned (all time)" above for your total earnings.'}
                   </p>
                 )}
               </section>

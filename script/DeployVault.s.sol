@@ -36,21 +36,28 @@ contract DeployVault is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Get addresses from environment or use deployer as default
-        address governance = vm.envOr("GOVERNANCE_ADDRESS", vm.addr(deployerPrivateKey));
-        address management = vm.envOr("MANAGEMENT_ADDRESS", vm.addr(deployerPrivateKey));
+        address deployer = vm.addr(deployerPrivateKey);
+        address governance = vm.envOr("GOVERNANCE_ADDRESS", deployer);
+        address management = vm.envOr("MANAGEMENT_ADDRESS", address(0));
 
+        require(management != address(0), "Set MANAGEMENT_ADDRESS");
         require(governance != management, "Governance and management must be different addresses");
 
         IRoleManagerFactory factory = IRoleManagerFactory(ROLE_MANAGER_FACTORY);
 
+        string memory projectName = vm.envOr("PROJECT_NAME", string("Creative Bank"));
+        string memory vaultName = vm.envOr("VAULT_NAME", string("Creative Bank Multi-Strategy USDC"));
+        string memory vaultSymbol = vm.envOr("VAULT_SYMBOL", string("cbUSDC"));
+        uint256 category = vm.envOr("VAULT_CATEGORY", uint256(1));
+
         console.log("Deploying Role Manager...");
-        console.log("Project Name: Creative Bank V2");
+        console.log("Project Name:", projectName);
         console.log("Governance:", governance);
         console.log("Management:", management);
 
         // Deploy new Role Manager (distinct from existing "Creative Bank" / "Creative Finance")
         address roleManager = factory.newProject(
-            "Creative Bank V2",
+            projectName,
             governance,
             management
         );
@@ -60,8 +67,6 @@ contract DeployVault is Script {
         // Deploy the Allocator Vault
         IRoleManager rm = IRoleManager(roleManager);
         address asset = BaseAddresses.USDC;
-        uint256 category = 1; // Category 1 for conservative strategies
-
         console.log("\nDeploying Allocator Vault...");
         console.log("Asset (USDC):", asset);
         console.log("Category:", category);
@@ -69,8 +74,8 @@ contract DeployVault is Script {
         address vault = rm.newVault(
             asset,
             category,
-            "Creative Bank Multi-Strategy USDC",
-            "cbUSDC-v2"
+            vaultName,
+            vaultSymbol
         );
 
         console.log("\n=== Vault Deployment Complete ===");
