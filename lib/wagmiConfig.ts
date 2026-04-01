@@ -11,22 +11,17 @@ const BASE_PUBLIC_RPC_ENDPOINTS = [
   "https://base.gateway.tenderly.co",
   "https://base-rpc.publicnode.com",
   "https://1rpc.io/base",
-  "https://base.meowrpc.com",
 ];
 
-const isProduction = process.env.NODE_ENV === "production";
 const configuredChain = process.env.NEXT_PUBLIC_CHAIN_ID;
 
 export const appChain = (() => {
-  if (isProduction) {
-    return base;
+  // Only use base-sepolia when explicitly configured; default to base mainnet
+  if (configuredChain === "base-sepolia") {
+    return baseSepolia;
   }
 
-  if (configuredChain === "base" || configuredChain === "base-mainnet") {
-    return base;
-  }
-
-  return baseSepolia;
+  return base;
 })();
 
 // Validate Alchemy API key format (should be alphanumeric with hyphens, not empty)
