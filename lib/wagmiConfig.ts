@@ -1,4 +1,5 @@
 import { createConfig, createStorage, fallback, http, noopStorage } from "wagmi";
+import { createClient } from "viem";
 import { injected, walletConnect } from "wagmi/connectors";
 import { base, baseSepolia, mainnet } from "wagmi/chains";
 import { Attribution } from "ox/erc8021";
@@ -178,13 +179,18 @@ const connectors = [
 
 export const wagmiConfig = createConfig({
   chains: [base, baseSepolia, mainnet],
-  transports,
+  client({ chain }) {
+    return createClient({
+      chain,
+      transport: transports[chain.id] ?? http(),
+      ...(DATA_SUFFIX ? { dataSuffix: DATA_SUFFIX } : {}),
+    });
+  },
   connectors,
   ssr: true,
   storage: createStorage({
     storage: noopStorage,
   }),
-  ...(DATA_SUFFIX ? { dataSuffix: DATA_SUFFIX } : {}),
 });
 
 export const isBaseMainnet = appChain.id === base.id;
