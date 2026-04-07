@@ -30,6 +30,7 @@
     "graphql-request": "^7.3.1",
     "libsodium-wrappers": "^0.7.15",
     "next": "16.0.10",
+    "ox": "^0.14.10",
     "pino-pretty": "^13.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -1,6 +1,7 @@
 import { createConfig, createStorage, fallback, http, noopStorage } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
 import { base, baseSepolia, mainnet } from "wagmi/chains";
+import { Attribution } from "ox/erc8021";
 
 // Public RPC endpoints for Base - these are free and rate-limited
 const DEFAULT_BASE_RPC_URL = "https://mainnet.base.org";
@@ -12,6 +13,12 @@ const BASE_PUBLIC_RPC_ENDPOINTS = [
   "https://base-rpc.publicnode.com",
   "https://1rpc.io/base",
 ];
+
+// Base Builder Code — appended to all transactions for onchain attribution
+const BUILDER_CODE = process.env.NEXT_PUBLIC_BUILDER_CODE;
+const DATA_SUFFIX = BUILDER_CODE
+  ? Attribution.toDataSuffix({ codes: [BUILDER_CODE] })
+  : undefined;
 
 const configuredChain = process.env.NEXT_PUBLIC_CHAIN_ID;
 
@@ -177,6 +184,7 @@ export const wagmiConfig = createConfig({
   storage: createStorage({
     storage: noopStorage,
   }),
+  ...(DATA_SUFFIX ? { dataSuffix: DATA_SUFFIX } : {}),
 });
 
 export const isBaseMainnet = appChain.id === base.id;
