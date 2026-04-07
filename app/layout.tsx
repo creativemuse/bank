@@ -71,6 +71,9 @@ export const metadata: Metadata = {
       "Banking designed for creatives. Manage your income, track expenses, and save for your dreams.",
     images: [SOCIAL_IMAGE_URL],
   },
+  other: {
+    "base:app_id": process.env.NEXT_PUBLIC_BASE_APP_ID || "",
+  },
 };
 
 export default function RootLayout({
