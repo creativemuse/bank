@@ -278,15 +278,51 @@ export const calculateMaxLossBps = (percentLoss: number): number => {
 export const USDC_ADDRESS_BASE = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" as Address;
 
 /**
- * Creative Bank Bouncer ABI (Yearn V3 deposit limit module).
- * Implements availableDepositLimit(user) - returns type(uint256).max if user has
- * Creative Brand, Investor, or Creator NFT; 0 otherwise.
+ * Creative Bank Bouncer v2 ABI (Yearn V3 deposit limit module).
+ * Gates deposits behind membership NFTs AND enforces on-chain fee floor:
+ *   - Members: 10% minimum (1000 BPS)
+ *   - Non-members: 20% minimum (2000 BPS)
  */
 export const CREATIVE_BANK_BOUNCER_ABI = [
   {
     inputs: [{ name: "user", type: "address" }],
     name: "available_deposit_limit",
     outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "user", type: "address" }],
+    name: "isMember",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "user", type: "address" }],
+    name: "getMembershipTier",
+    outputs: [{ name: "tier", type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "user", type: "address" }],
+    name: "getMinFeeForUser",
+    outputs: [{ name: "", type: "uint16" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "vault", type: "address" },
+    ],
+    name: "validateFee",
+    outputs: [
+      { name: "valid", type: "bool" },
+      { name: "currentFee", type: "uint16" },
+      { name: "requiredFee", type: "uint16" },
+    ],
     stateMutability: "view",
     type: "function",
   },
