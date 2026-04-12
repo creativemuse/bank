@@ -37,17 +37,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate Stytch session server-side
-    if (sessionToken) {
-      try {
-        const stytch = getStytchClient();
-        await stytch.sessions.authenticate({ session_token: sessionToken });
-      } catch {
-        return NextResponse.json(
-          { error: "Invalid or expired session" },
-          { status: 401 },
-        );
-      }
+    // Validate Stytch session server-side (mandatory for protected actions)
+    if (!sessionToken) {
+      return NextResponse.json(
+        { error: "Session token is required" },
+        { status: 401 },
+      );
+    }
+
+    try {
+      const stytch = getStytchClient();
+      await stytch.sessions.authenticate({ session_token: sessionToken });
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid or expired session" },
+        { status: 401 },
+      );
     }
 
     const keyId = process.env.COINBASE_API_KEY_ID;
@@ -110,7 +115,7 @@ export async function POST(request: NextRequest) {
       const errorText = await response.text();
       console.error("Coinbase order API error:", errorText);
       return NextResponse.json(
-        { error: "Failed to create order", details: errorText },
+        { error: "Failed to create order" },
         { status: response.status },
       );
     }

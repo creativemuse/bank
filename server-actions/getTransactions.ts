@@ -172,43 +172,58 @@ async function storeTransactions(
     const pool = getPool();
     const normalizedAddress = walletAddress.toLowerCase();
 
-    for (const tx of transactions) {
-      const transactionId = tx.transaction_id || tx.id;
-      if (!transactionId) continue;
+    // Filter valid transactions and build batch values
+    const validTxs = transactions.filter(
+      (tx) => tx && (tx.transaction_id || tx.id),
+    );
 
-      await pool.query(
-        `INSERT INTO transactions (
-          wallet_address, stytch_user_id, transaction_id, type, status,
-          to_address, from_address,
-          sell_amount_value, sell_amount_currency,
-          buy_amount_value, buy_amount_currency,
-          onchain_hash, raw_data, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
-        ON CONFLICT (transaction_id) DO UPDATE SET
-          status = EXCLUDED.status,
-          onchain_hash = EXCLUDED.onchain_hash,
-          raw_data = EXCLUDED.raw_data,
-          updated_at = now()`,
-        [
-          normalizedAddress,
-          stytchUserId || null,
-          transactionId,
-          tx.type || "offramp",
-          tx.status || "unknown",
-          tx.to_address || null,
-          tx.from_address || null,
-          tx.sell_amount?.value || null,
-          tx.sell_amount?.currency || null,
-          tx.buy_amount?.value || null,
-          tx.buy_amount?.currency || null,
-          tx.onchain_hash || null,
-          JSON.stringify(tx),
-        ],
+    if (validTxs.length === 0) return;
+
+    // Build a single batch INSERT with multiple value rows
+    const values: any[] = [];
+    const placeholders: string[] = [];
+
+    for (let i = 0; i < validTxs.length; i++) {
+      const tx = validTxs[i];
+      const offset = i * 13;
+      placeholders.push(
+        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13}, now())`,
+      );
+      values.push(
+        normalizedAddress,
+        stytchUserId || null,
+        tx.transaction_id || tx.id,
+        tx.type || "offramp",
+        tx.status || "unknown",
+        tx.to_address || null,
+        tx.from_address || null,
+        tx.sell_amount?.value || null,
+        tx.sell_amount?.currency || null,
+        tx.buy_amount?.value || null,
+        tx.buy_amount?.currency || null,
+        tx.onchain_hash || null,
+        JSON.stringify(tx),
       );
     }
 
+    await pool.query(
+      `INSERT INTO transactions (
+        wallet_address, stytch_user_id, transaction_id, type, status,
+        to_address, from_address,
+        sell_amount_value, sell_amount_currency,
+        buy_amount_value, buy_amount_currency,
+        onchain_hash, raw_data, updated_at
+      ) VALUES ${placeholders.join(", ")}
+      ON CONFLICT (transaction_id) DO UPDATE SET
+        status = EXCLUDED.status,
+        onchain_hash = EXCLUDED.onchain_hash,
+        raw_data = EXCLUDED.raw_data,
+        updated_at = now()`,
+      values,
+    );
+
     console.log(
-      `[CockroachDB] Stored ${transactions.length} transactions for wallet ${walletAddress}`,
+      `[CockroachDB] Stored ${validTxs.length} transactions for wallet ${walletAddress}`,
     );
   } catch (error) {
     console.error("[CockroachDB] Error storing transactions:", error);
