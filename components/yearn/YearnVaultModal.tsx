@@ -9,6 +9,8 @@ import { base } from "viem/chains";
 import { toast } from "sonner";
 
 import { Modal } from "@/components/common/Modal";
+import { CoverPrompt } from "@/components/nexus/CoverPrompt";
+import { NEXUS_YEARN_V3_PRODUCT_ID } from "@/lib/config/nexus-mutual";
 import { useYearnDeposit } from "@/hooks/useYearnDeposit";
 import { useYearnWithdraw } from "@/hooks/useYearnWithdraw";
 import { useYearnVaultBalance, usePreviewDeposit, usePreviewRedeem, useMaxDeposit } from "@/hooks/useYearnVaults";
@@ -150,6 +152,9 @@ export const YearnVaultModal = ({
   // Parse input amount to bigint
   // In withdraw mode, we're entering shares (shareDecimals)
   // In deposit mode, we're entering assets (assetDecimals)
+  const [showCoverPrompt, setShowCoverPrompt] = useState(false);
+  const [lastDepositAmountWei, setLastDepositAmountWei] = useState<string>("0");
+
   const parsedAmount = useMemo(() => {
     const decimals = mode === "withdraw" ? shareDecimals : assetDecimals;
     return parseInputAmount(inputAmount, decimals);
@@ -213,6 +218,11 @@ export const YearnVaultModal = ({
           ? `${depositAssetsFormatted} ${assetSymbol} deposited into ${vaultShort}. Expected ${expectedSharesFormatted} shares.`
           : `${depositAssetsFormatted} ${assetSymbol} deposited into ${vaultShort}.`,
       });
+
+      // Show cover prompt instead of auto-closing
+      setLastDepositAmountWei(depositAssetsWei.toString());
+      setShowCoverPrompt(true);
+      return; // Don't auto-close — let CoverPrompt handle it
     } else {
       const redeemedSharesWei = parsedAmount ?? 0n;
       const redeemedSharesFormatted = formatVaultShares(redeemedSharesWei, shareDecimals);
@@ -550,6 +560,22 @@ export const YearnVaultModal = ({
           </button>
         </div>
       </form>
+
+      {/* Cover prompt after successful deposit */}
+      {showCoverPrompt && userAddress && (
+        <CoverPrompt
+          productId={NEXUS_YEARN_V3_PRODUCT_ID}
+          productLabel="Yearn v3"
+          depositAmountWei={lastDepositAmountWei}
+          assetSymbol={assetSymbol}
+          assetDecimals={assetDecimals}
+          buyerAddress={userAddress}
+          onSkip={() => {
+            setShowCoverPrompt(false);
+            handleClose();
+          }}
+        />
+      )}
     </Modal>
   );
 };
