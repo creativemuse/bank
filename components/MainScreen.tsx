@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 import { useMembership } from "@/context/MembershipContext";
 import { MembershipBanner } from "@/components/unlock/MembershipBanner";
+import { HealthAlertToast } from "@/components/alerts/HealthAlertToast";
 
 interface MainScreenProps {
   walletAddress?: string;
@@ -108,6 +109,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
           walletAddress={walletAddress || ""}
         />
         <SendFundsModal open={showSendModal} onClose={() => setShowSendModal(false)} />
+        <HealthAlertToast onTopUpCollateral={() => setShowDepositModal(true)} />
       </div>
     </div>
   );

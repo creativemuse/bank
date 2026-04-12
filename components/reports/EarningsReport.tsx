@@ -5,6 +5,7 @@ import { useWallet } from "@crossmint/client-sdk-react-ui";
 import type { EarningsReport as EarningsReportType } from "@/lib/reports/types";
 import { TransactionTable } from "./TransactionTable";
 import { ExportButtons } from "./ExportButtons";
+import { LiquidationHistory } from "./LiquidationHistory";
 import { Modal } from "@/components/common/Modal";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 
@@ -153,6 +154,9 @@ export function EarningsReport({ open, onClose }: EarningsReportProps) {
 
           {/* Export buttons */}
           <ExportButtons report={report} />
+
+          {/* Liquidation history */}
+          <LiquidationHistory />
 
           {/* Transaction table */}
           <TransactionTable transactions={report.transactions} />
