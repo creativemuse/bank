@@ -11,7 +11,8 @@ import {
 import { Dropdown } from "../common/Dropdown";
 import { useState, useEffect, useRef } from "react";
 import { WalletDetails } from "./WalletDetails";
-import { useWallet, useAuth } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { WarningModal } from "./WarningModal";
 import createCoinbaseSessionToken from "@/server-actions/createCoinbaseSessionToken";
 import { checkCoinbaseConfig } from "@/server-actions/checkCoinbaseConfig";
@@ -84,7 +85,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
           return;
         }
 
-        if (!wallet?.address || !wallet?.chain || !user?.id) {
+        if (!wallet?.address || !wallet?.chain) {
           console.error("Missing wallet or user information for withdrawal");
           setWithdrawalStatus("Missing wallet information");
           setTimeout(() => setWithdrawalStatus(null), 3000);
@@ -149,7 +150,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
 
           const params = new URLSearchParams({
             sessionToken: token,
-            partnerUserId: user.id,
+            partnerUserId: wallet.address,
             redirectUrl: window.location.origin,
           });
 

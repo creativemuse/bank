@@ -3,7 +3,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Address, formatUnits, parseUnits } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import {
   bigDecimal,
   evmAddress,

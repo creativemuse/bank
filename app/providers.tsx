@@ -3,16 +3,19 @@
 import { useEffect, useState } from "react";
 import {
   CrossmintProvider,
-  CrossmintAuthProvider,
   CrossmintWalletProvider,
 } from "@crossmint/client-sdk-react-ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
 import { AaveProvider, AaveClient, production } from "@aave/react";
+import { StytchProvider } from "@stytch/nextjs";
 
 import { wagmiConfig } from "@/lib/wagmiConfig";
 import { MembershipProvider } from "@/context/MembershipContext";
+import { AuthProvider } from "@/context/AuthContext";
+import { JwtSync } from "@/components/auth/JwtSync";
+import { getStytchHeadlessClient } from "@/lib/stytchClient";
 
 const aaveClient = AaveClient.create({
   environment: production,
@@ -64,6 +67,8 @@ if (isProduction) {
     : "base-sepolia";
 }
 
+const stytchClient = getStytchHeadlessClient();
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
 
@@ -79,36 +84,27 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <WagmiProvider config={wagmiConfig}>
         <AaveProvider client={aaveClient}>
-          <CrossmintProvider
-            apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}
-          >
-            <CrossmintAuthProvider
-              authModalTitle="Welcome to CREATIVE Bank"
-              loginMethods={["email", "google"]}
-              termsOfServiceText={
-                <p>
-                  By continuing, you accept the{" "}
-                  <a href="https://www.crossmint.com/legal/terms-of-service" target="_blank">
-                    Wallet&apos;s Terms of Service
-                  </a>
-                  , and to recieve marketing communications from Creative Org DAO.
-                </p>
-              }
-            >
-              <CrossmintWalletProvider
-                showPasskeyHelpers={true}
-                createOnLogin={{
-                  chain,
-                  signer: { type: "passkey" },
-                }}
+          <StytchProvider stytch={stytchClient}>
+            <AuthProvider>
+              <CrossmintProvider
+                apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}
               >
-                <MembershipProvider>
-                  {children}
-                  <Toaster richColors position="top-center" closeButton />
-                </MembershipProvider>
-              </CrossmintWalletProvider>
-            </CrossmintAuthProvider>
-          </CrossmintProvider>
+                <CrossmintWalletProvider
+                  showPasskeyHelpers={true}
+                  createOnLogin={{
+                    chain,
+                    signer: { type: "passkey" },
+                  }}
+                >
+                  <JwtSync />
+                  <MembershipProvider>
+                    {children}
+                    <Toaster richColors position="top-center" closeButton />
+                  </MembershipProvider>
+                </CrossmintWalletProvider>
+              </CrossmintProvider>
+            </AuthProvider>
+          </StytchProvider>
         </AaveProvider>
       </WagmiProvider>
     </QueryClientProvider>

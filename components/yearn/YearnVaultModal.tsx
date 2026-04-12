@@ -3,7 +3,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Address, formatUnits, createWalletClient, custom, type WalletClient } from "viem";
 import { useAccount, useWalletClient } from "wagmi";
-import { useWallet, useAuth, EVMWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet, EVMWallet } from "@crossmint/client-sdk-react-ui";
 import { base } from "viem/chains";
 import { toast } from "sonner";
 

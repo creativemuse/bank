@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { PremiumGuard } from "@/components/access/PremiumGuard";

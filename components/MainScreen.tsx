@@ -3,7 +3,7 @@ import { useState } from "react";
 import { DepositModal } from "@/components/deposit";
 import { SendFundsModal } from "@/components/send-funds";
 import { ActivityFeed } from "@/components/ActivityFeed";
-import { useAuth } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
 import { NewProducts } from "./NewProducts";
 import { DashboardSummary } from "./dashboard-summary";
 import { WithdrawalStatus } from "./dashboard-summary/WithdrawalStatus";

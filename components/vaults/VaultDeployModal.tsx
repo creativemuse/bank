@@ -11,7 +11,8 @@ import {
 } from "@aave/react";
 import { useWalletClient, useAccount, usePublicClient } from "wagmi";
 import { useSendTransaction } from "@aave/react/viem";
-import { useWallet, useAuth, EVMWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet, EVMWallet } from "@crossmint/client-sdk-react-ui";
 import { createWalletClient, custom, type WalletClient } from "viem";
 import { base, baseSepolia } from "viem/chains";
 
