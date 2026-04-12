@@ -23,6 +23,12 @@ import { USDC_DECIMALS } from "@/lib/config/aave";
 import { formatPercent } from "@/lib/formatters";
 import { useMembership } from "@/context/MembershipContext";
 import { shortenAddress } from "@/utils/shortenAddress";
+import {
+  CREATIVE_TREASURY_ADDRESS,
+  YEARN_ACCOUNTANT_ADDRESS,
+  FEE_RECEIVER_TIERS,
+} from "@/lib/config/memberships";
+import { FeeBreakdown } from "./FeeBreakdown";
 
 type VaultDeployModalProps = {
   open: boolean;
@@ -57,6 +63,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
 
   // Check if user has any membership (only after loading is complete)
   const hasMembership = !membershipLoading && tier !== null;
+  const canSetFeeReceiver = hasMembership && tier !== null && FEE_RECEIVER_TIERS.includes(tier);
 
   // Determine active address (Crossmint takes priority, fallback to wagmi)
   const activeAddress = useMemo(() => {
@@ -143,7 +150,9 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
 
   const [shareName, setShareName] = useState("Aave USDC Vault Shares");
   const [shareSymbol, setShareSymbol] = useState("avUSDC");
-  const [performanceFee, setPerformanceFee] = useState(12);
+  // Non-member: locked at 20%. Member: default 10% (minimum allowed)
+  const [performanceFee, setPerformanceFee] = useState(hasMembership ? 10 : 20);
+  const [feeReceiverAddress, setFeeReceiverAddress] = useState("");
   const [initialDeposit, setInitialDeposit] = useState(1000);
   
   // Initialize recipient input based on membership status
@@ -170,9 +179,18 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
 
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Reset fee when membership status changes
+  useEffect(() => {
+    if (!membershipLoading) {
+      setPerformanceFee(hasMembership ? 10 : 20);
+      setFeeReceiverAddress("");
+    }
+  }, [hasMembership, membershipLoading]);
+
   const resetForm = useCallback(() => {
     setSubmitState({ status: "idle" });
-    setPerformanceFee(12);
+    setPerformanceFee(hasMembership ? 10 : 20);
+    setFeeReceiverAddress("");
     setInitialDeposit(1000);
     setRecipientInput(getInitialRecipientInput());
     setShareName(reserve ? `Aave ${reserve.underlyingToken.symbol} Vault Shares` : "Aave USDC Vault Shares");
@@ -215,9 +233,12 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
       return "Reserve data is still loading. Please try again in a moment.";
     }
 
-    if (Number.isNaN(performanceFee) || performanceFee < 10 || performanceFee > 50) {
-      return "Performance fee must be between 10% and 50%.";
+    if (hasMembership) {
+      if (Number.isNaN(performanceFee) || performanceFee < 10 || performanceFee > 50) {
+        return "Performance fee must be between 10% and 50%.";
+      }
     }
+    // Non-member fee is locked at 20% — no validation needed
 
     if (Number.isNaN(initialDeposit) || initialDeposit < 0) {
       return "Initial deposit must be zero or a positive number.";
@@ -237,26 +258,32 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
   const recipients = useMemo(() => {
     const entries: VaultDeployRequest["recipients"] = [];
 
-    const partnerAddress = recipientInput.partnerAddress?.trim();
-    const trimmed = partnerAddress && partnerAddress.length > 0 ? partnerAddress : null;
+    // Yearn V3 Accountant always gets 10% of manager's half
+    entries.push({
+      address: evmAddress(YEARN_ACCOUNTANT_ADDRESS),
+      percent: bigDecimal(10),
+    });
 
-    if (trimmed && recipientInput.partnerPercent > 0) {
+    if (hasMembership) {
+      // Member: Fee Receiver (Brand/Creator) or deployer wallet (Investor)
+      const receiver = canSetFeeReceiver && feeReceiverAddress.trim()
+        ? feeReceiverAddress.trim()
+        : activeAddress ?? "0x0000000000000000000000000000000000000000";
+
       entries.push({
-        address: evmAddress(trimmed),
-        percent: bigDecimal(recipientInput.partnerPercent),
+        address: evmAddress(receiver),
+        percent: bigDecimal(90),
+      });
+    } else {
+      // Non-member: 90% goes to Creative Bank Treasury
+      entries.push({
+        address: evmAddress(CREATIVE_TREASURY_ADDRESS),
+        percent: bigDecimal(90),
       });
     }
 
-    const ownerSplit = 100 - recipientInput.partnerPercent;
-    if (ownerSplit > 0) {
-      entries.push({
-        address: evmAddress(activeAddress ?? "0x0000000000000000000000000000000000000000"),
-        percent: bigDecimal(ownerSplit),
-      });
-    }
-
-    return entries.length ? entries : undefined;
-  }, [activeAddress, recipientInput.partnerAddress, recipientInput.partnerPercent]);
+    return entries;
+  }, [activeAddress, hasMembership, canSetFeeReceiver, feeReceiverAddress]);
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -610,16 +637,26 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
                 type="tel"
                 inputMode="decimal"
                 step="0.1"
-                min={10}
-                max={50}
+                min={hasMembership ? 10 : 20}
+                max={hasMembership ? 50 : 20}
                 value={performanceFee}
-                onChange={(event) => handleNumberInputChange(event.target.value, setPerformanceFee, true)}
+                onChange={(event) => {
+                  if (!hasMembership) return; // Non-member: read-only
+                  const val = Number(event.target.value);
+                  if (!Number.isNaN(val) && val >= 10) {
+                    handleNumberInputChange(event.target.value, setPerformanceFee, true);
+                  }
+                }}
                 onFocus={handleNumberFocus}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                disabled={!hasMembership}
+                readOnly={!hasMembership}
                 required
               />
               <span className="text-xs text-slate-500">
-                Minimum 10%. Aave Labs automatically receives 50% of this fee.
+                {hasMembership
+                  ? "Minimum 10%. Aave Labs automatically receives 50% of this fee."
+                  : "Membership required to customize fees. Default: 20%."}
               </span>
             </label>
             <label className="flex flex-col gap-1">
@@ -641,60 +678,46 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
           </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <div>
-            <h4 className="text-base font-semibold text-slate-900">Revenue Share</h4>
-            <p className="text-xs text-slate-500">
-              Optionally split your share of the performance fees with a partner.
+        {/* Fee Breakdown */}
+        <FeeBreakdown performanceFee={performanceFee} hasMembership={hasMembership} />
+
+        {/* Fee Receiver — only for Brand/Creator members */}
+        {canSetFeeReceiver && (
+          <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div>
+              <h4 className="text-base font-semibold text-slate-900">Fee Receiver</h4>
+              <p className="text-xs text-slate-500">
+                As a {tier} member, you can route your net performance fees to a custom address.
+              </p>
+            </div>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium uppercase text-slate-500">
+                Fee Receiver Address
+              </span>
+              <input
+                value={feeReceiverAddress}
+                onChange={(event) => setFeeReceiverAddress(event.target.value)}
+                onFocus={handleNumberFocus}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                placeholder={activeAddress ? shortenAddress(activeAddress) + " (your wallet)" : "0x..."}
+              />
+              <span className="text-xs text-slate-500">
+                Leave blank to receive fees at your connected wallet.
+              </span>
+            </label>
+          </section>
+        )}
+
+        {/* Non-member treasury notice */}
+        {!hasMembership && !membershipLoading && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="font-medium">Standard fee tier (20%)</p>
+            <p className="mt-1 text-xs">
+              Performance fees are routed to the Creative Bank Treasury. Unlock a membership
+              to reduce fees to 10% and receive yield directly.
             </p>
           </div>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase text-slate-500">Partner Address</span>
-            <input
-              value={recipientInput.partnerAddress || ""}
-              onChange={(event) =>
-                setRecipientInput((previous) => ({
-                  ...previous,
-                  partnerAddress: event.target.value,
-                }))
-              }
-              onFocus={handleNumberFocus}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-              placeholder="0x..."
-              disabled={membershipLoading || !hasMembership}
-              readOnly={membershipLoading || !hasMembership}
-            />
-            {(membershipLoading || !hasMembership) && (
-              <span className="text-xs text-slate-500">
-                {membershipLoading 
-                  ? "Checking membership..." 
-                  : "Membership required to edit partner address. Default: Creative Bank (creative.eth)"}
-              </span>
-            )}
-          </label>
-          <label className="flex flex-col gap-1 md:w-1/2">
-            <span className="text-xs font-medium uppercase text-slate-500">
-              Partner Share (% of your portion)
-            </span>
-            <input
-              type="tel"
-              inputMode="numeric"
-              min={0}
-              max={100}
-              step={1}
-              value={recipientInput.partnerPercent}
-              onChange={handlePartnerPercentChange}
-              onFocus={handleNumberFocus}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-              disabled={membershipLoading || !hasMembership}
-              readOnly={membershipLoading || !hasMembership}
-            />
-            <span className="text-xs text-slate-500">
-              Remaining split automatically allocated to your wallet.
-              {(membershipLoading || !hasMembership) && " Default: 5% for Creative Bank."}
-            </span>
-          </label>
-        </section>
+        )}
 
         {reserve ? (
           <section className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
