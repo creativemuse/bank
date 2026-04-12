@@ -1,21 +1,23 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@crossmint/client-sdk-react-ui";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { getTransactions } from "@/server-actions/getTransactions";
 
 export function WithdrawalStatus() {
-  const { user } = useAuth();
+  const { wallet } = useWallet();
   const [pendingTransaction, setPendingTransaction] = useState<any>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const walletAddress = wallet?.address;
+
   useEffect(() => {
-    if (!user?.id) return;
+    if (!walletAddress) return;
 
     const checkPendingTransactions = async () => {
       setIsChecking(true);
       setError(null);
       try {
-        const transactions = await getTransactions(user.id);
+        const transactions = await getTransactions(walletAddress);
         const pending = transactions.find((tx: any) => tx.status === "TRANSACTION_STATUS_STARTED");
         setPendingTransaction(pending);
       } catch (error) {
@@ -43,7 +45,7 @@ export function WithdrawalStatus() {
     };
 
     checkPendingTransactions();
-  }, [user?.id]);
+  }, [walletAddress]);
 
   if (isChecking) {
     return (

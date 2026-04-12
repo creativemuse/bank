@@ -1,4 +1,5 @@
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { Modal } from "../common/Modal";
 import { Details } from "../common/Details";
 import { CopyWrapper } from "../common/CopyWrapper";

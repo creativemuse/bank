@@ -11,7 +11,8 @@ import {
 } from "react";
 import { Address } from "viem";
 import { useAccount } from "wagmi";
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 
 import { MEMBERSHIP_LOCKS, MembershipTier } from "@/lib/config/memberships";
 import { fetchUnlockMembershipStates } from "@/lib/services/unlockMemberships";

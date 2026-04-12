@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 
 interface AmountInputProps {
   amount: string;
@@ -6,6 +6,8 @@ interface AmountInputProps {
 }
 
 export function AmountInput({ amount, onChange }: AmountInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
       .replace("$", "")
@@ -18,12 +20,24 @@ export function AmountInput({ amount, onChange }: AmountInputProps) {
   };
 
   return (
-    <input
-      placeholder="$0.00"
-      className="mb-1 w-full border-none text-center text-[54px] font-bold outline-none focus:ring-0"
-      value={amount ? `$${amount}` : ""}
-      onChange={handleChange}
-      style={{ maxWidth: 200 }}
-    />
+    <div
+      className="flex w-full cursor-text flex-col items-center"
+      onClick={() => inputRef.current?.focus()}
+    >
+      <input
+        ref={inputRef}
+        placeholder="$0.00"
+        className="mb-1 w-full border-none text-center text-[54px] font-bold outline-none focus:ring-0"
+        value={amount ? `$${amount}` : ""}
+        onChange={handleChange}
+        autoFocus
+        style={{ maxWidth: 200 }}
+      />
+      {!amount && (
+        <p className="animate-pulse text-sm font-medium text-gray-900">
+          Tap above to enter amount
+        </p>
+      )}
+    </div>
   );
 }

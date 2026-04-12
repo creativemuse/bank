@@ -1,23 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import {
   MEMBERSHIP_LOCKS,
+  TIER_PRICING,
   type MembershipTier,
 } from "@/lib/config/memberships";
 import { unlockChainLabel } from "@/lib/config/unlock";
 import { useMembership } from "@/context/MembershipContext";
 import { formatDateMs } from "@/lib/formatters";
-
-// Unlock checkout configuration URL with all three Creative membership locks
-const UNLOCK_CHECKOUT_URL = "https://app.unlock-protocol.com/checkout?id=fce0c0fb-2c39-4912-807f-e5f64a9276e0";
+import { CheckoutIframe } from "./CheckoutIframe";
 
 const formatLockAddress = (address: string) => {
-  if (!address) {
-    return "";
-  }
-
+  if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
@@ -27,6 +23,7 @@ type UnlockPromptProps = {
 
 export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
   const membership = useMembership();
+  const [showCheckout, setShowCheckout] = useState(false);
 
   const sortedLocks = useMemo(
     () =>
@@ -39,7 +36,22 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
     [],
   );
 
-  const hasAnyKey = sortedLocks.some((lock) => membership.locks[lock.tier]?.hasValidKey);
+  const hasAnyKey = sortedLocks.some(
+    (lock) => membership.locks[lock.tier]?.hasValidKey,
+  );
+
+  if (showCheckout) {
+    return (
+      <section className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
+        <CheckoutIframe
+          onClose={() => {
+            setShowCheckout(false);
+            membership.refresh();
+          }}
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
@@ -47,10 +59,13 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
         <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
           Creative Membership
         </p>
-        <h3 className="text-xl font-semibold text-emerald-900">Premium Access Required</h3>
+        <h3 className="text-xl font-semibold text-emerald-900">
+          Premium Access Required
+        </h3>
         <p className="text-sm text-emerald-800">
-          Access to this strategy requires a Creative membership NFT on {unlockChainLabel}. Choose from
-          three membership tiers to unlock premium features.
+          Access to this feature requires a Creative membership NFT on{" "}
+          {unlockChainLabel}. Choose from three tiers to unlock premium
+          features and lower fees.
         </p>
       </header>
 
@@ -58,7 +73,10 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
         {sortedLocks.map((lock) => {
           const state = membership.locks[lock.tier];
           const hasKey = Boolean(state?.hasValidKey);
-          const expiresAt = state?.expiresAtMs ? formatDateMs(state.expiresAtMs) : null;
+          const expiresAt = state?.expiresAtMs
+            ? formatDateMs(state.expiresAtMs)
+            : null;
+          const pricing = TIER_PRICING[lock.tier];
 
           return (
             <div
@@ -66,14 +84,12 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
               className="flex flex-col justify-between gap-2 rounded-xl border border-emerald-200 bg-white/80 p-4"
             >
               <div className="flex items-start justify-between">
-                <div className="flex flex-col gap-1 text-sm">
-                  <span className="text-base font-semibold text-slate-900">{lock.tier}</span>
-                  <span
-                    className="text-xs text-slate-500"
-                    title={lock.address}
-                    aria-label={`Membership contract address ${lock.address}`}
-                  >
-                    {formatLockAddress(lock.address)}
+                <div className="flex flex-col gap-1">
+                  <span className="text-base font-semibold text-slate-900">
+                    {lock.tier}
+                  </span>
+                  <span className="text-xs text-slate-600">
+                    {pricing.price} / {pricing.duration}
                   </span>
                 </div>
                 {hasKey && (
@@ -83,7 +99,9 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
                 )}
               </div>
               {hasKey && expiresAt && (
-                <span className="text-xs text-emerald-600">Valid until {expiresAt}</span>
+                <span className="text-xs text-emerald-600">
+                  Valid until {expiresAt}
+                </span>
               )}
             </div>
           );
@@ -93,28 +111,17 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
       <button
         type="button"
         className="w-full rounded-lg border border-emerald-700 bg-emerald-700 px-6 py-3 text-base font-semibold text-white transition hover:border-emerald-800 hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
-        tabIndex={0}
-        aria-label="Open Creative membership checkout"
-        onClick={() => {
-          window.open(UNLOCK_CHECKOUT_URL, "_blank", "noopener,noreferrer");
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            window.open(UNLOCK_CHECKOUT_URL, "_blank", "noopener,noreferrer");
-          }
-        }}
+        onClick={() => setShowCheckout(true)}
       >
         {hasAnyKey ? "Manage Membership" : "Get Creative Membership"}
       </button>
 
       {currentTier && (
         <p className="text-xs text-emerald-700">
-          Current tier: <strong>{currentTier}</strong>. Maintain an active membership to retain
-          access.
+          Current tier: <strong>{currentTier}</strong>. A higher tier is
+          required for this feature.
         </p>
       )}
     </section>
   );
 }
-

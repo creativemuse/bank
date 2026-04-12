@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  CrossmintCheckoutProvider,
-  CrossmintProvider,
-  useAuth,
-} from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { HeadlessOnrampFlow } from "./HeadlessOnrampFlow";
 import { CoinbaseOnrampCheckout } from "./CoinbaseOnrampCheckout";
 import { AmountInput } from "../common/AmountInput";
 import { Modal } from "../common/Modal";
@@ -17,28 +14,32 @@ interface DepositModalProps {
   walletAddress: string;
 }
 
-const CLIENT_API_KEY_CONSOLE_FUND = process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY;
+const MAX_AMOUNT = 100000;
 
-const MAX_AMOUNT = 100000; // Max amount in USD allowed in staging
+type PaymentMethod = null | "digital-wallet" | "card";
 
 export function DepositModal({ open, onClose, walletAddress }: DepositModalProps) {
   const [step, setStep] = useState<"options" | "processing" | "completed">("options");
   const { user } = useAuth();
   const receiptEmail = user?.email;
   const [amount, setAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const { refetch: refetchActivityFeed } = useActivityFeed();
   const { refetch: refetchBalance } = useBalance();
+
+  const isAmountValid = Number(amount) <= MAX_AMOUNT && Number(amount) >= 1;
 
   const restartFlow = () => {
     setStep("options");
     setAmount("");
+    setPaymentMethod(null);
   };
 
-  // Reset to options whenever the modal is opened so reopening always shows a fresh flow
   useEffect(() => {
     if (open) {
       setStep("options");
       setAmount("");
+      setPaymentMethod(null);
     }
   }, [open]);
 
@@ -57,45 +58,113 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
     setStep("processing");
   }, []);
 
+  const handleBack = () => {
+    if (paymentMethod) {
+      setPaymentMethod(null);
+    } else if (step === "options") {
+      handleDone();
+    } else {
+      restartFlow();
+    }
+  };
+
   return (
-    <>
-      <Modal
-        open={open}
-        onClose={onClose}
-        showBackButton={step !== "processing"}
-        onBack={step === "options" ? handleDone : restartFlow}
-        showCloseButton={true}
-        className={cn(
-          "top-[70px] h-[calc(100dvh-174px)] md:max-h-[calc(100dvh-174px)] lg:top-0 lg:max-h-[calc(100dvh-32px)]",
-          amount && " lg:min-h-[718px]"
-        )}
-        title="Deposit"
-      >
-        {open && step === "options"}
-        {step === "options" && (
-          <div className="mb-6 flex w-full flex-col items-center">
-            <AmountInput amount={amount} onChange={setAmount} />
-            {Number(amount) > MAX_AMOUNT && (
-              <div className="mt-1 text-center text-red-600">
-                Transaction amount exceeds the maximum allowed deposit limit of ${MAX_AMOUNT}
-              </div>
-            )}
-          </div>
-        )}
+    <Modal
+      open={open}
+      onClose={onClose}
+      showBackButton={step !== "processing"}
+      onBack={handleBack}
+      showCloseButton={true}
+      className={cn(
+        "top-[70px] h-[calc(100dvh-174px)] md:max-h-[calc(100dvh-174px)] lg:top-0 lg:max-h-[calc(100dvh-32px)]",
+        amount && " lg:min-h-[718px]",
+      )}
+      title="Deposit"
+    >
+      {/* Amount input — show when no payment method selected yet */}
+      {step === "options" && !paymentMethod && (
+        <div className="mb-6 flex w-full flex-col items-center">
+          <AmountInput amount={amount} onChange={setAmount} />
+          {amount && (Number(amount) < 1 || Number(amount) > MAX_AMOUNT) && (
+            <div className="mt-2 text-center text-sm font-medium text-red-700">
+              Please enter a valid amount between $1 and ${MAX_AMOUNT.toLocaleString()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Payment method selector */}
+      {step === "options" && !paymentMethod && (
+        <div className="flex w-full flex-col gap-3">
+          <p className="text-center text-sm font-medium text-black">
+            How would you like to pay?
+          </p>
+          <button
+            onClick={() => setPaymentMethod("digital-wallet")}
+            disabled={!isAmountValid}
+            className="flex w-full items-center gap-3 rounded-xl border border-gray-300 bg-white px-4 py-4 text-left transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <span className="text-2xl">📱</span>
+            <div>
+              <p className="text-sm font-semibold text-black">
+                Express Checkout
+              </p>
+              <p className="text-xs text-gray-600">
+                Apple Pay or Google Pay — never leave the app
+              </p>
+            </div>
+          </button>
+          <button
+            onClick={() => setPaymentMethod("card")}
+            disabled={!isAmountValid}
+            className="flex w-full items-center gap-3 rounded-xl border border-gray-300 bg-white px-4 py-4 text-left transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <span className="text-2xl">💳</span>
+            <div>
+              <p className="text-sm font-semibold text-black">
+                All Payment Methods
+              </p>
+              <p className="text-xs text-gray-600">
+                Card, bank transfer, Apple Pay, Google Pay via Coinbase
+              </p>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Headless flow (Apple Pay / Google Pay) */}
+      {paymentMethod === "digital-wallet" && (
         <div className="flex w-full flex-grow flex-col">
-          <CoinbaseOnrampCheckout
+          <HeadlessOnrampFlow
             amount={amount}
-            isAmountValid={Number(amount) <= MAX_AMOUNT && Number(amount) >= 1}
+            isAmountValid={isAmountValid}
             walletAddress={walletAddress}
             onPaymentCompleted={handlePaymentCompleted}
             receiptEmail={receiptEmail || ""}
             onProcessingPayment={handleProcessingPayment}
             step={step}
-            goBack={restartFlow}
+            goBack={() => setPaymentMethod(null)}
             MAX_AMOUNT={MAX_AMOUNT}
           />
         </div>
-      </Modal>
-    </>
+      )}
+
+      {/* Coinbase hosted popup (Card / ACH) */}
+      {paymentMethod === "card" && (
+        <div className="flex w-full flex-grow flex-col">
+          <CoinbaseOnrampCheckout
+            amount={amount}
+            isAmountValid={isAmountValid}
+            walletAddress={walletAddress}
+            onPaymentCompleted={handlePaymentCompleted}
+            receiptEmail={receiptEmail || ""}
+            onProcessingPayment={handleProcessingPayment}
+            step={step}
+            goBack={() => setPaymentMethod(null)}
+            MAX_AMOUNT={MAX_AMOUNT}
+          />
+        </div>
+      )}
+    </Modal>
   );
 }

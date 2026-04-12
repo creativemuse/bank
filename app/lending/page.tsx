@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import {
   bigDecimal,
   evmAddress,
@@ -24,6 +25,8 @@ import { CopyWrapper } from "@/components/common/CopyWrapper";
 import { PremiumGuard } from "@/components/access/PremiumGuard";
 import { LendingMeritRewards } from "@/components/lending/LendingMeritRewards";
 import { LendingTransactionHistory } from "@/components/lending/LendingTransactionHistory";
+import { EModeSelector } from "@/components/lending/EModeSelector";
+import { IsolationModeWarning } from "@/components/lending/IsolationModeWarning";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { useBalance } from "@/hooks/useBalance";
 import { useAaveWalletClient } from "@/hooks/useAaveWalletClient";
@@ -329,6 +332,24 @@ function LendingContent({
             walletClient={walletClient}
             walletAddress={walletAddress}
           />
+
+          {/* Isolation Mode Warning */}
+          <IsolationModeWarning
+            isInIsolationMode={userMarketState?.isInIsolationMode ?? false}
+            isolatedReserve={baseReserve.reserve ?? undefined}
+          />
+
+          {/* E-Mode Selector — Investor+ tier */}
+          <PremiumGuard requiredTier="Creative Investor">
+            {baseReserve.market && walletAddress && (
+              <EModeSelector
+                market={baseReserve.market}
+                userAddress={walletAddress}
+                currentEModeEnabled={userMarketState?.eModeEnabled ?? false}
+                currentEModeCategoryId={(userMarketState as any)?.eModeCategoryId}
+              />
+            )}
+          </PremiumGuard>
 
           <PremiumGuard requiredTier="Creative Creator">
             <LendingAdvancedSection

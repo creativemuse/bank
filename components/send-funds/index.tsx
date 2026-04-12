@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { AmountInput } from "../common/AmountInput";
 import { OrderPreview } from "./OrderPreview";
 import { RecipientInput } from "./RecipientInput";

@@ -3,13 +3,15 @@ import { useState } from "react";
 import { DepositModal } from "@/components/deposit";
 import { SendFundsModal } from "@/components/send-funds";
 import { ActivityFeed } from "@/components/ActivityFeed";
-import { useAuth } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
 import { NewProducts } from "./NewProducts";
 import { DashboardSummary } from "./dashboard-summary";
 import { WithdrawalStatus } from "./dashboard-summary/WithdrawalStatus";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 import { useMembership } from "@/context/MembershipContext";
+import { MembershipBanner } from "@/components/unlock/MembershipBanner";
+import { HealthAlertToast } from "@/components/alerts/HealthAlertToast";
 
 interface MainScreenProps {
   walletAddress?: string;
@@ -93,6 +95,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
         <div className="relative mb-2 flex w-full max-w-5xl items-center justify-center">
           <div className="w-full text-center text-xl font-medium">Dashboard</div>
         </div>
+        <MembershipBanner />
         <DashboardSummary
           onDepositClick={() => setShowDepositModal(true)}
           onSendClick={() => setShowSendModal(true)}
@@ -106,6 +109,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
           walletAddress={walletAddress || ""}
         />
         <SendFundsModal open={showSendModal} onClose={() => setShowSendModal(false)} />
+        <HealthAlertToast onTopUpCollateral={() => setShowDepositModal(true)} />
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import { YearnVaultModal } from "./YearnVaultModal";
 import { NexusCoverModal } from "@/components/nexus/NexusCoverModal";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { NEXUS_YEARN_V3_PRODUCT_ID } from "@/lib/config/nexus-mutual";
+import { useNexusCoverStatus } from "@/hooks/useNexusCoverStatus";
 import { useYearnVault, useYearnVaultBalance } from "@/hooks/useYearnVaults";
 import { useKalaniDepositEligibility } from "@/hooks/useKalaniDepositEligibility";
 import { formatPercentage, formatVaultShares } from "@/lib/yearnUtils";
@@ -50,6 +51,9 @@ export const YearnVaultCard = ({
   const [modalMode, setModalMode] = useState<"deposit" | "withdraw">("deposit");
   const [coverModalOpen, setCoverModalOpen] = useState(false);
   const [interestModalOpen, setInterestModalOpen] = useState(false);
+
+  // Check if user has active Nexus Mutual cover for this vault
+  const coverStatus = useNexusCoverStatus(NEXUS_YEARN_V3_PRODUCT_ID, userAddress);
 
   const { isEligible: canDepositByBouncer, isLoading: bouncerLoading } =
     useKalaniDepositEligibility(bouncerAddress);
@@ -116,7 +120,7 @@ export const YearnVaultCard = ({
     <>
       <StrategyCard
         title={name}
-        subtitle={`ERC-4626 Yearn V3 Vault • ${assetSymbol}`}
+        subtitle={`ERC-4626 Yearn V3 Vault • ${assetSymbol}${coverStatus.hasCover ? " • 🛡️ Covered" : ""}`}
         apr={aprDisplay}
         tvl={tvlDisplay}
         description={description}

@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { PremiumGuard } from "@/components/access/PremiumGuard";
@@ -11,6 +12,8 @@ import { DeployedVaultCard } from "@/components/vaults/DeployedVaultCard";
 import { MyDeployedVaults } from "@/components/vaults/MyDeployedVaults";
 import { useUserVaultPositions } from "@/hooks/useUserVaultPositions";
 import { YearnVaultCard } from "@/components/yearn/YearnVaultCard";
+import { SymbioticVaultCard } from "@/components/symbiotic/SymbioticVaultCard";
+import { SYMBIOTIC_VAULTS } from "@/lib/config/symbiotic";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { useKalaniApr } from "@/hooks/useKalaniApr";
 import { useBalance } from "@/hooks/useBalance";
@@ -157,6 +160,26 @@ function StrategiesContent({
           />
         </PremiumGuard>
       </div>
+
+      {/* Symbiotic Restaking — Investor+ tier */}
+      <section className="mt-10">
+        <PremiumGuard requiredTier="Creative Investor">
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-xl font-semibold text-slate-900">
+              Restaking Vaults
+            </h2>
+            <p className="text-sm text-slate-600">
+              Stake assets into Symbiotic to earn restaking rewards from securing
+              cross-chain infrastructure. Operates on Ethereum Mainnet.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {SYMBIOTIC_VAULTS.map((vault) => (
+              <SymbioticVaultCard key={vault.address} vault={vault} />
+            ))}
+          </div>
+        </PremiumGuard>
+      </section>
 
       {/* My Deployed Vaults Section */}
       <section className="mt-10">
