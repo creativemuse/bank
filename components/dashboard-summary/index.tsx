@@ -7,6 +7,7 @@ import {
   WalletIcon,
   ArrowUpRightIcon,
   EllipsisVerticalIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { Dropdown } from "../common/Dropdown";
 import { useState, useEffect, useRef } from "react";
@@ -16,6 +17,7 @@ import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { WarningModal } from "./WarningModal";
 import createCoinbaseSessionToken from "@/server-actions/createCoinbaseSessionToken";
 import { checkCoinbaseConfig } from "@/server-actions/checkCoinbaseConfig";
+import { EarningsReport } from "@/components/reports/EarningsReport";
 
 interface DashboardSummaryProps {
   onDepositClick: () => void;
@@ -24,6 +26,7 @@ interface DashboardSummaryProps {
 
 export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSummaryProps) {
   const [showWalletDetails, setShowWalletDetails] = useState(false);
+  const [showReports, setShowReports] = useState(false);
   const { wallet } = useWallet();
   const { user } = useAuth();
   const [openWarningModal, setOpenWarningModal] = useState(false);
@@ -176,6 +179,13 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
       disabled: false,
     },
     {
+      icon: <DocumentTextIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
+      label: "Reports",
+      onClick: () => {
+        setShowReports(true);
+      },
+    },
+    {
       icon: <WalletIcon className="h-4 w-4 text-gray-900 dark:text-gray-100" />,
       label: "Wallet Details",
       onClick: () => {
@@ -217,6 +227,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
         )}
       </div>
       <WalletDetails onClose={() => setShowWalletDetails(false)} open={showWalletDetails} />
+      <EarningsReport open={showReports} onClose={() => setShowReports(false)} />
       <WarningModal open={openWarningModal} onClose={() => setOpenWarningModal(false)} />
     </Container>
   );
