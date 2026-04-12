@@ -26,6 +26,49 @@ export const MEMBERSHIP_LOCKS: MembershipLock[] = [
   },
 ];
 
+// Tier priority for access control — higher number = more access
+export const TIER_PRIORITY: Record<MembershipTier | "None", number> = {
+  None: 0,
+  "Creative Creator": 1,
+  "Creative Investor": 2,
+  "Creative Brand": 3,
+};
+
+// Tier pricing for display
+export const TIER_PRICING: Record<
+  MembershipTier,
+  { price: string; duration: string; features: string[] }
+> = {
+  "Creative Creator": {
+    price: "$30",
+    duration: "3 months",
+    features: [
+      "10% performance fee floor (save 50%)",
+      "Premium yield strategies",
+      "Priority transaction processing",
+    ],
+  },
+  "Creative Investor": {
+    price: "$100",
+    duration: "1 month",
+    features: [
+      "All Creative features",
+      "Higher deposit limits",
+      "Advanced analytics",
+    ],
+  },
+  "Creative Brand": {
+    price: "$1,000",
+    duration: "1 month",
+    features: [
+      "All Investor features",
+      "Vault Factory access",
+      "Custom Fee Receiver address",
+      "White-label treasury tools",
+    ],
+  },
+};
+
 // Fee infrastructure addresses (Base Mainnet)
 export const CREATIVE_TREASURY_ADDRESS: Address =
   "0xf46F1BA19A9280F752a451d0973b047D81c63D70";

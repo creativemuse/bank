@@ -10,6 +10,7 @@ import { WithdrawalStatus } from "./dashboard-summary/WithdrawalStatus";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 import { useMembership } from "@/context/MembershipContext";
+import { MembershipBanner } from "@/components/unlock/MembershipBanner";
 
 interface MainScreenProps {
   walletAddress?: string;
@@ -93,6 +94,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
         <div className="relative mb-2 flex w-full max-w-5xl items-center justify-center">
           <div className="w-full text-center text-xl font-medium">Dashboard</div>
         </div>
+        <MembershipBanner />
         <DashboardSummary
           onDepositClick={() => setShowDepositModal(true)}
           onSendClick={() => setShowSendModal(true)}
