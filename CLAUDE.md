@@ -48,12 +48,12 @@ Creative Bank is a fintech-grade DeFi platform on Base. The architecture separat
 - **Phase 3b**: Vault Fee Tiers (20% non-member / 10% member floor, Aave/Yearn/Manager split)
 - **Phase 3c**: Membership Onboarding (Unlock Protocol paywall, PremiumGuard fix)
 
-### Upcoming
+### Completed (continued)
 - **Phase 4**: Financial Reporting & Tax Export — Earnings tracking from CockroachDB, CSV/PDF export
 - **Phase 5**: Risk Management — Nexus Mutual covered vaults, Symbiotic underwriting for Brand/Investor
 - **Phase 6**: Liquidity Optimization — Aave E-Mode for Investor tier, Isolation Mode controls
-- **Phase 7**: Operational Awareness — Crossmint webhooks, Health Factor monitoring & alerts
-- **Phase 8**: Infrastructure Hardening — Bouncer contract Solidity update for on-chain 10% fee floor enforcement
+- **Phase 7**: Operational Awareness — Crossmint webhooks, Goldsky pipeline, Health Factor monitoring & alerts
+- **Phase 8**: Infrastructure Hardening — Bouncer v2 with on-chain 10% fee floor enforcement
 
 ## Git Workflow
 
