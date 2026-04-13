@@ -240,7 +240,10 @@ export function AaveVaultModal({
           args: [inputUnits],
         })
         .then((assets) => setExpectedAssets(formatUnits(assets, assetDecimals)))
-        .catch(() => setExpectedAssets(null));
+        .catch(() => {
+          setExpectedAssets(null);
+          setErrorMessage("Unable to preview withdrawal — please check your connection and try again.");
+        });
     } else if (mode === "withdraw" && withdrawInputMode === "asset") {
       if (resolvedShareDecimals == null) {
         setExpectedSharesToBurn(null);
@@ -258,7 +261,10 @@ export function AaveVaultModal({
           setExpectedSharesToBurn(formatUnits(shares, resolvedShareDecimals));
           setExpectedSharesToBurnDecimals(resolvedShareDecimals);
         })
-        .catch(() => setExpectedSharesToBurn(null));
+        .catch(() => {
+          setExpectedSharesToBurn(null);
+          setErrorMessage("Unable to preview withdrawal — please check your connection and try again.");
+        });
     } else {
       setExpectedAssets(null);
       setExpectedSharesToBurn(null);
