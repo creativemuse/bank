@@ -15,7 +15,10 @@ import { wagmiConfig } from "@/lib/wagmiConfig";
 import { MembershipProvider } from "@/context/MembershipContext";
 
 const aaveClient = AaveClient.create({
-  environment: production,
+  environment: {
+    ...production,
+    backend: "/api/aave/graphql",
+  },
 });
 
 const queryClient = new QueryClient({
