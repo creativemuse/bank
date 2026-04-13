@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Address, formatUnits, parseUnits } from "viem";
+import { Address, encodeFunctionData, formatUnits, parseUnits } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import {
@@ -47,6 +47,46 @@ async function withRetry<T>(fn: () => PromiseLike<T> | Promise<T>, retries = 2):
     }
   }
   throw new Error("Unreachable");
+}
+
+const ERC4626_REDEEM_ABI = [
+  {
+    inputs: [
+      { name: "shares", type: "uint256" },
+      { name: "receiver", type: "address" },
+      { name: "owner", type: "address" },
+    ],
+    name: "redeem",
+    outputs: [{ name: "assets", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
+const ERC4626_WITHDRAW_ABI = [
+  {
+    inputs: [
+      { name: "assets", type: "uint256" },
+      { name: "receiver", type: "address" },
+      { name: "owner", type: "address" },
+    ],
+    name: "withdraw",
+    outputs: [{ name: "shares", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
+function isAaveApiPanic(err: unknown): boolean {
+  if (err == null) return false;
+  const msg = typeof err === "object" && "message" in err ? String((err as Error).message) : String(err);
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes("service panicked") ||
+    lower.includes("panic") ||
+    lower.includes("internal server error") ||
+    lower.includes("aave api error")
+  );
 }
 
 type AaveVaultModalProps = {
@@ -442,31 +482,40 @@ export function AaveVaultModal({
           });
         } else {
           if (withdrawInputMode === "shares") {
-            // When redeeming the exact max share balance, reduce by 1 wei
-            // to work around an Aave API edge case ("Service panicked").
-            const isMaxShares = inputUnits === shareBalance && inputUnits > 1n;
-            const redeemSharesAmount = isMaxShares
-              ? formatUnits(inputUnits - 1n, inputDecimals)
-              : normalizedInputAmount;
+            let redeemHandled = false;
 
+            // Try the Aave API first
             const redeemResult = await withRetry(() => redeem({
               chainId: AAVE_TARGET_CHAIN_ID,
               vault: evmAddress(vaultAddress),
-              shares: { amount: bigDecimal(redeemSharesAmount) },
+              shares: { amount: bigDecimal(normalizedInputAmount) },
               sharesOwner: evmAddress(userAddress),
             }));
 
-            if (redeemResult.isErr()) {
+            if (redeemResult.isOk()) {
+              await sendAndWait(redeemResult.value);
+              redeemHandled = true;
+            } else if (!isAaveApiPanic(redeemResult.error)) {
+              // Non-panic error — show to user
               setErrorMessage(
                 (redeemResult.error as Error)?.message ?? "Withdraw failed",
               );
               return;
             }
 
-            // For Aave `useVaultRedeemShares`, the hook is typed to return a TransactionRequest.
-            // Handle any failures via `redeemResult.isErr()` above.
-            await sendAndWait(redeemResult.value);
+            // Fallback: call the vault's ERC-4626 redeem directly
+            if (!redeemHandled) {
+              const data = encodeFunctionData({
+                abi: ERC4626_REDEEM_ABI,
+                functionName: "redeem",
+                args: [inputUnits, userAddress, userAddress],
+              });
+              await sendAndWait({ to: vaultAddress, data });
+            }
           } else {
+            let withdrawHandled = false;
+
+            // Try the Aave API first
             const withdrawResult = await withRetry(() => withdraw({
               chainId: AAVE_TARGET_CHAIN_ID,
               vault: evmAddress(vaultAddress),
@@ -474,16 +523,26 @@ export function AaveVaultModal({
               sharesOwner: evmAddress(userAddress),
             }));
 
-            if (withdrawResult.isErr()) {
+            if (withdrawResult.isOk()) {
+              await sendAndWait(withdrawResult.value);
+              withdrawHandled = true;
+            } else if (!isAaveApiPanic(withdrawResult.error)) {
+              // Non-panic error — show to user
               setErrorMessage(
                 (withdrawResult.error as Error)?.message ?? "Withdraw failed",
               );
               return;
             }
 
-            // For Aave `useVaultWithdraw`, the hook is typed to return a TransactionRequest.
-            // Handle any failures via `withdrawResult.isErr()` above.
-            await sendAndWait(withdrawResult.value);
+            // Fallback: call the vault's ERC-4626 withdraw directly
+            if (!withdrawHandled) {
+              const data = encodeFunctionData({
+                abi: ERC4626_WITHDRAW_ABI,
+                functionName: "withdraw",
+                args: [inputUnits, userAddress, userAddress],
+              });
+              await sendAndWait({ to: vaultAddress, data });
+            }
           }
 
           toast.success("Withdraw complete", {
@@ -514,8 +573,6 @@ export function AaveVaultModal({
       userAddress,
       normalizedInputAmount,
       inputUnits,
-      inputDecimals,
-      shareBalance,
       vaultAddress,
       deposit,
       redeem,
