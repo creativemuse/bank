@@ -8,10 +8,8 @@ import {
   bigDecimal,
   evmAddress,
   useVaultDeposit,
-  useVaultRedeemShares,
   useVaultDepositPreview,
   useVaultRedeemPreview,
-  useVaultWithdraw,
   useVaultWithdrawPreview,
 } from "@aave/react";
 
@@ -77,18 +75,6 @@ const ERC4626_WITHDRAW_ABI = [
   },
 ] as const;
 
-function isAaveApiPanic(err: unknown): boolean {
-  if (err == null) return false;
-  const msg = typeof err === "object" && "message" in err ? String((err as Error).message) : String(err);
-  const lower = msg.toLowerCase();
-  return (
-    lower.includes("service panicked") ||
-    lower.includes("panic") ||
-    lower.includes("internal server error") ||
-    lower.includes("aave api error")
-  );
-}
-
 type AaveVaultModalProps = {
   open: boolean;
   onClose: () => void;
@@ -125,8 +111,9 @@ export function AaveVaultModal({
   const { status: walletStatus } = useWallet();
 
   const [deposit] = useVaultDeposit();
-  const [redeem] = useVaultRedeemShares();
-  const [withdraw] = useVaultWithdraw();
+  // Withdrawals use direct ERC-4626 contract calls (see handleSubmit).
+  // useVaultRedeemShares / useVaultWithdraw are not used because the
+  // Aave API is unreliable for this vault ("Service panicked" errors).
   const [depositPreview] = useVaultDepositPreview();
   const [redeemPreview] = useVaultRedeemPreview();
   const [withdrawPreview] = useVaultWithdrawPreview();
@@ -481,68 +468,23 @@ export function AaveVaultModal({
             description: `${formatUsd(normalizedInputAmount)} ${assetSymbol} deposited successfully.`,
           });
         } else {
+          // Withdraw directly via the vault's ERC-4626 contract.
+          // The Aave API is not needed for withdrawals and is unreliable
+          // (returns "Service panicked" errors), so we call the vault directly.
           if (withdrawInputMode === "shares") {
-            let redeemHandled = false;
-
-            // Try the Aave API first
-            const redeemResult = await withRetry(() => redeem({
-              chainId: AAVE_TARGET_CHAIN_ID,
-              vault: evmAddress(vaultAddress),
-              shares: { amount: bigDecimal(normalizedInputAmount) },
-              sharesOwner: evmAddress(userAddress),
-            }));
-
-            if (redeemResult.isOk()) {
-              await sendAndWait(redeemResult.value);
-              redeemHandled = true;
-            } else if (!isAaveApiPanic(redeemResult.error)) {
-              // Non-panic error — show to user
-              setErrorMessage(
-                (redeemResult.error as Error)?.message ?? "Withdraw failed",
-              );
-              return;
-            }
-
-            // Fallback: call the vault's ERC-4626 redeem directly
-            if (!redeemHandled) {
-              const data = encodeFunctionData({
-                abi: ERC4626_REDEEM_ABI,
-                functionName: "redeem",
-                args: [inputUnits, userAddress, userAddress],
-              });
-              await sendAndWait({ to: vaultAddress, data });
-            }
+            const data = encodeFunctionData({
+              abi: ERC4626_REDEEM_ABI,
+              functionName: "redeem",
+              args: [inputUnits, userAddress, userAddress],
+            });
+            await sendAndWait({ to: vaultAddress, data });
           } else {
-            let withdrawHandled = false;
-
-            // Try the Aave API first
-            const withdrawResult = await withRetry(() => withdraw({
-              chainId: AAVE_TARGET_CHAIN_ID,
-              vault: evmAddress(vaultAddress),
-              amount: { value: bigDecimal(normalizedInputAmount) },
-              sharesOwner: evmAddress(userAddress),
-            }));
-
-            if (withdrawResult.isOk()) {
-              await sendAndWait(withdrawResult.value);
-              withdrawHandled = true;
-            } else if (!isAaveApiPanic(withdrawResult.error)) {
-              // Non-panic error — show to user
-              setErrorMessage(
-                (withdrawResult.error as Error)?.message ?? "Withdraw failed",
-              );
-              return;
-            }
-
-            // Fallback: call the vault's ERC-4626 withdraw directly
-            if (!withdrawHandled) {
-              const data = encodeFunctionData({
-                abi: ERC4626_WITHDRAW_ABI,
-                functionName: "withdraw",
-                args: [inputUnits, userAddress, userAddress],
-              });
-              await sendAndWait({ to: vaultAddress, data });
-            }
+            const data = encodeFunctionData({
+              abi: ERC4626_WITHDRAW_ABI,
+              functionName: "withdraw",
+              args: [inputUnits, userAddress, userAddress],
+            });
+            await sendAndWait({ to: vaultAddress, data });
           }
 
           toast.success("Withdraw complete", {
@@ -575,8 +517,6 @@ export function AaveVaultModal({
       inputUnits,
       vaultAddress,
       deposit,
-      redeem,
-      withdraw,
       sendAndWait,
       assetSymbol,
       onSuccess,
