@@ -17,34 +17,42 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = await request.text();
-  if (!body) {
+  try {
+    const body = await request.text();
+    if (!body) {
+      return NextResponse.json(
+        { error: "Missing request body" },
+        { status: 400 },
+      );
+    }
+
+    const upstream = await fetch(AAVE_GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body,
+      cache: "no-store",
+    });
+
+    const data = await upstream.text();
+
+    return new NextResponse(data, {
+      status: upstream.status,
+      headers: {
+        "content-type":
+          upstream.headers.get("content-type") ?? "application/json",
+        "cache-control": "no-store",
+      },
+    });
+  } catch (error) {
+    console.error("Aave proxy error:", error);
     return NextResponse.json(
-      { error: "Missing request body" },
-      { status: 400 },
+      { error: "Failed to fetch from Aave API" },
+      { status: 502 },
     );
   }
-
-  const upstream = await fetch(AAVE_GRAPHQL_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json",
-    },
-    body,
-    cache: "no-store",
-  });
-
-  const data = await upstream.text();
-
-  return new NextResponse(data, {
-    status: upstream.status,
-    headers: {
-      "content-type":
-        upstream.headers.get("content-type") ?? "application/json",
-      "cache-control": "no-store",
-    },
-  });
 }
 
 export async function GET() {
