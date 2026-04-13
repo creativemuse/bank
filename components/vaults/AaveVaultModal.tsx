@@ -35,11 +35,11 @@ function isFetchError(err: unknown): boolean {
   );
 }
 
-async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+async function withRetry<T>(fn: () => PromiseLike<T> | Promise<T>, retries = 2): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      return await fn();
+      return await Promise.resolve(fn());
     } catch (err) {
       lastError = err;
       if (!isFetchError(err) || attempt === retries) throw err;
@@ -157,20 +157,24 @@ export function AaveVaultModal({
   useEffect(() => {
     if (mode === "deposit" && hasPositiveInput && normalizedInputAmount != null) {
       setExpectedAssets(null);
-      depositPreview({
-        vault: evmAddress(vaultAddress),
-        chainId: AAVE_TARGET_CHAIN_ID,
-        amount: bigDecimal(normalizedInputAmount),
-      }).then((result) => {
-        if (result.isOk() && result.value?.amount?.value != null) {
-          setExpectedShares(String(result.value.amount.value));
-        } else {
+      Promise.resolve(
+        depositPreview({
+          vault: evmAddress(vaultAddress),
+          chainId: AAVE_TARGET_CHAIN_ID,
+          amount: bigDecimal(normalizedInputAmount),
+        }),
+      )
+        .then((result) => {
+          if (result.isOk() && result.value?.amount?.value != null) {
+            setExpectedShares(String(result.value.amount.value));
+          } else {
+            setExpectedShares(null);
+          }
+        })
+        .catch(() => {
           setExpectedShares(null);
-        }
-      }).catch(() => {
-        setExpectedShares(null);
-        setErrorMessage("Unable to preview deposit — please check your connection and try again.");
-      });
+          setErrorMessage("Unable to preview deposit — please check your connection and try again.");
+        });
     } else {
       setExpectedShares(null);
     }
@@ -191,20 +195,24 @@ export function AaveVaultModal({
       }
       setExpectedShares(null);
       setExpectedSharesToBurn(null);
-      redeemPreview({
-        vault: evmAddress(vaultAddress),
-        chainId: AAVE_TARGET_CHAIN_ID,
-        amount: bigDecimal(normalizedInputAmount),
-      }).then((result) => {
-        if (result.isOk() && result.value?.amount?.value != null) {
-          setExpectedAssets(String(result.value.amount.value));
-        } else {
+      Promise.resolve(
+        redeemPreview({
+          vault: evmAddress(vaultAddress),
+          chainId: AAVE_TARGET_CHAIN_ID,
+          amount: bigDecimal(normalizedInputAmount),
+        }),
+      )
+        .then((result) => {
+          if (result.isOk() && result.value?.amount?.value != null) {
+            setExpectedAssets(String(result.value.amount.value));
+          } else {
+            setExpectedAssets(null);
+          }
+        })
+        .catch(() => {
           setExpectedAssets(null);
-        }
-      }).catch(() => {
-        setExpectedAssets(null);
-        setErrorMessage("Unable to preview withdrawal — please check your connection and try again.");
-      });
+          setErrorMessage("Unable to preview withdrawal — please check your connection and try again.");
+        });
     } else if (
       mode === "withdraw" &&
       withdrawInputMode === "asset" &&
@@ -218,21 +226,25 @@ export function AaveVaultModal({
       }
       setExpectedShares(null);
       setExpectedAssets(null);
-      withdrawPreview({
-        vault: evmAddress(vaultAddress),
-        chainId: AAVE_TARGET_CHAIN_ID,
-        amount: bigDecimal(normalizedInputAmount),
-      }).then((result) => {
-        if (result.isOk() && result.value?.amount?.value != null) {
-          setExpectedSharesToBurn(String(result.value.amount.value));
-          setExpectedSharesToBurnDecimals(result.value.amount.decimals);
-        } else {
+      Promise.resolve(
+        withdrawPreview({
+          vault: evmAddress(vaultAddress),
+          chainId: AAVE_TARGET_CHAIN_ID,
+          amount: bigDecimal(normalizedInputAmount),
+        }),
+      )
+        .then((result) => {
+          if (result.isOk() && result.value?.amount?.value != null) {
+            setExpectedSharesToBurn(String(result.value.amount.value));
+            setExpectedSharesToBurnDecimals(result.value.amount.decimals);
+          } else {
+            setExpectedSharesToBurn(null);
+          }
+        })
+        .catch(() => {
           setExpectedSharesToBurn(null);
-        }
-      }).catch(() => {
-        setExpectedSharesToBurn(null);
-        setErrorMessage("Unable to preview withdrawal — please check your connection and try again.");
-      });
+          setErrorMessage("Unable to preview withdrawal — please check your connection and try again.");
+        });
     } else {
       setExpectedAssets(null);
       setExpectedSharesToBurn(null);
