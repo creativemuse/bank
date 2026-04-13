@@ -26,6 +26,29 @@ type WithdrawInputMode = "shares" | "asset";
 
 const TX_CONFIRMATION_TIMEOUT_MS = 120_000;
 
+function isFetchError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    (err.message === "Failed to fetch" ||
+      err.message.includes("NetworkError") ||
+      err.message.includes("network"))
+  );
+}
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (!isFetchError(err) || attempt === retries) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  throw lastError;
+}
+
 type AaveVaultModalProps = {
   open: boolean;
   onClose: () => void;
@@ -144,6 +167,9 @@ export function AaveVaultModal({
         } else {
           setExpectedShares(null);
         }
+      }).catch(() => {
+        setExpectedShares(null);
+        setErrorMessage("Unable to preview deposit — please check your connection and try again.");
       });
     } else {
       setExpectedShares(null);
@@ -175,6 +201,9 @@ export function AaveVaultModal({
         } else {
           setExpectedAssets(null);
         }
+      }).catch(() => {
+        setExpectedAssets(null);
+        setErrorMessage("Unable to preview withdrawal — please check your connection and try again.");
       });
     } else if (
       mode === "withdraw" &&
@@ -200,6 +229,9 @@ export function AaveVaultModal({
         } else {
           setExpectedSharesToBurn(null);
         }
+      }).catch(() => {
+        setExpectedSharesToBurn(null);
+        setErrorMessage("Unable to preview withdrawal — please check your connection and try again.");
       });
     } else {
       setExpectedAssets(null);
@@ -368,12 +400,12 @@ export function AaveVaultModal({
       setIsSubmitting(true);
       try {
         if (mode === "deposit") {
-          const depositResult = await deposit({
+          const depositResult = await withRetry(() => deposit({
             chainId: AAVE_TARGET_CHAIN_ID,
             vault: evmAddress(vaultAddress),
             amount: { value: bigDecimal(normalizedInputAmount) },
             depositor: evmAddress(userAddress),
-          });
+          }));
 
           if (depositResult.isErr()) {
             setErrorMessage(depositResult.error?.message ?? "Deposit failed");
@@ -398,12 +430,12 @@ export function AaveVaultModal({
           });
         } else {
           if (withdrawInputMode === "shares") {
-            const redeemResult = await redeem({
+            const redeemResult = await withRetry(() => redeem({
               chainId: AAVE_TARGET_CHAIN_ID,
               vault: evmAddress(vaultAddress),
               shares: { amount: bigDecimal(normalizedInputAmount) },
               sharesOwner: evmAddress(userAddress),
-            });
+            }));
 
             if (redeemResult.isErr()) {
               setErrorMessage(
@@ -416,12 +448,12 @@ export function AaveVaultModal({
             // Handle any failures via `redeemResult.isErr()` above.
             await sendAndWait(redeemResult.value);
           } else {
-            const withdrawResult = await withdraw({
+            const withdrawResult = await withRetry(() => withdraw({
               chainId: AAVE_TARGET_CHAIN_ID,
               vault: evmAddress(vaultAddress),
               amount: { value: bigDecimal(normalizedInputAmount) },
               sharesOwner: evmAddress(userAddress),
-            });
+            }));
 
             if (withdrawResult.isErr()) {
               setErrorMessage(
@@ -444,8 +476,12 @@ export function AaveVaultModal({
         onSuccess?.();
         handleClose();
       } catch (err) {
-        const message = err instanceof Error ? err.message : mode === "deposit" ? "Deposit failed" : "Withdraw failed";
-        setErrorMessage(message);
+        if (isFetchError(err)) {
+          setErrorMessage("Network error — please check your connection and try again.");
+        } else {
+          const message = err instanceof Error ? err.message : mode === "deposit" ? "Deposit failed" : "Withdraw failed";
+          setErrorMessage(message);
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -511,6 +547,7 @@ export function AaveVaultModal({
                 onClick={() => {
                   setWithdrawInputMode("shares");
                   setInputAmount("");
+                  setErrorMessage(null);
                 }}
                 className={
                   "flex-1 rounded-md px-3 py-2 text-sm font-medium transition " +
@@ -528,6 +565,7 @@ export function AaveVaultModal({
                 onClick={() => {
                   setWithdrawInputMode("asset");
                   setInputAmount("");
+                  setErrorMessage(null);
                 }}
                 className={
                   "flex-1 rounded-md px-3 py-2 text-sm font-medium transition " +
@@ -574,7 +612,7 @@ export function AaveVaultModal({
               type="text"
               inputMode="decimal"
               value={inputAmount}
-              onChange={(e) => setInputAmount(e.target.value)}
+              onChange={(e) => { setInputAmount(e.target.value); setErrorMessage(null); }}
               placeholder="0.00"
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
               aria-label={
