@@ -38,6 +38,25 @@ export async function POST(request: Request) {
 
     const data = await upstream.text();
 
+    // If the Aave API returns a server error, wrap it in a structured
+    // JSON response so the SDK can parse it instead of receiving raw text.
+    if (upstream.status >= 500) {
+      console.error(`Aave API returned ${upstream.status}:`, data.slice(0, 500));
+      return NextResponse.json(
+        {
+          errors: [
+            {
+              message: data.includes("panic")
+                ? "Service panicked"
+                : `Aave API error (${upstream.status})`,
+              extensions: { upstream: data.slice(0, 500) },
+            },
+          ],
+        },
+        { status: 200, headers: { "cache-control": "no-store" } },
+      );
+    }
+
     return new NextResponse(data, {
       status: upstream.status,
       headers: {
