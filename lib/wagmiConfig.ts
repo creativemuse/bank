@@ -8,13 +8,6 @@ import { Attribution } from "ox/erc8021";
 const DEFAULT_BASE_RPC_URL = "https://mainnet.base.org";
 const DEFAULT_BASE_SEPOLIA_RPC_URL = "https://sepolia.base.org";
 
-// Additional public fallback endpoints
-const BASE_PUBLIC_RPC_ENDPOINTS = [
-  "https://base.gateway.tenderly.co",
-  "https://base-rpc.publicnode.com",
-  "https://1rpc.io/base",
-];
-
 // Base Builder Code — appended to all transactions for onchain attribution
 const BUILDER_CODE = process.env.NEXT_PUBLIC_BUILDER_CODE;
 const DATA_SUFFIX = BUILDER_CODE
@@ -45,33 +38,29 @@ const isValidAlchemyKey = (key: string | undefined): boolean => {
 const buildBaseRpcEndpoints = () => {
   const endpoints = [];
 
-  // 1. Custom Alchemy endpoint (if provided and valid)
+  // 1. Server-side RPC proxy — keeps API keys secure and avoids browser rate limits.
+  //    The proxy at /api/rpc/base forwards to Alchemy (if ALCHEMY_API_KEY is set)
+  //    or to a configured BASE_RPC_URL on the server.
+  endpoints.push(
+    http("/api/rpc/base", {
+      batch: {
+        wait: 50,
+      },
+      retryCount: 2,
+      retryDelay: 500,
+    })
+  );
+
+  // 2. Client-side Alchemy endpoint (if NEXT_PUBLIC key provided)
   const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
   if (isValidAlchemyKey(alchemyKey)) {
     endpoints.push(
       http(`https://base-mainnet.g.alchemy.com/v2/${alchemyKey}`, {
         batch: {
-          wait: 50, // Wait 50ms before sending batch
-        },
-        retryCount: 2, // Reduced retries to fail faster to fallback
-        retryDelay: 500, // Faster retry delay
-      })
-    );
-  } else if (alchemyKey) {
-    console.warn(
-      `[wagmiConfig] Alchemy API key appears invalid or is a placeholder. Skipping Alchemy endpoint. Using public RPCs only.`
-    );
-  }
-
-  // 2. Custom RPC URL (if provided)
-  const customRpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL;
-  if (customRpcUrl && customRpcUrl !== DEFAULT_BASE_RPC_URL) {
-    endpoints.push(
-      http(customRpcUrl, {
-        batch: {
           wait: 50,
         },
         retryCount: 2,
+        retryDelay: 500,
       })
     );
   }
@@ -82,25 +71,10 @@ const buildBaseRpcEndpoints = () => {
       batch: {
         wait: 50,
       },
-      retryCount: 2,
+      retryCount: 1,
     })
   );
 
-  // 4. Additional public fallbacks (sample 2 random ones to avoid always hitting the same endpoint)
-  const shuffledFallbacks = [...BASE_PUBLIC_RPC_ENDPOINTS].sort(() => Math.random() - 0.5);
-  shuffledFallbacks.slice(0, 2).forEach((url) => {
-    endpoints.push(
-      http(url, {
-        batch: {
-          wait: 100, // Longer wait for public endpoints
-        },
-        retryCount: 1,
-      })
-    );
-  });
-
-  console.log(`[wagmiConfig] Configured ${endpoints.length} RPC endpoints for Base Mainnet`);
-  
   return endpoints;
 };
 
