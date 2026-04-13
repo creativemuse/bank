@@ -26,6 +26,29 @@ type WithdrawInputMode = "shares" | "asset";
 
 const TX_CONFIRMATION_TIMEOUT_MS = 120_000;
 
+function isFetchError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg === "failed to fetch" ||
+    msg.includes("networkerror") ||
+    msg.includes("network error") ||
+    msg === "network request failed"
+  );
+}
+
+async function withRetry<T>(fn: () => PromiseLike<T> | Promise<T>, retries = 2): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await Promise.resolve(fn());
+    } catch (err) {
+      if (!isFetchError(err) || attempt === retries) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  throw new Error("Unreachable");
+}
+
 type AaveVaultModalProps = {
   open: boolean;
   onClose: () => void;
@@ -134,17 +157,24 @@ export function AaveVaultModal({
   useEffect(() => {
     if (mode === "deposit" && hasPositiveInput && normalizedInputAmount != null) {
       setExpectedAssets(null);
-      depositPreview({
-        vault: evmAddress(vaultAddress),
-        chainId: AAVE_TARGET_CHAIN_ID,
-        amount: bigDecimal(normalizedInputAmount),
-      }).then((result) => {
-        if (result.isOk() && result.value?.amount?.value != null) {
-          setExpectedShares(String(result.value.amount.value));
-        } else {
+      Promise.resolve(
+        depositPreview({
+          vault: evmAddress(vaultAddress),
+          chainId: AAVE_TARGET_CHAIN_ID,
+          amount: bigDecimal(normalizedInputAmount),
+        }),
+      )
+        .then((result) => {
+          if (result.isOk() && result.value?.amount?.value != null) {
+            setExpectedShares(String(result.value.amount.value));
+          } else {
+            setExpectedShares(null);
+          }
+        })
+        .catch(() => {
           setExpectedShares(null);
-        }
-      });
+          setErrorMessage("Unable to preview deposit — please check your connection and try again.");
+        });
     } else {
       setExpectedShares(null);
     }
@@ -165,17 +195,24 @@ export function AaveVaultModal({
       }
       setExpectedShares(null);
       setExpectedSharesToBurn(null);
-      redeemPreview({
-        vault: evmAddress(vaultAddress),
-        chainId: AAVE_TARGET_CHAIN_ID,
-        amount: bigDecimal(normalizedInputAmount),
-      }).then((result) => {
-        if (result.isOk() && result.value?.amount?.value != null) {
-          setExpectedAssets(String(result.value.amount.value));
-        } else {
+      Promise.resolve(
+        redeemPreview({
+          vault: evmAddress(vaultAddress),
+          chainId: AAVE_TARGET_CHAIN_ID,
+          amount: bigDecimal(normalizedInputAmount),
+        }),
+      )
+        .then((result) => {
+          if (result.isOk() && result.value?.amount?.value != null) {
+            setExpectedAssets(String(result.value.amount.value));
+          } else {
+            setExpectedAssets(null);
+          }
+        })
+        .catch(() => {
           setExpectedAssets(null);
-        }
-      });
+          setErrorMessage("Unable to preview withdrawal — please check your connection and try again.");
+        });
     } else if (
       mode === "withdraw" &&
       withdrawInputMode === "asset" &&
@@ -189,18 +226,25 @@ export function AaveVaultModal({
       }
       setExpectedShares(null);
       setExpectedAssets(null);
-      withdrawPreview({
-        vault: evmAddress(vaultAddress),
-        chainId: AAVE_TARGET_CHAIN_ID,
-        amount: bigDecimal(normalizedInputAmount),
-      }).then((result) => {
-        if (result.isOk() && result.value?.amount?.value != null) {
-          setExpectedSharesToBurn(String(result.value.amount.value));
-          setExpectedSharesToBurnDecimals(result.value.amount.decimals);
-        } else {
+      Promise.resolve(
+        withdrawPreview({
+          vault: evmAddress(vaultAddress),
+          chainId: AAVE_TARGET_CHAIN_ID,
+          amount: bigDecimal(normalizedInputAmount),
+        }),
+      )
+        .then((result) => {
+          if (result.isOk() && result.value?.amount?.value != null) {
+            setExpectedSharesToBurn(String(result.value.amount.value));
+            setExpectedSharesToBurnDecimals(result.value.amount.decimals);
+          } else {
+            setExpectedSharesToBurn(null);
+          }
+        })
+        .catch(() => {
           setExpectedSharesToBurn(null);
-        }
-      });
+          setErrorMessage("Unable to preview withdrawal — please check your connection and try again.");
+        });
     } else {
       setExpectedAssets(null);
       setExpectedSharesToBurn(null);
@@ -368,12 +412,12 @@ export function AaveVaultModal({
       setIsSubmitting(true);
       try {
         if (mode === "deposit") {
-          const depositResult = await deposit({
+          const depositResult = await withRetry(() => deposit({
             chainId: AAVE_TARGET_CHAIN_ID,
             vault: evmAddress(vaultAddress),
             amount: { value: bigDecimal(normalizedInputAmount) },
             depositor: evmAddress(userAddress),
-          });
+          }));
 
           if (depositResult.isErr()) {
             setErrorMessage(depositResult.error?.message ?? "Deposit failed");
@@ -398,12 +442,12 @@ export function AaveVaultModal({
           });
         } else {
           if (withdrawInputMode === "shares") {
-            const redeemResult = await redeem({
+            const redeemResult = await withRetry(() => redeem({
               chainId: AAVE_TARGET_CHAIN_ID,
               vault: evmAddress(vaultAddress),
               shares: { amount: bigDecimal(normalizedInputAmount) },
               sharesOwner: evmAddress(userAddress),
-            });
+            }));
 
             if (redeemResult.isErr()) {
               setErrorMessage(
@@ -416,12 +460,12 @@ export function AaveVaultModal({
             // Handle any failures via `redeemResult.isErr()` above.
             await sendAndWait(redeemResult.value);
           } else {
-            const withdrawResult = await withdraw({
+            const withdrawResult = await withRetry(() => withdraw({
               chainId: AAVE_TARGET_CHAIN_ID,
               vault: evmAddress(vaultAddress),
               amount: { value: bigDecimal(normalizedInputAmount) },
               sharesOwner: evmAddress(userAddress),
-            });
+            }));
 
             if (withdrawResult.isErr()) {
               setErrorMessage(
@@ -444,8 +488,12 @@ export function AaveVaultModal({
         onSuccess?.();
         handleClose();
       } catch (err) {
-        const message = err instanceof Error ? err.message : mode === "deposit" ? "Deposit failed" : "Withdraw failed";
-        setErrorMessage(message);
+        if (isFetchError(err)) {
+          setErrorMessage("Network error — please check your connection and try again.");
+        } else {
+          const message = err instanceof Error ? err.message : mode === "deposit" ? "Deposit failed" : "Withdraw failed";
+          setErrorMessage(message);
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -511,6 +559,7 @@ export function AaveVaultModal({
                 onClick={() => {
                   setWithdrawInputMode("shares");
                   setInputAmount("");
+                  setErrorMessage(null);
                 }}
                 className={
                   "flex-1 rounded-md px-3 py-2 text-sm font-medium transition " +
@@ -528,6 +577,7 @@ export function AaveVaultModal({
                 onClick={() => {
                   setWithdrawInputMode("asset");
                   setInputAmount("");
+                  setErrorMessage(null);
                 }}
                 className={
                   "flex-1 rounded-md px-3 py-2 text-sm font-medium transition " +
@@ -574,7 +624,7 @@ export function AaveVaultModal({
               type="text"
               inputMode="decimal"
               value={inputAmount}
-              onChange={(e) => setInputAmount(e.target.value)}
+              onChange={(e) => { setInputAmount(e.target.value); setErrorMessage(null); }}
               placeholder="0.00"
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
               aria-label={
