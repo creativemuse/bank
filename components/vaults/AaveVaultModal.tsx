@@ -442,10 +442,17 @@ export function AaveVaultModal({
           });
         } else {
           if (withdrawInputMode === "shares") {
+            // When redeeming the exact max share balance, reduce by 1 wei
+            // to work around an Aave API edge case ("Service panicked").
+            const isMaxShares = inputUnits === shareBalance && inputUnits > 1n;
+            const redeemSharesAmount = isMaxShares
+              ? formatUnits(inputUnits - 1n, inputDecimals)
+              : normalizedInputAmount;
+
             const redeemResult = await withRetry(() => redeem({
               chainId: AAVE_TARGET_CHAIN_ID,
               vault: evmAddress(vaultAddress),
-              shares: { amount: bigDecimal(normalizedInputAmount) },
+              shares: { amount: bigDecimal(redeemSharesAmount) },
               sharesOwner: evmAddress(userAddress),
             }));
 
@@ -507,6 +514,8 @@ export function AaveVaultModal({
       userAddress,
       normalizedInputAmount,
       inputUnits,
+      inputDecimals,
+      shareBalance,
       vaultAddress,
       deposit,
       redeem,
