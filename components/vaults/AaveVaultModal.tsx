@@ -27,26 +27,26 @@ type WithdrawInputMode = "shares" | "asset";
 const TX_CONFIRMATION_TIMEOUT_MS = 120_000;
 
 function isFetchError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
   return (
-    err instanceof Error &&
-    (err.message === "Failed to fetch" ||
-      err.message.includes("NetworkError") ||
-      err.message.includes("network"))
+    msg === "failed to fetch" ||
+    msg.includes("networkerror") ||
+    msg.includes("network error") ||
+    msg === "network request failed"
   );
 }
 
 async function withRetry<T>(fn: () => PromiseLike<T> | Promise<T>, retries = 2): Promise<T> {
-  let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       return await Promise.resolve(fn());
     } catch (err) {
-      lastError = err;
       if (!isFetchError(err) || attempt === retries) throw err;
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
     }
   }
-  throw lastError;
+  throw new Error("Unreachable");
 }
 
 type AaveVaultModalProps = {
