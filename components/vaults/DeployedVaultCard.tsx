@@ -379,10 +379,8 @@ export const DeployedVaultCard = ({
 
   const isOwner =
     !!userAddress &&
-    (
-      (!!vaultFromApi && vaultFromApi.owner?.toLowerCase() === userAddress.toLowerCase()) ||
-      (typeof onChainOwner === "string" && onChainOwner.toLowerCase() === userAddress.toLowerCase())
-    );
+    (vaultFromApi?.owner?.toLowerCase() === userAddress.toLowerCase() ||
+      (typeof onChainOwner === "string" && onChainOwner.toLowerCase() === userAddress.toLowerCase()));
 
   const cardActions = useMemo(() => {
     const actions: Array<{
