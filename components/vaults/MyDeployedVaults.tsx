@@ -248,6 +248,7 @@ export const MyDeployedVaults = () => {
               name={vault.shareName}
               transactionHash={undefined}
               performanceFee={vault.fee?.formatted ? Number(vault.fee.formatted) : undefined}
+              isApiOwned
             />
           </div>
         ))}

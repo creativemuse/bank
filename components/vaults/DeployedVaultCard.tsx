@@ -51,6 +51,7 @@ type DeployedVaultCardProps = {
   name?: string;
   transactionHash?: string;
   performanceFee?: number; // Performance fee in percentage (e.g., 12 for 12%)
+  isApiOwned?: boolean; // True when the Aave API returned this vault in the ownedBy query
 };
 
 export const DeployedVaultCard = ({
@@ -62,6 +63,7 @@ export const DeployedVaultCard = ({
   name,
   transactionHash,
   performanceFee,
+  isApiOwned = false,
 }: DeployedVaultCardProps) => {
   const { address: wagmiAddress } = useAccount();
   const { wallet: crossmintWallet } = useWallet();
@@ -379,17 +381,9 @@ export const DeployedVaultCard = ({
 
   const isOwner =
     !!userAddress &&
-    (vaultFromApi?.owner?.toLowerCase() === userAddress.toLowerCase() ||
+    (isApiOwned ||
+      vaultFromApi?.owner?.toLowerCase() === userAddress.toLowerCase() ||
       (typeof onChainOwner === "string" && onChainOwner.toLowerCase() === userAddress.toLowerCase()));
-
-  // Debug: remove after confirming ownership works
-  console.log("[DeployedVaultCard] ownership debug", {
-    vaultAddress,
-    userAddress,
-    apiOwner: vaultFromApi?.owner,
-    onChainOwner,
-    isOwner,
-  });
 
   const cardActions = useMemo(() => {
     const actions: Array<{
