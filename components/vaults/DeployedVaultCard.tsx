@@ -382,6 +382,15 @@ export const DeployedVaultCard = ({
     (vaultFromApi?.owner?.toLowerCase() === userAddress.toLowerCase() ||
       (typeof onChainOwner === "string" && onChainOwner.toLowerCase() === userAddress.toLowerCase()));
 
+  // Debug: remove after confirming ownership works
+  console.log("[DeployedVaultCard] ownership debug", {
+    vaultAddress,
+    userAddress,
+    apiOwner: vaultFromApi?.owner,
+    onChainOwner,
+    isOwner,
+  });
+
   const cardActions = useMemo(() => {
     const actions: Array<{
       id: string;
