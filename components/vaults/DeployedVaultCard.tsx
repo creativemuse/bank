@@ -499,6 +499,7 @@ export const DeployedVaultCard = ({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         vaultAddress={vaultAddress}
+        assetAddress={actualAssetAddress}
         assetSymbol={assetSymbol}
         assetDecimals={assetDecimals}
         shareDecimals={shareDecimals}

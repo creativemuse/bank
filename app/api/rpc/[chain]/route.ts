@@ -8,26 +8,36 @@ const ALLOWED_CHAINS: ReadonlySet<AllowedChain> = new Set([
   "base-sepolia",
 ]);
 
-const getUpstreamRpcUrl = (chain: AllowedChain): string | null => {
+/** Return an ordered list of upstream RPC URLs to try (first = highest priority). */
+const getOrderedRpcUrls = (chain: AllowedChain): string[] => {
   const alchemyKey = process.env.ALCHEMY_API_KEY?.trim();
+  const urls: string[] = [];
 
   if (chain === "mainnet") {
-    if (alchemyKey) return `https://eth-mainnet.g.alchemy.com/v2/${alchemyKey}`;
-    return process.env.MAINNET_RPC_URL?.trim() ?? null;
+    if (alchemyKey) urls.push(`https://eth-mainnet.g.alchemy.com/v2/${alchemyKey}`);
+    const custom = process.env.MAINNET_RPC_URL?.trim();
+    if (custom) urls.push(custom);
+    // Public fallback
+    urls.push("https://eth.llamarpc.com");
+  } else if (chain === "base") {
+    if (alchemyKey) urls.push(`https://base-mainnet.g.alchemy.com/v2/${alchemyKey}`);
+    const custom = process.env.BASE_RPC_URL?.trim();
+    if (custom) urls.push(custom);
+    urls.push("https://mainnet.base.org");
+  } else if (chain === "base-sepolia") {
+    if (alchemyKey) urls.push(`https://base-sepolia.g.alchemy.com/v2/${alchemyKey}`);
+    const custom = process.env.BASE_SEPOLIA_RPC_URL?.trim();
+    if (custom) urls.push(custom);
+    urls.push("https://sepolia.base.org");
   }
 
-  if (chain === "base") {
-    if (alchemyKey) return `https://base-mainnet.g.alchemy.com/v2/${alchemyKey}`;
-    return process.env.BASE_RPC_URL?.trim() ?? null;
-  }
-
-  if (chain === "base-sepolia") {
-    if (alchemyKey) return `https://base-sepolia.g.alchemy.com/v2/${alchemyKey}`;
-    return process.env.BASE_SEPOLIA_RPC_URL?.trim() ?? null;
-  }
-
-  return null;
+  // Deduplicate while preserving order
+  return [...new Set(urls)];
 };
+
+/** Status codes that should trigger a fallback to the next RPC URL. */
+const isRetryableStatus = (status: number): boolean =>
+  status === 403 || status === 429 || status >= 500;
 
 export async function POST(
   request: Request,
@@ -42,11 +52,11 @@ export async function POST(
     );
   }
 
-  const upstreamUrl = getUpstreamRpcUrl(chain as AllowedChain);
-  if (!upstreamUrl) {
+  const rpcUrls = getOrderedRpcUrls(chain as AllowedChain);
+  if (rpcUrls.length === 0) {
     return NextResponse.json(
       { error: "RPC upstream is not configured" },
-      { status: 500, headers: { "Cache-Control": "no-store" } }
+      { status: 500, headers: { "Cache-Control": "no-store", "x-rpc-proxy": "true" } }
     );
   }
 
@@ -54,7 +64,7 @@ export async function POST(
   if (!contentType.toLowerCase().includes("application/json")) {
     return NextResponse.json(
       { error: "Invalid content-type; expected application/json" },
-      { status: 415, headers: { "Cache-Control": "no-store" } }
+      { status: 415, headers: { "Cache-Control": "no-store", "x-rpc-proxy": "true" } }
     );
   }
 
@@ -62,7 +72,7 @@ export async function POST(
   if (!requestBodyText) {
     return NextResponse.json(
       { error: "Missing request body" },
-      { status: 400, headers: { "Cache-Control": "no-store" } }
+      { status: 400, headers: { "Cache-Control": "no-store", "x-rpc-proxy": "true" } }
     );
   }
 
@@ -72,7 +82,7 @@ export async function POST(
   } catch {
     return NextResponse.json(
       { error: "Invalid JSON" },
-      { status: 400, headers: { "Cache-Control": "no-store" } }
+      { status: 400, headers: { "Cache-Control": "no-store", "x-rpc-proxy": "true" } }
     );
   }
 
@@ -82,29 +92,54 @@ export async function POST(
   if (!isObject && !isBatch) {
     return NextResponse.json(
       { error: "Invalid JSON-RPC payload" },
-      { status: 400, headers: { "Cache-Control": "no-store" } }
+      { status: 400, headers: { "Cache-Control": "no-store", "x-rpc-proxy": "true" } }
     );
   }
 
-  const upstreamResponse = await fetch(upstreamUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json",
-    },
-    body: requestBodyText,
-    // Avoid caching JSON-RPC responses at the edge
-    cache: "no-store",
-  });
+  // Try each upstream URL in order; fall back on retryable errors (403, 429, 5xx).
+  let lastResponse: { text: string; status: number; contentType: string } | null = null;
 
-  const upstreamText = await upstreamResponse.text();
+  for (const url of rpcUrls) {
+    try {
+      const upstreamResponse = await fetch(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: requestBodyText,
+        cache: "no-store",
+      });
 
-  return new NextResponse(upstreamText, {
-    status: upstreamResponse.status,
+      const upstreamText = await upstreamResponse.text();
+      lastResponse = {
+        text: upstreamText,
+        status: upstreamResponse.status,
+        contentType: upstreamResponse.headers.get("content-type") ?? "application/json",
+      };
+
+      if (!isRetryableStatus(upstreamResponse.status)) {
+        break; // Success or non-retryable client error — return immediately
+      }
+      // Retryable status — try next URL
+    } catch {
+      // Network error (DNS failure, timeout, etc.) — try next URL
+    }
+  }
+
+  if (!lastResponse) {
+    return NextResponse.json(
+      { error: "All RPC upstreams failed" },
+      { status: 502, headers: { "Cache-Control": "no-store", "x-rpc-proxy": "true" } }
+    );
+  }
+
+  return new NextResponse(lastResponse.text, {
+    status: lastResponse.status,
     headers: {
-      "content-type":
-        upstreamResponse.headers.get("content-type") ?? "application/json",
+      "content-type": lastResponse.contentType,
       "cache-control": "no-store",
+      "x-rpc-proxy": "true",
     },
   });
 }
