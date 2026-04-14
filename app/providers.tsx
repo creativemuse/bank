@@ -18,7 +18,10 @@ import { JwtSync } from "@/components/auth/JwtSync";
 import { getStytchHeadlessClient } from "@/lib/stytchClient";
 
 const aaveClient = AaveClient.create({
-  environment: production,
+  environment: {
+    ...production,
+    backend: "/api/aave/graphql",
+  },
 });
 
 const queryClient = new QueryClient({
