@@ -33,6 +33,13 @@ const ERC4626_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 type DeployedVaultCardProps = {
@@ -166,6 +173,14 @@ export const DeployedVaultCard = ({
   });
 
   const shareDecimals = shareDecimalsRaw != null ? Number(shareDecimalsRaw) : undefined;
+
+  // Read on-chain owner for fallback ownership check (when API data is unavailable)
+  const { data: onChainOwner } = useReadContract({
+    address: vaultAddress,
+    abi: ERC4626_ABI,
+    functionName: "owner",
+    chainId: 8453,
+  });
 
   // If onchain `balanceOf(user)` is temporarily stale/0 after deposits, use Aave's API-provided
   // `userShares` as a fallback so the UI can still enable withdrawals.
@@ -363,9 +378,11 @@ export const DeployedVaultCard = ({
   const displayName = name || `My Aave Vault`;
 
   const isOwner =
-    !!vaultFromApi &&
     !!userAddress &&
-    (vaultFromApi.owner?.toLowerCase() === userAddress.toLowerCase());
+    (
+      (!!vaultFromApi && vaultFromApi.owner?.toLowerCase() === userAddress.toLowerCase()) ||
+      (typeof onChainOwner === "string" && onChainOwner.toLowerCase() === userAddress.toLowerCase())
+    );
 
   const cardActions = useMemo(() => {
     const actions: Array<{
@@ -511,11 +528,11 @@ export const DeployedVaultCard = ({
         onSuccess={handleVaultSuccess}
       />
 
-      {vaultFromApi && (
+      {isOwner && (
         <VaultManagementModal
           open={managementModalOpen}
           onClose={() => setManagementModalOpen(false)}
-          vault={vaultFromApi}
+          vault={vaultFromApi ?? { address: vaultAddress, chainId: 8453 } as unknown as Vault}
         />
       )}
 
