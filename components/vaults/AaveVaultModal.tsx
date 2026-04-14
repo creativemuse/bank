@@ -8,7 +8,6 @@ import {
   bigDecimal,
   evmAddress,
   useVaultDeposit,
-  useVaultDepositPreview,
 } from "@aave/react";
 
 import { Modal } from "@/components/common/Modal";
@@ -126,9 +125,9 @@ export function AaveVaultModal({
   const { status: walletStatus } = useWallet();
 
   const [deposit] = useVaultDeposit();
-  const [depositPreview] = useVaultDepositPreview();
-  // Withdrawal previews use direct on-chain readContract calls instead of
-  // the Aave SDK, which throws unrecoverable InvariantError on API panics.
+  // Both deposit and withdrawal previews use direct on-chain readContract calls
+  // instead of the Aave SDK, which throws unrecoverable InvariantError on
+  // GraphQL "Service panicked" errors.
 
   const [inputAmount, setInputAmount] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -194,31 +193,23 @@ export function AaveVaultModal({
   const hasPositiveInput = inputUnits != null && inputUnits > 0n;
 
   useEffect(() => {
-    if (mode === "deposit" && hasPositiveInput && normalizedInputAmount != null) {
+    if (mode === "deposit" && hasPositiveInput && inputUnits != null && publicClient) {
       setExpectedAssets(null);
-      Promise.resolve(
-        depositPreview({
-          vault: evmAddress(vaultAddress),
-          chainId: AAVE_TARGET_CHAIN_ID,
-          amount: bigDecimal(normalizedInputAmount),
-        }),
-      )
-        .then((result) => {
-          if (result.isOk() && result.value?.amount?.value != null) {
-            setExpectedShares(String(result.value.amount.value));
-          } else {
-            setExpectedShares(null);
-          }
+      publicClient
+        .readContract({
+          address: vaultAddress,
+          abi: ERC4626_CONVERT_ABI,
+          functionName: "convertToShares",
+          args: [inputUnits],
         })
+        .then((shares) => setExpectedShares(formatUnits(shares, resolvedShareDecimals ?? assetDecimals)))
         .catch(() => {
           setExpectedShares(null);
-          setErrorMessage("Unable to preview deposit — please check your connection and try again.");
         });
     } else {
       setExpectedShares(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- depositPreview is stable from hook
-  }, [mode, hasPositiveInput, normalizedInputAmount, vaultAddress]);
+  }, [mode, hasPositiveInput, inputUnits, vaultAddress, publicClient, resolvedShareDecimals, assetDecimals]);
 
   useEffect(() => {
     if (!publicClient || !hasPositiveInput || inputUnits == null) {
