@@ -193,8 +193,9 @@ export function AaveVaultModal({
   const hasPositiveInput = inputUnits != null && inputUnits > 0n;
 
   useEffect(() => {
+    let active = true;
     if (mode === "deposit" && hasPositiveInput && inputUnits != null && publicClient) {
-      setExpectedAssets(null);
+      setExpectedShares(null);
       publicClient
         .readContract({
           address: vaultAddress,
@@ -202,13 +203,16 @@ export function AaveVaultModal({
           functionName: "convertToShares",
           args: [inputUnits],
         })
-        .then((shares) => setExpectedShares(formatUnits(shares, resolvedShareDecimals ?? assetDecimals)))
+        .then((shares) => {
+          if (active) setExpectedShares(formatUnits(shares, resolvedShareDecimals ?? assetDecimals));
+        })
         .catch(() => {
-          setExpectedShares(null);
+          if (active) setExpectedShares(null);
         });
     } else {
       setExpectedShares(null);
     }
+    return () => { active = false; };
   }, [mode, hasPositiveInput, inputUnits, vaultAddress, publicClient, resolvedShareDecimals, assetDecimals]);
 
   useEffect(() => {
