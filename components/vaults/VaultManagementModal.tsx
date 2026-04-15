@@ -1,13 +1,38 @@
 "use client";
 
 import { FormEvent, useCallback, useMemo, useState } from "react";
-import { useAccount, useWalletClient } from "wagmi";
+import { useAccount, useWalletClient, useReadContract } from "wagmi";
 import { useWallet, EVMWallet } from "@crossmint/client-sdk-react-ui";
-import { createWalletClient, custom, type WalletClient } from "viem";
+import { createWalletClient, custom, encodeFunctionData, type WalletClient, type Address, formatUnits } from "viem";
 import { base, baseSepolia } from "viem/chains";
 import { bigDecimal, chainId as aaveChainId, evmAddress, useVaultSetFee, useVaultWithdrawFees, useVaultTransferOwnership } from "@aave/react";
 import { useSendTransaction } from "@aave/react/viem";
 import type { Vault } from "@aave/react";
+
+// ABI for direct contract calls (fallback when Aave API is unavailable)
+const VAULT_MGMT_ABI = [
+  {
+    inputs: [],
+    name: "getClaimableFees",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getFee",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "recipient", type: "address" }],
+    name: "claimRewards",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
 
 import { Modal } from "@/components/common/Modal";
 
@@ -72,17 +97,40 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
   const [withdrawMax, setWithdrawMax] = useState(false);
   const [newOwnerAddress, setNewOwnerAddress] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [directTxLoading, setDirectTxLoading] = useState(false);
+
+  // On-chain fee reads (works even when Aave API is down)
+  const { data: onChainFee } = useReadContract({
+    address: vault.address as Address,
+    abi: VAULT_MGMT_ABI,
+    functionName: "getFee",
+    chainId: 8453,
+  });
+  const { data: onChainClaimableFees, refetch: refetchClaimable } = useReadContract({
+    address: vault.address as Address,
+    abi: VAULT_MGMT_ABI,
+    functionName: "getClaimableFees",
+    chainId: 8453,
+    query: { refetchInterval: 15000 },
+  });
 
   const chainId = aaveChainId(Number(vault.chainId));
-  const currentFee = vault.fee?.formatted ?? "—";
-  const feesBalanceValue = vault.feesBalance?.amount?.value ?? "0";
+
+  // Use API data when available, fall back to on-chain reads
+  const currentFee = vault.fee?.formatted
+    ?? (onChainFee != null ? (Number(onChainFee) / 1e18 * 100).toFixed(0) : "—");
+  const claimableFeesRaw = onChainClaimableFees != null
+    ? formatUnits(onChainClaimableFees as bigint, 6)
+    : null;
+  const feesBalanceValue = vault.feesBalance?.amount?.value ?? claimableFeesRaw ?? "0";
   const totalFeeRevenueValue = vault.totalFeeRevenue?.amount?.value ?? "0";
 
   const isBusy =
     setFeeState.loading ||
     withdrawFeesState.loading ||
     transferState.loading ||
-    sendState.loading;
+    sendState.loading ||
+    directTxLoading;
 
   const handleSetFee = useCallback(
     async (e: FormEvent) => {
@@ -97,11 +145,20 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
         setErrorMessage("Wallet not connected");
         return;
       }
-      const result = await setFee({
-        chainId,
-        vault: evmAddress(vault.address),
-        newFee: bigDecimal(parsed),
-      }).andThen(sendTransaction);
+      let result;
+      try {
+        result = await setFee({
+          chainId,
+          vault: evmAddress(vault.address),
+          newFee: bigDecimal(parsed),
+        }).andThen(sendTransaction);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setErrorMessage(msg.includes("Service panicked")
+          ? "The Aave API is temporarily unavailable. Please try again in a few minutes."
+          : `Set fee failed: ${msg}`);
+        return;
+      }
       if (result.isErr()) {
         setErrorMessage(result.error?.message ?? "Set fee failed");
         return;
@@ -123,11 +180,51 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
       const amount = withdrawMax
         ? { max: true as const }
         : { exact: bigDecimal(withdrawAmount) };
-      const result = await withdrawFees({
-        chainId,
-        vault: evmAddress(vault.address),
-        amount,
-      }).andThen(sendTransaction);
+
+      // Try Aave SDK first, fall back to direct contract call if API panics
+      let result;
+      try {
+        result = await withdrawFees({
+          chainId,
+          vault: evmAddress(vault.address),
+          amount,
+        }).andThen(sendTransaction);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("Service panicked") || msg.includes("InvariantError")) {
+          // Aave API is down — call claimRewards directly on the contract
+          try {
+            setDirectTxLoading(true);
+            const userAddr = crossmintWallet?.address ?? (await walletClient.getAddresses())?.[0];
+            if (!userAddr) {
+              setErrorMessage("Could not determine wallet address");
+              return;
+            }
+            const data = encodeFunctionData({
+              abi: VAULT_MGMT_ABI,
+              functionName: "claimRewards",
+              args: [userAddr as Address],
+            });
+            const hash = await walletClient.sendTransaction({
+              to: vault.address as Address,
+              data,
+              chain: base,
+              account: userAddr as Address,
+            });
+            console.log("[VaultManagement] Direct claimRewards tx:", hash);
+            await refetchClaimable();
+            onSuccess?.();
+            onClose();
+          } catch (directErr: unknown) {
+            setErrorMessage(`Direct fee withdrawal failed: ${directErr instanceof Error ? directErr.message : String(directErr)}`);
+          } finally {
+            setDirectTxLoading(false);
+          }
+          return;
+        }
+        setErrorMessage(`Withdraw fees failed: ${msg}`);
+        return;
+      }
       if (result.isErr()) {
         setErrorMessage(result.error?.message ?? "Withdraw fees failed");
         return;
@@ -151,11 +248,20 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
         setErrorMessage("Wallet not connected");
         return;
       }
-      const result = await transferOwnership({
-        chainId,
-        vault: evmAddress(vault.address),
-        newOwner: evmAddress(trimmed),
-      }).andThen(sendTransaction);
+      let result;
+      try {
+        result = await transferOwnership({
+          chainId,
+          vault: evmAddress(vault.address),
+          newOwner: evmAddress(trimmed),
+        }).andThen(sendTransaction);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setErrorMessage(msg.includes("Service panicked")
+          ? "The Aave API is temporarily unavailable. Please try again in a few minutes."
+          : `Transfer ownership failed: ${msg}`);
+        return;
+      }
       if (result.isErr()) {
         setErrorMessage(result.error?.message ?? "Transfer ownership failed");
         return;
@@ -277,7 +383,7 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
                 disabled={isBusy || (!withdrawMax && !withdrawAmount.trim())}
                 className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:border-slate-700 hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-400"
               >
-                {withdrawFeesState.loading || sendState.loading ? "Processing…" : "Withdraw fees"}
+                {withdrawFeesState.loading || sendState.loading || directTxLoading ? "Processing…" : "Withdraw fees"}
               </button>
             </form>
           )}
