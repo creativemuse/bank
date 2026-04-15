@@ -72,6 +72,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setIsMounted(true);
+
+    // Suppress unhandled InvariantError from the Aave SDK's internal useVaults hook.
+    // Their GraphQL service intermittently panics and throws an uncatchable promise
+    // rejection. We handle the user-facing impact in VaultManagementModal; this just
+    // prevents the console noise.
+    const handler = (event: PromiseRejectionEvent) => {
+      const msg = event.reason?.message ?? String(event.reason ?? "");
+      if (msg.includes("Service panicked") || msg.includes("InvariantError")) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
   }, []);
 
   if (!isMounted) {
