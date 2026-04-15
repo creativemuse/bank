@@ -5,6 +5,7 @@ import { formatUnits, type Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
+import { appChain } from "@/lib/wagmiConfig";
 import { ATokenSendModal } from "./ATokenSendModal";
 import Link from "next/link";
 
@@ -37,7 +38,7 @@ export function ATokenBalance() {
     abi: ERC20_BALANCE_ABI,
     functionName: "balanceOf",
     args: userAddress ? [userAddress] : undefined,
-    chainId: 8453,
+    chainId: appChain.id,
     query: {
       enabled: !!aTokenAddress && !!userAddress,
       refetchInterval: 30000,

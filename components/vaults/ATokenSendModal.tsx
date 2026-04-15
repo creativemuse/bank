@@ -1,10 +1,10 @@
 "use client";
 
 import { FormEvent, useCallback, useMemo, useState } from "react";
-import { formatUnits, parseUnits, encodeFunctionData, type Address } from "viem";
+import { formatUnits, parseUnits, encodeFunctionData, isAddress, type Address } from "viem";
 import { useWalletClient } from "wagmi";
 import { useWallet, EVMWallet } from "@crossmint/client-sdk-react-ui";
-import { base } from "viem/chains";
+import { appChain } from "@/lib/wagmiConfig";
 import { Modal } from "@/components/common/Modal";
 
 const ERC20_TRANSFER_ABI = [
@@ -65,7 +65,7 @@ export function ATokenSendModal({
     }
   }, [sendMax, amount, balance, assetDecimals]);
 
-  const isValidRecipient = /^0x[a-fA-F0-9]{40}$/.test(recipient.trim());
+  const isValidRecipient = isAddress(recipient.trim());
   const isValidAmount = sendAmount > 0n && sendAmount <= balance;
 
   const handleSend = useCallback(
@@ -105,7 +105,7 @@ export function ATokenSendModal({
           const hash = await wagmiWalletClient.sendTransaction({
             to: aTokenAddress,
             data,
-            chain: base,
+            chain: appChain,
             account: userAddress,
           });
           setTxHash(hash);
