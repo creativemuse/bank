@@ -143,7 +143,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
   const [shareName, setShareName] = useState("Aave USDC Vault Shares");
   const [shareSymbol, setShareSymbol] = useState("avUSDC");
   const [performanceFee, setPerformanceFee] = useState(12);
-  const [initialDeposit, setInitialDeposit] = useState(1000);
+  const [initialDeposit, setInitialDeposit] = useState(1);
   
   // Initialize recipient input based on membership status
   // If no membership or still loading: pre-fill with Creative address and 5%
@@ -172,7 +172,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
   const resetForm = useCallback(() => {
     setSubmitState({ status: "idle" });
     setPerformanceFee(12);
-    setInitialDeposit(1000);
+    setInitialDeposit(1);
     setRecipientInput(getInitialRecipientInput());
     setShareName(reserve ? `Aave ${reserve.underlyingToken.symbol} Vault Shares` : "Aave USDC Vault Shares");
     setShareSymbol(reserve ? `av${reserve.underlyingToken.symbol}` : "avUSDC");
@@ -623,7 +623,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium uppercase text-slate-500">
-                Initial Deposit ({assetSymbol})
+                Initial Lock Deposit ({assetSymbol})
               </span>
               <input
                 type="tel"
@@ -636,6 +636,9 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
                 required
               />
+              <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
+                This deposit is permanently locked in the vault and cannot be withdrawn. Use the minimum amount needed (e.g. 1 {assetSymbol}).
+              </p>
             </label>
           </div>
         </section>
