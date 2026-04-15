@@ -46,16 +46,35 @@ const VAULT_MGMT_ABI = [
 
 import { Modal } from "@/components/common/Modal";
 
+// ABI for the fee manager contract (intermediary between vault and user)
+const FEE_MANAGER_ABI = [
+  {
+    inputs: [],
+    name: "withdrawFees",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "claimRewards",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
 type VaultManagementModalProps = {
   open: boolean;
   onClose: () => void;
   vault: Vault;
   onSuccess?: () => void;
+  feeManagerAddress?: Address; // The vault's on-chain owner if it's a fee manager contract
 };
 
 type TabId = "fee" | "withdraw-fees" | "transfer";
 
-export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultManagementModalProps) {
+export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManagerAddress }: VaultManagementModalProps) {
   const { data: wagmiWalletClient } = useWalletClient();
   const { wallet: crossmintWallet } = useWallet();
 
@@ -244,49 +263,75 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
           console.warn("[VaultManagement] Layer 2 failed:", gqlErr);
         }
 
-        // ── Layer 3: Direct withdrawFees(address,uint256) via Crossmint SDK ──
-        try {
-          console.log("[VaultManagement] Layer 3: Trying withdrawFees(address,uint256) via Crossmint…");
-          if (!userAddr) {
-            setErrorMessage("Could not determine wallet address");
+        // ── Layer 3: Call the FEE MANAGER contract directly (user IS the owner) ──
+        // The vault's on-chain owner is a fee manager contract, NOT a wallet.
+        // The fee manager's owner IS the user, so these calls succeed without AA issues.
+        if (feeManagerAddress) {
+          try {
+            console.log("[VaultManagement] Layer 3: Calling fee manager withdrawFees() at", feeManagerAddress);
+            if (crossmintWallet) {
+              const evmWallet = EVMWallet.from(crossmintWallet);
+              const txResult = await evmWallet.sendTransaction({
+                to: feeManagerAddress as `0x${string}`,
+                abi: FEE_MANAGER_ABI,
+                functionName: "withdrawFees",
+              });
+              console.log("[VaultManagement] Layer 3 success:", txResult.hash);
+            } else {
+              const data = encodeFunctionData({
+                abi: FEE_MANAGER_ABI,
+                functionName: "withdrawFees",
+              });
+              const hash = await walletClient.sendTransaction({
+                to: feeManagerAddress, data, chain: base, account: userAddr as Address,
+              });
+              console.log("[VaultManagement] Layer 3 success:", hash);
+            }
+            await refetchClaimable();
+            onSuccess?.();
+            onClose();
             return;
+          } catch (l3Err) {
+            console.warn("[VaultManagement] Layer 3 failed:", l3Err);
+            // Try claimRewards on fee manager as well
+            try {
+              console.log("[VaultManagement] Layer 3b: Calling fee manager claimRewards() at", feeManagerAddress);
+              if (crossmintWallet) {
+                const evmWallet = EVMWallet.from(crossmintWallet);
+                const txResult = await evmWallet.sendTransaction({
+                  to: feeManagerAddress as `0x${string}`,
+                  abi: FEE_MANAGER_ABI,
+                  functionName: "claimRewards",
+                });
+                console.log("[VaultManagement] Layer 3b success:", txResult.hash);
+              } else {
+                const data = encodeFunctionData({
+                  abi: FEE_MANAGER_ABI,
+                  functionName: "claimRewards",
+                });
+                const hash = await walletClient.sendTransaction({
+                  to: feeManagerAddress, data, chain: base, account: userAddr as Address,
+                });
+                console.log("[VaultManagement] Layer 3b success:", hash);
+              }
+              await refetchClaimable();
+              onSuccess?.();
+              onClose();
+              return;
+            } catch (l3bErr) {
+              console.warn("[VaultManagement] Layer 3b failed:", l3bErr);
+            }
           }
-          const claimable = onChainClaimableFees as bigint | undefined;
-          if (!claimable || claimable === 0n) {
-            setErrorMessage("No fees available to withdraw.");
-            return;
-          }
-          if (crossmintWallet) {
-            const evmWallet = EVMWallet.from(crossmintWallet);
-            const txResult = await evmWallet.sendTransaction({
-              to: vault.address as `0x${string}`,
-              abi: VAULT_MGMT_ABI,
-              functionName: "withdrawFees",
-              args: [userAddr as `0x${string}`, claimable],
-            });
-            console.log("[VaultManagement] Layer 3 success:", txResult.hash);
-          } else {
-            const data = encodeFunctionData({
-              abi: VAULT_MGMT_ABI,
-              functionName: "withdrawFees",
-              args: [userAddr as Address, claimable],
-            });
-            const hash = await walletClient.sendTransaction({
-              to: vault.address as Address, data, chain: base, account: userAddr as Address,
-            });
-            console.log("[VaultManagement] Layer 3 success:", hash);
-          }
-          await refetchClaimable();
-          onSuccess?.();
-          onClose();
-          return;
-        } catch (l3Err) {
-          console.warn("[VaultManagement] Layer 3 failed:", l3Err);
         }
 
-        // ── Layer 4: Direct claimRewards(address) via Crossmint SDK ──
+        // ── Layer 4: Direct calls to vault contract (fallback for non-fee-manager vaults) ──
+        if (!userAddr) {
+          setErrorMessage("Could not determine wallet address");
+          setDirectTxLoading(false);
+          return;
+        }
         try {
-          console.log("[VaultManagement] Layer 4: Trying claimRewards(address) via Crossmint…");
+          console.log("[VaultManagement] Layer 4: Trying claimRewards on vault directly…");
           if (crossmintWallet) {
             const evmWallet = EVMWallet.from(crossmintWallet);
             const txResult = await evmWallet.sendTransaction({
@@ -312,8 +357,7 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
           onClose();
           return;
         } catch (l4Err) {
-          const l4Msg = l4Err instanceof Error ? l4Err.message : String(l4Err);
-          console.warn("[VaultManagement] Layer 4 failed:", l4Msg);
+          console.warn("[VaultManagement] Layer 4 failed:", l4Err);
 
           // ── Layer 5: All fallbacks exhausted — show instructions ──
           setErrorMessage(

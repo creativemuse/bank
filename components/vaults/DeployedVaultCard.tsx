@@ -550,6 +550,11 @@ export const DeployedVaultCard = ({
           open={managementModalOpen}
           onClose={() => setManagementModalOpen(false)}
           vault={vaultFromApi ?? { address: vaultAddress, chainId: 8453 } as unknown as Vault}
+          feeManagerAddress={
+            typeof onChainOwner === "string" && onChainOwner.toLowerCase() !== userAddress?.toLowerCase()
+              ? (onChainOwner as Address)
+              : undefined
+          }
         />
       )}
 
