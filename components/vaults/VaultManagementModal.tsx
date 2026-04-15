@@ -32,6 +32,16 @@ const VAULT_MGMT_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      { internalType: "address", name: "recipient", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "withdrawFees",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;
 
 import { Modal } from "@/components/common/Modal";
@@ -181,7 +191,10 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
         ? { max: true as const }
         : { exact: bigDecimal(withdrawAmount) };
 
-      // Try Aave SDK first, fall back to direct contract call if API panics
+      const userAddr = crossmintWallet?.address ?? (await walletClient.getAddresses())?.[0];
+
+      // ── Layer 1: Aave SDK hooks (normal path) ──
+      console.log("[VaultManagement] Layer 1: Trying Aave SDK useVaultWithdrawFees…");
       let result;
       try {
         result = await withdrawFees({
@@ -191,64 +204,130 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
         }).andThen(sendTransaction);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        if (msg.includes("Service panicked") || msg.includes("InvariantError")) {
-          // Aave API is down — call claimRewards directly on the contract
-          try {
-            setDirectTxLoading(true);
-            const userAddr = crossmintWallet?.address ?? (await walletClient.getAddresses())?.[0];
-            if (!userAddr) {
-              setErrorMessage("Could not determine wallet address");
-              return;
-            }
+        if (!(msg.includes("Service panicked") || msg.includes("InvariantError"))) {
+          setErrorMessage(`Withdraw fees failed: ${msg}`);
+          return;
+        }
+        console.warn("[VaultManagement] Layer 1 failed (API panic). Trying Layer 2…");
 
-            // Use the Crossmint SDK directly (supports ABI-based calls and routes
-            // through the smart wallet correctly for owner-gated functions)
-            if (crossmintWallet) {
-              const evmWallet = EVMWallet.from(crossmintWallet);
-              const result = await evmWallet.sendTransaction({
-                to: vault.address as `0x${string}`,
-                abi: VAULT_MGMT_ABI,
-                functionName: "claimRewards",
-                args: [userAddr as `0x${string}`],
-              });
-              console.log("[VaultManagement] Direct claimRewards tx:", result.hash);
-            } else {
-              // Fallback for non-Crossmint wallets: use viem directly
-              const data = encodeFunctionData({
-                abi: VAULT_MGMT_ABI,
-                functionName: "claimRewards",
-                args: [userAddr as Address],
-              });
-              const hash = await walletClient.sendTransaction({
-                to: vault.address as Address,
-                data,
-                chain: base,
-                account: userAddr as Address,
-              });
-              console.log("[VaultManagement] Direct claimRewards tx:", hash);
-            }
+        // ── Layer 2: Direct GraphQL query (bypass stale hook cache) ──
+        try {
+          setDirectTxLoading(true);
+          console.log("[VaultManagement] Layer 2: Trying direct GraphQL vaultWithdrawFees query…");
+          const gqlAmount = withdrawMax ? "{ max: true }" : `{ exact: "${withdrawAmount}" }`;
+          const gqlResponse = await fetch("/api/aave/graphql", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              query: `{ vaultWithdrawFees(request: { chainId: 8453, vault: "${vault.address}", amount: ${gqlAmount} }) { to from data value chainId } }`,
+            }),
+          });
+          const gqlData = await gqlResponse.json();
+          const txRequest = gqlData?.data?.vaultWithdrawFees;
+          if (txRequest?.to && txRequest?.data) {
+            console.log("[VaultManagement] Layer 2: Got TransactionRequest, sending…");
+            const hash = await walletClient.sendTransaction({
+              to: txRequest.to as Address,
+              data: txRequest.data as `0x${string}`,
+              value: BigInt(txRequest.value || "0"),
+              chain: base,
+              account: userAddr as Address,
+            });
+            console.log("[VaultManagement] Layer 2 success:", hash);
             await refetchClaimable();
             onSuccess?.();
             onClose();
-          } catch (directErr: unknown) {
-            const directMsg = directErr instanceof Error ? directErr.message : String(directErr);
-            if (directMsg.includes("caller is not the owner")) {
-              setErrorMessage(
-                "The vault's on-chain owner is your Crossmint smart wallet, which requires Crossmint to route this transaction correctly. " +
-                "This is a known limitation with account abstraction wallets and owner-gated contract functions. " +
-                "Please try again later or contact support."
-              );
-            } else {
-              setErrorMessage(`Direct fee withdrawal failed: ${directMsg}`);
-            }
-          } finally {
-            setDirectTxLoading(false);
+            return;
           }
-          return;
+          console.warn("[VaultManagement] Layer 2 failed (no valid response). Trying Layer 3…", gqlData);
+        } catch (gqlErr) {
+          console.warn("[VaultManagement] Layer 2 failed:", gqlErr);
         }
-        setErrorMessage(`Withdraw fees failed: ${msg}`);
+
+        // ── Layer 3: Direct withdrawFees(address,uint256) via Crossmint SDK ──
+        try {
+          console.log("[VaultManagement] Layer 3: Trying withdrawFees(address,uint256) via Crossmint…");
+          if (!userAddr) {
+            setErrorMessage("Could not determine wallet address");
+            return;
+          }
+          const claimable = onChainClaimableFees as bigint | undefined;
+          if (!claimable || claimable === 0n) {
+            setErrorMessage("No fees available to withdraw.");
+            return;
+          }
+          if (crossmintWallet) {
+            const evmWallet = EVMWallet.from(crossmintWallet);
+            const txResult = await evmWallet.sendTransaction({
+              to: vault.address as `0x${string}`,
+              abi: VAULT_MGMT_ABI,
+              functionName: "withdrawFees",
+              args: [userAddr as `0x${string}`, claimable],
+            });
+            console.log("[VaultManagement] Layer 3 success:", txResult.hash);
+          } else {
+            const data = encodeFunctionData({
+              abi: VAULT_MGMT_ABI,
+              functionName: "withdrawFees",
+              args: [userAddr as Address, claimable],
+            });
+            const hash = await walletClient.sendTransaction({
+              to: vault.address as Address, data, chain: base, account: userAddr as Address,
+            });
+            console.log("[VaultManagement] Layer 3 success:", hash);
+          }
+          await refetchClaimable();
+          onSuccess?.();
+          onClose();
+          return;
+        } catch (l3Err) {
+          console.warn("[VaultManagement] Layer 3 failed:", l3Err);
+        }
+
+        // ── Layer 4: Direct claimRewards(address) via Crossmint SDK ──
+        try {
+          console.log("[VaultManagement] Layer 4: Trying claimRewards(address) via Crossmint…");
+          if (crossmintWallet) {
+            const evmWallet = EVMWallet.from(crossmintWallet);
+            const txResult = await evmWallet.sendTransaction({
+              to: vault.address as `0x${string}`,
+              abi: VAULT_MGMT_ABI,
+              functionName: "claimRewards",
+              args: [userAddr as `0x${string}`],
+            });
+            console.log("[VaultManagement] Layer 4 success:", txResult.hash);
+          } else {
+            const data = encodeFunctionData({
+              abi: VAULT_MGMT_ABI,
+              functionName: "claimRewards",
+              args: [userAddr as Address],
+            });
+            const hash = await walletClient.sendTransaction({
+              to: vault.address as Address, data, chain: base, account: userAddr as Address,
+            });
+            console.log("[VaultManagement] Layer 4 success:", hash);
+          }
+          await refetchClaimable();
+          onSuccess?.();
+          onClose();
+          return;
+        } catch (l4Err) {
+          const l4Msg = l4Err instanceof Error ? l4Err.message : String(l4Err);
+          console.warn("[VaultManagement] Layer 4 failed:", l4Msg);
+
+          // ── Layer 5: All fallbacks exhausted — show instructions ──
+          setErrorMessage(
+            "All fee withdrawal methods failed. The Aave API is currently down, and Crossmint's " +
+            "transaction simulation doesn't support owner-gated vault calls yet. " +
+            "You can try withdrawing directly on Basescan: " +
+            `https://basescan.org/address/${vault.address}#writeProxyContract`
+          );
+        } finally {
+          setDirectTxLoading(false);
+        }
         return;
       }
+
       if (result.isErr()) {
         setErrorMessage(result.error?.message ?? "Withdraw fees failed");
         return;
@@ -256,7 +335,8 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
       onSuccess?.();
       onClose();
     },
-    [withdrawMax, withdrawAmount, walletClient, chainId, vault.address, withdrawFees, sendTransaction, onSuccess, onClose],
+    [withdrawMax, withdrawAmount, walletClient, crossmintWallet, chainId, vault.address,
+      withdrawFees, sendTransaction, onChainClaimableFees, refetchClaimable, onSuccess, onClose],
   );
 
   const handleTransferOwnership = useCallback(
