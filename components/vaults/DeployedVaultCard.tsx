@@ -184,6 +184,21 @@ export const DeployedVaultCard = ({
     chainId: 8453,
   });
 
+  // When deployed via Crossmint (account abstraction), the vault's on-chain owner is the
+  // Crossmint smart wallet contract, not the user's address. Check if that intermediate
+  // contract's owner() resolves to the user (i.e. user → smart wallet → vault).
+  const { data: smartWalletOwner } = useReadContract({
+    address: onChainOwner as Address | undefined,
+    abi: ERC4626_ABI,
+    functionName: "owner",
+    chainId: 8453,
+    query: {
+      enabled: !!onChainOwner && !!userAddress &&
+        typeof onChainOwner === "string" &&
+        onChainOwner.toLowerCase() !== userAddress.toLowerCase(),
+    },
+  });
+
   // If onchain `balanceOf(user)` is temporarily stale/0 after deposits, use Aave's API-provided
   // `userShares` as a fallback so the UI can still enable withdrawals.
   const apiShareBalance = useMemo((): bigint | undefined => {
@@ -383,7 +398,8 @@ export const DeployedVaultCard = ({
     !!userAddress &&
     (isApiOwned ||
       vaultFromApi?.owner?.toLowerCase() === userAddress.toLowerCase() ||
-      (typeof onChainOwner === "string" && onChainOwner.toLowerCase() === userAddress.toLowerCase()));
+      (typeof onChainOwner === "string" && onChainOwner.toLowerCase() === userAddress.toLowerCase()) ||
+      (typeof smartWalletOwner === "string" && smartWalletOwner.toLowerCase() === userAddress.toLowerCase()));
 
   const cardActions = useMemo(() => {
     const actions: Array<{
