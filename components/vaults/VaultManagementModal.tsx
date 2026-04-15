@@ -200,23 +200,47 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess }: VaultM
               setErrorMessage("Could not determine wallet address");
               return;
             }
-            const data = encodeFunctionData({
-              abi: VAULT_MGMT_ABI,
-              functionName: "claimRewards",
-              args: [userAddr as Address],
-            });
-            const hash = await walletClient.sendTransaction({
-              to: vault.address as Address,
-              data,
-              chain: base,
-              account: userAddr as Address,
-            });
-            console.log("[VaultManagement] Direct claimRewards tx:", hash);
+
+            // Use the Crossmint SDK directly (supports ABI-based calls and routes
+            // through the smart wallet correctly for owner-gated functions)
+            if (crossmintWallet) {
+              const evmWallet = EVMWallet.from(crossmintWallet);
+              const result = await evmWallet.sendTransaction({
+                to: vault.address as `0x${string}`,
+                abi: VAULT_MGMT_ABI,
+                functionName: "claimRewards",
+                args: [userAddr as `0x${string}`],
+              });
+              console.log("[VaultManagement] Direct claimRewards tx:", result.hash);
+            } else {
+              // Fallback for non-Crossmint wallets: use viem directly
+              const data = encodeFunctionData({
+                abi: VAULT_MGMT_ABI,
+                functionName: "claimRewards",
+                args: [userAddr as Address],
+              });
+              const hash = await walletClient.sendTransaction({
+                to: vault.address as Address,
+                data,
+                chain: base,
+                account: userAddr as Address,
+              });
+              console.log("[VaultManagement] Direct claimRewards tx:", hash);
+            }
             await refetchClaimable();
             onSuccess?.();
             onClose();
           } catch (directErr: unknown) {
-            setErrorMessage(`Direct fee withdrawal failed: ${directErr instanceof Error ? directErr.message : String(directErr)}`);
+            const directMsg = directErr instanceof Error ? directErr.message : String(directErr);
+            if (directMsg.includes("caller is not the owner")) {
+              setErrorMessage(
+                "The vault's on-chain owner is your Crossmint smart wallet, which requires Crossmint to route this transaction correctly. " +
+                "This is a known limitation with account abstraction wallets and owner-gated contract functions. " +
+                "Please try again later or contact support."
+              );
+            } else {
+              setErrorMessage(`Direct fee withdrawal failed: ${directMsg}`);
+            }
           } finally {
             setDirectTxLoading(false);
           }
