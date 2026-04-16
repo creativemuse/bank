@@ -49,13 +49,32 @@ async function fetchWithRetry(body: string): Promise<{ data: string; status: num
 }
 
 /**
- * Proxies GraphQL requests to the Aave v3 API to avoid browser CORS restrictions.
- * The Aave API does not set Access-Control-Allow-Origin headers, so direct
- * browser requests from our domain are blocked. Server-to-server requests
- * are not subject to CORS.
- *
- * Includes automatic retry with exponential backoff for 5xx errors.
+ * The @aave/react SDK (v0.x) sends `deployer` in VaultDeployRequest, but
+ * Aave's current API schema requires `user`. This adds `user` as an alias
+ * so the mutation is accepted without requiring a full SDK upgrade.
  */
+function patchVaultDeployRequest(rawBody: string): string {
+  if (!rawBody.includes("VaultDeploy")) {
+    return rawBody;
+  }
+
+  try {
+    const parsed = JSON.parse(rawBody);
+    if (
+      parsed?.operationName === "VaultDeploy" &&
+      parsed?.variables?.request &&
+      parsed.variables.request.deployer &&
+      !parsed.variables.request.user
+    ) {
+      parsed.variables.request.user = parsed.variables.request.deployer;
+      return JSON.stringify(parsed);
+    }
+  } catch {
+    // Not JSON or unexpected shape — pass through unchanged
+  }
+  return rawBody;
+}
+
 export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("application/json")) {
@@ -74,7 +93,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data, status, contentType: upstreamContentType } = await fetchWithRetry(body);
+    const patchedBody = patchVaultDeployRequest(body);
+    const { data, status, contentType: upstreamContentType } = await fetchWithRetry(patchedBody);
 
     if (status >= 500) {
       console.error(`Aave API returned ${status} after all retries:`, data.slice(0, 500));
