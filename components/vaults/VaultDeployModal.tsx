@@ -48,7 +48,8 @@ const CREATIVE_ADDRESS = "0xf46F1BA19A9280F752a451d0973b047D81c63D70";
 export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: VaultDeployModalProps) {
   const { address: wagmiAddress } = useAccount();
   const { data: wagmiWalletClient } = useWalletClient();
-  const publicClient = usePublicClient();
+  const targetChainId = process.env.NODE_ENV === "production" ? base.id : baseSepolia.id;
+  const publicClient = usePublicClient({ chainId: targetChainId });
   const { wallet: crossmintWallet, status: walletStatus } = useWallet();
   const { status: authStatus } = useAuth();
   const { tier, isLoading: membershipLoading } = useMembership();
