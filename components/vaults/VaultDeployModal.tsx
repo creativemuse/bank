@@ -41,7 +41,13 @@ type SubmitState = {
   message?: string;
   txHash?: string;
   vaultAddress?: string;
+  retryable?: boolean;
 };
+
+function isTransientError(message: string): boolean {
+  const patterns = ["panicked", "service unavailable", "502", "503", "504", "fetch failed", "network"];
+  return patterns.some((p) => message.toLowerCase().includes(p));
+}
 
 const CREATIVE_ADDRESS = "0xf46F1BA19A9280F752a451d0973b047D81c63D70";
 
@@ -305,7 +311,8 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
 
       const planResult = await deployVault(request);
       if (planResult.isErr()) {
-        setSubmitState({ status: "error", message: planResult.error.message });
+        const msg = planResult.error.message;
+        setSubmitState({ status: "error", message: msg, retryable: isTransientError(msg) });
         return;
       }
 
@@ -488,6 +495,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
         setSubmitState({
           status: "error",
           message: `Deployment failed: ${message}`,
+          retryable: isTransientError(message),
         });
       }
     },
@@ -748,9 +756,17 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
         ) : null}
 
         {submitState.status === "error" && submitState.message ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {submitState.message}
-          </p>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p>{submitState.message}</p>
+            {submitState.retryable && (
+              <button
+                type="submit"
+                className="mt-2 rounded-md border border-red-300 bg-white px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50"
+              >
+                Retry
+              </button>
+            )}
+          </div>
         ) : null}
 
         {submitState.status === "success" && submitState.message ? (
