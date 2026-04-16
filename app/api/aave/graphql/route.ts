@@ -48,33 +48,47 @@ async function fetchWithRetry(body: string): Promise<{ data: string; status: num
   throw lastError ?? new Error("All retries exhausted");
 }
 
+const EMPTY_PAGINATED_RESULT = JSON.stringify({
+  data: {
+    value: {
+      __typename: "PaginatedVaultsResult",
+      items: [],
+      pageInfo: { __typename: "PaginatedResultInfo", prev: null, next: null },
+    },
+  },
+});
+
 /**
- * The @aave/react SDK (v0.x) sends `deployer` in VaultDeployRequest, but
- * Aave's current API schema requires `user`. This adds `user` as an alias
- * so the mutation is accepted without requiring a full SDK upgrade.
+ * The @aave/react SDK fires UserVaults and Vaults queries with an empty
+ * request object ({}) before the wallet address is available. Aave's API
+ * rejects these with "field user is required". Short-circuit them here so
+ * the API call is never made and no error surfaces to the client.
  */
-/**
- * Logs the operation name any time we see a `deployer` field in the request
- * variables so we can identify which planning operation needs the `user` field.
- * TODO: replace with targeted patch once the operation name is confirmed.
- */
-function patchVaultDeployRequest(rawBody: string): string {
-  if (!rawBody.includes("deployer")) {
-    return rawBody;
-  }
+function earlyReturnForEmptyVaultQueries(
+  rawBody: string,
+): NextResponse | null {
+  if (!rawBody.includes("Vaults")) return null;
 
   try {
     const parsed = JSON.parse(rawBody);
-    const opName: string | undefined = parsed?.operationName;
+    const opName: string = parsed?.operationName ?? "";
     const req = parsed?.variables?.request;
 
-    if (req?.deployer) {
-      console.log(`[aave-proxy] operation with deployer field: ${opName ?? "(none)"}`);
+    const isVaultListOp =
+      opName === "UserVaults" || opName === "Vaults";
+    const hasNoUser =
+      !req?.user && !req?.criteria && !req?.deployer;
+
+    if (isVaultListOp && hasNoUser) {
+      return NextResponse.json(JSON.parse(EMPTY_PAGINATED_RESULT), {
+        status: 200,
+        headers: { "cache-control": "no-store" },
+      });
     }
   } catch {
-    // ignore
+    // ignore parse errors
   }
-  return rawBody;
+  return null;
 }
 
 export async function POST(request: Request) {
@@ -95,8 +109,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const patchedBody = patchVaultDeployRequest(body);
-    const { data, status, contentType: upstreamContentType } = await fetchWithRetry(patchedBody);
+    const earlyReturn = earlyReturnForEmptyVaultQueries(body);
+    if (earlyReturn) return earlyReturn;
+
+    const { data, status, contentType: upstreamContentType } = await fetchWithRetry(body);
 
     if (status >= 500) {
       console.error(`Aave API returned ${status} after all retries:`, data.slice(0, 500));
