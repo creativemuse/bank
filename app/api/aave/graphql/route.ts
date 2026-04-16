@@ -53,24 +53,26 @@ async function fetchWithRetry(body: string): Promise<{ data: string; status: num
  * Aave's current API schema requires `user`. This adds `user` as an alias
  * so the mutation is accepted without requiring a full SDK upgrade.
  */
+/**
+ * Logs the operation name any time we see a `deployer` field in the request
+ * variables so we can identify which planning operation needs the `user` field.
+ * TODO: replace with targeted patch once the operation name is confirmed.
+ */
 function patchVaultDeployRequest(rawBody: string): string {
-  if (!rawBody.includes("VaultDeploy")) {
+  if (!rawBody.includes("deployer")) {
     return rawBody;
   }
 
   try {
     const parsed = JSON.parse(rawBody);
-    if (
-      parsed?.operationName === "VaultDeploy" &&
-      parsed?.variables?.request &&
-      parsed.variables.request.deployer &&
-      !parsed.variables.request.user
-    ) {
-      parsed.variables.request.user = parsed.variables.request.deployer;
-      return JSON.stringify(parsed);
+    const opName: string | undefined = parsed?.operationName;
+    const req = parsed?.variables?.request;
+
+    if (req?.deployer) {
+      console.log(`[aave-proxy] operation with deployer field: ${opName ?? "(none)"}`);
     }
   } catch {
-    // Not JSON or unexpected shape — pass through unchanged
+    // ignore
   }
   return rawBody;
 }
