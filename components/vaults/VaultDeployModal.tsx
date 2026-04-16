@@ -143,7 +143,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
   const [shareName, setShareName] = useState("Aave USDC Vault Shares");
   const [shareSymbol, setShareSymbol] = useState("avUSDC");
   const [performanceFee, setPerformanceFee] = useState(12);
-  const [initialDeposit, setInitialDeposit] = useState(1000);
+  const [initialDeposit, setInitialDeposit] = useState(0.01);
   
   // Initialize recipient input based on membership status
   // If no membership or still loading: pre-fill with Creative address and 5%
@@ -172,7 +172,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
   const resetForm = useCallback(() => {
     setSubmitState({ status: "idle" });
     setPerformanceFee(12);
-    setInitialDeposit(1000);
+    setInitialDeposit(0.01);
     setRecipientInput(getInitialRecipientInput());
     setShareName(reserve ? `Aave ${reserve.underlyingToken.symbol} Vault Shares` : "Aave USDC Vault Shares");
     setShareSymbol(reserve ? `av${reserve.underlyingToken.symbol}` : "avUSDC");
@@ -623,19 +623,17 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium uppercase text-slate-500">
-                Initial Deposit ({assetSymbol})
+                Initial Lock Deposit ({assetSymbol})
               </span>
               <input
-                type="tel"
-                inputMode="decimal"
-                min={0}
-                step={1 / 10 ** assetDecimals}
-                value={initialDeposit}
-                onChange={(event) => handleNumberInputChange(event.target.value, setInitialDeposit, true)}
-                onFocus={handleNumberFocus}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
-                required
+                type="text"
+                value={`0.01 ${assetSymbol}`}
+                disabled
+                className="rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-slate-500 cursor-not-allowed"
               />
+              <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
+                0.01 {assetSymbol} is permanently locked in the vault and cannot be withdrawn. This is required by the Aave protocol to initialize the vault.
+              </p>
             </label>
           </div>
         </section>

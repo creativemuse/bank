@@ -9,6 +9,7 @@ import { PremiumGuard } from "@/components/access/PremiumGuard";
 import { VaultDeployModal } from "@/components/vaults/VaultDeployModal";
 import { DeployedVaultCard } from "@/components/vaults/DeployedVaultCard";
 import { MyDeployedVaults } from "@/components/vaults/MyDeployedVaults";
+import { ATokenBalance } from "@/components/vaults/ATokenBalance";
 import { useUserVaultPositions } from "@/hooks/useUserVaultPositions";
 import { YearnVaultCard } from "@/components/yearn/YearnVaultCard";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
@@ -157,6 +158,11 @@ function StrategiesContent({
           />
         </PremiumGuard>
       </div>
+
+      {/* aToken Balance (shown when user has aBaseUSDC from fee withdrawals) */}
+      <section className="mt-10">
+        <ATokenBalance />
+      </section>
 
       {/* My Deployed Vaults Section */}
       <section className="mt-10">
