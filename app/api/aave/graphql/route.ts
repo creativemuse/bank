@@ -54,6 +54,10 @@ async function fetchWithRetry(body: string): Promise<{ data: string; status: num
  * so the mutation is accepted without requiring a full SDK upgrade.
  */
 function patchVaultDeployRequest(rawBody: string): string {
+  if (!rawBody.includes("VaultDeploy")) {
+    return rawBody;
+  }
+
   try {
     const parsed = JSON.parse(rawBody);
     if (
