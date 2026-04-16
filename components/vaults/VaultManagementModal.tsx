@@ -187,6 +187,21 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
     query: { refetchInterval: 15000 },
   });
 
+  // Check if the fee manager holds undistributed aTokens
+  const { data: feeManagerATokenBalance, refetch: refetchFeeManagerBalance } = useReadContract({
+    address: aTokenAddress,
+    abi: [{ inputs: [{ internalType: "address", name: "account", type: "address" }], name: "balanceOf", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" }] as const,
+    functionName: "balanceOf",
+    args: feeManagerAddress ? [feeManagerAddress] : undefined,
+    chainId: 8453,
+    query: {
+      enabled: !!aTokenAddress && !!feeManagerAddress,
+      refetchInterval: 15000,
+    },
+  });
+  const undistributedFees = feeManagerATokenBalance as bigint | undefined;
+  const hasUndistributedFees = !!undistributedFees && undistributedFees > 1000n; // > dust
+
   const chainId = aaveChainId(Number(vault.chainId));
 
   // Use API data when available, fall back to on-chain reads
@@ -468,6 +483,21 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
     [newOwnerAddress, walletClient, chainId, vault.address, transferOwnership, sendTransaction, onSuccess, onClose],
   );
 
+  const handleDistribute = useCallback(async () => {
+    setErrorMessage(null);
+    setDirectTxLoading(true);
+    try {
+      await callSplitRevenue();
+      await refetchFeeManagerBalance();
+      await refetchClaimable();
+      onSuccess?.();
+    } catch (err: unknown) {
+      setErrorMessage(`Distribute failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setDirectTxLoading(false);
+    }
+  }, [callSplitRevenue, refetchFeeManagerBalance, refetchClaimable, onSuccess]);
+
   const tabs: { id: TabId; label: string }[] = [
     { id: "fee", label: "Set fee" },
     { id: "withdraw-fees", label: "Withdraw fees" },
@@ -581,6 +611,22 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
               >
                 {withdrawFeesState.loading || sendState.loading || directTxLoading ? "Processing…" : "Withdraw fees"}
               </button>
+
+              {hasUndistributedFees && (
+                <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs text-amber-800">
+                    <strong>{formatUnits(undistributedFees!, 6)} aBaseUSDC</strong> in the fee manager is waiting to be distributed to recipients.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDistribute}
+                    disabled={isBusy}
+                    className="mt-2 w-full rounded-lg border border-amber-600 bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-amber-400"
+                  >
+                    {directTxLoading ? "Distributing…" : "Distribute to recipients"}
+                  </button>
+                </div>
+              )}
             </form>
           )}
 
