@@ -123,9 +123,13 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
                 return `0x${chain.id.toString(16)}`;
               }
               
-              // For other methods, you might need to implement them or throw
-              // The Aave SDK primarily needs eth_sendTransaction
-              throw new Error(`Method ${method} not yet supported with Crossmint wallet adapter`);
+              // Proxy read-only RPC calls (eth_call, eth_estimateGas, eth_getBalance, etc.)
+              // through the public client so Aave SDK can prepare transactions
+              if (publicClient) {
+                return publicClient.request({ method, params } as Parameters<typeof publicClient.request>[0]);
+              }
+
+              throw new Error(`Method ${method} not supported: no public client available`);
             },
           }),
         });
@@ -136,7 +140,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
     
     // Fallback to wagmi wallet client
     return wagmiWalletClient ?? undefined;
-  }, [crossmintWallet, wagmiWalletClient]);
+  }, [crossmintWallet, wagmiWalletClient, publicClient]);
 
   const [sendTransaction, sendTransactionState] = useSendTransaction(walletClient);
 
@@ -285,6 +289,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
 
       setSubmitState({ status: "deploying" });
 
+      try {
       const request: VaultDeployRequest = {
         market: evmAddress(market.address),
         chainId: market.chain.chainId,
@@ -347,12 +352,12 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
       }
 
       const txHash = transactionResult.value;
-      
+
       // Wait for transaction receipt to get the vault address
-      setSubmitState({ 
-        status: "deploying", 
+      setSubmitState({
+        status: "deploying",
         txHash,
-        message: "Waiting for transaction confirmation..." 
+        message: "Waiting for transaction confirmation..."
       });
 
       try {
@@ -473,6 +478,16 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
           closeTimeoutRef.current = null;
           handleCloseRef.current();
         }, 2000);
+      }
+      } catch (outerError) {
+        // Catch any unhandled errors from deployVault/sendTransaction that throw
+        // instead of returning an error result (e.g. Crossmint wallet adapter errors)
+        const message = outerError instanceof Error ? outerError.message : String(outerError);
+        console.error("Vault deployment failed:", outerError);
+        setSubmitState({
+          status: "error",
+          message: `Deployment failed: ${message}`,
+        });
       }
     },
     [
