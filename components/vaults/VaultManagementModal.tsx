@@ -8,6 +8,7 @@ import { base, baseSepolia } from "viem/chains";
 import { bigDecimal, chainId as aaveChainId, evmAddress, useVaultSetFee, useVaultWithdrawFees, useVaultTransferOwnership } from "@aave/react";
 import { useSendTransaction } from "@aave/react/viem";
 import type { Vault } from "@aave/react";
+import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 
 // ABI for direct contract calls (fallback when Aave API is unavailable)
 const VAULT_MGMT_ABI = [
@@ -58,6 +59,13 @@ const FEE_MANAGER_ABI = [
   {
     inputs: [],
     name: "claimRewards",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address[]", name: "tokens", type: "address[]" }],
+    name: "splitRevenue",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -127,6 +135,42 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
   const [newOwnerAddress, setNewOwnerAddress] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [directTxLoading, setDirectTxLoading] = useState(false);
+
+  // Get aToken address for splitRevenue call
+  const { reserve } = useBaseUsdcReserve();
+  const aTokenAddress = reserve?.aToken?.address as Address | undefined;
+
+  // After withdrawFees pulls fees into the fee manager, splitRevenue distributes
+  // them to all recipients (you, Aave Labs, Yearn). Without this step the fees
+  // sit in the fee manager contract and never reach your wallet.
+  const callSplitRevenue = useCallback(async () => {
+    if (!feeManagerAddress || !aTokenAddress) return;
+    console.log("[VaultManagement] Calling splitRevenue to distribute fees…");
+    try {
+      if (crossmintWallet) {
+        const evmWallet = EVMWallet.from(crossmintWallet);
+        await evmWallet.sendTransaction({
+          to: feeManagerAddress as `0x${string}`,
+          abi: FEE_MANAGER_ABI,
+          functionName: "splitRevenue",
+          args: [[aTokenAddress as `0x${string}`]],
+        });
+      } else if (walletClient) {
+        const data = encodeFunctionData({
+          abi: FEE_MANAGER_ABI,
+          functionName: "splitRevenue",
+          args: [[aTokenAddress]],
+        });
+        const addrs = await walletClient.getAddresses();
+        await walletClient.sendTransaction({
+          to: feeManagerAddress, data, chain: base, account: addrs[0] as Address,
+        });
+      }
+      console.log("[VaultManagement] splitRevenue succeeded — fees distributed to recipients");
+    } catch (err) {
+      console.warn("[VaultManagement] splitRevenue failed (fees remain in fee manager):", err);
+    }
+  }, [feeManagerAddress, aTokenAddress, crossmintWallet, walletClient]);
 
   // On-chain fee reads (works even when Aave API is down)
   const { data: onChainFee } = useReadContract({
@@ -287,6 +331,8 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
               });
               console.log("[VaultManagement] Layer 3 success:", hash);
             }
+            // Step 2: distribute fees from fee manager to recipients (you, Aave, Yearn)
+            await callSplitRevenue();
             await refetchClaimable();
             onSuccess?.();
             onClose();
@@ -314,6 +360,8 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
                 });
                 console.log("[VaultManagement] Layer 3b success:", hash);
               }
+              // Step 2: distribute fees from fee manager to recipients
+              await callSplitRevenue();
               await refetchClaimable();
               onSuccess?.();
               onClose();
@@ -380,7 +428,7 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
       onClose();
     },
     [withdrawMax, withdrawAmount, walletClient, crossmintWallet, chainId, vault.address,
-      withdrawFees, sendTransaction, onChainClaimableFees, refetchClaimable, onSuccess, onClose],
+      withdrawFees, sendTransaction, onChainClaimableFees, refetchClaimable, callSplitRevenue, onSuccess, onClose],
   );
 
   const handleTransferOwnership = useCallback(
