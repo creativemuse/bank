@@ -27,7 +27,7 @@ export function CopyWrapper({
 
   const iconClasses = "w-4 h-4 text-gray-900 dark:text-gray-100";
   const icon = justCopied ? (
-    <CheckIcon className={cn("w-4 h-4 text-emerald-500")} />
+    <CheckIcon className={cn("h-4 w-4 text-emerald-500")} />
   ) : (
     <Square2StackIcon className={iconClasses} />
   );

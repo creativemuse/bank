@@ -1,10 +1,5 @@
 import { useMemo } from "react";
-import {
-  chainId as resolveChainId,
-  useAaveMarkets,
-  type Market,
-  type Reserve,
-} from "@aave/react";
+import { chainId as resolveChainId, useAaveMarkets, type Market, type Reserve } from "@aave/react";
 
 import { appChain } from "@/lib/wagmiConfig";
 import { USDC_SYMBOL } from "@/lib/config/aave";
@@ -33,7 +28,7 @@ export function useBaseUsdcReserve(): UseBaseUsdcReserveResult {
     for (const marketItem of markets) {
       const reserves = marketItem.supplyReserves ?? [];
       const found = reserves.find(
-        (item) => item.underlyingToken.symbol.toUpperCase() === USDC_SYMBOL,
+        (item) => item.underlyingToken.symbol.toUpperCase() === USDC_SYMBOL
       );
 
       if (found) {
@@ -51,4 +46,3 @@ export function useBaseUsdcReserve(): UseBaseUsdcReserveResult {
     reserve,
   };
 }
-

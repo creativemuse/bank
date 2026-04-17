@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/cockroachdb";
-import type {
-  EarningsReport,
-  EarningsSummary,
-  ReportTransaction,
-} from "@/lib/reports/types";
+import type { EarningsReport, EarningsSummary, ReportTransaction } from "@/lib/reports/types";
 
 const GOLDSKY_ENDPOINT =
   "https://api.goldsky.com/api/public/project_cmh0iv6s500dbw2p22vsxcfo6/subgraphs/usdc-finance-yearn-v3/1.0.0/gn";
@@ -19,10 +15,7 @@ export async function POST(request: NextRequest) {
     const { walletAddress, from, to } = await request.json();
 
     if (!walletAddress) {
-      return NextResponse.json(
-        { error: "walletAddress is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "walletAddress is required" }, { status: 400 });
     }
 
     const normalizedAddress = walletAddress.toLowerCase();
@@ -37,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // Merge and sort all transactions by date
     const allTransactions = [...coinbaseTransactions, ...yearnCashflows].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
     // Calculate summary
@@ -56,7 +49,7 @@ export async function POST(request: NextRequest) {
     console.error("[Reports] Generation failed:", err.message);
     return NextResponse.json(
       { error: err.message || "Failed to generate report" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
@@ -67,7 +60,7 @@ export async function POST(request: NextRequest) {
 async function fetchCoinbaseTransactions(
   walletAddress: string,
   from: string,
-  to: string,
+  to: string
 ): Promise<ReportTransaction[]> {
   if (!process.env.COCKROACHDB_URL) return [];
 
@@ -79,19 +72,18 @@ async function fetchCoinbaseTransactions(
        FROM transactions
        WHERE wallet_address = $1 AND created_at >= $2 AND created_at <= $3
        ORDER BY created_at ASC`,
-      [walletAddress, from, to],
+      [walletAddress, from, to]
     );
 
     return rows.map((row: any) => {
-      const isOnramp =
-        row.type === "onramp" || row.buy_amount_currency === "USDC";
+      const isOnramp = row.type === "onramp" || row.buy_amount_currency === "USDC";
 
       // Extract fees from raw_data if available
       let fee: string | undefined;
       if (row.raw_data?.fees) {
         const totalFees = row.raw_data.fees.reduce(
           (sum: number, f: any) => sum + Number(f.amount || 0),
-          0,
+          0
         );
         if (totalFees > 0) fee = totalFees.toFixed(2);
       }
@@ -99,12 +91,8 @@ async function fetchCoinbaseTransactions(
       return {
         date: new Date(row.created_at).toISOString(),
         type: isOnramp ? "deposit" : "withdrawal",
-        asset: isOnramp
-          ? row.buy_amount_currency || "USDC"
-          : row.sell_amount_currency || "USDC",
-        amount: isOnramp
-          ? row.buy_amount_value || "0"
-          : row.sell_amount_value || "0",
+        asset: isOnramp ? row.buy_amount_currency || "USDC" : row.sell_amount_currency || "USDC",
+        amount: isOnramp ? row.buy_amount_value || "0" : row.sell_amount_value || "0",
         fee,
         txHash: row.onchain_hash || undefined,
         source: "coinbase" as const,
@@ -122,9 +110,7 @@ async function fetchCoinbaseTransactions(
 /**
  * Fetch Yearn V3 vault deposit/withdrawal events from Goldsky subgraph.
  */
-async function fetchYearnCashflows(
-  walletAddress: string,
-): Promise<ReportTransaction[]> {
+async function fetchYearnCashflows(walletAddress: string): Promise<ReportTransaction[]> {
   try {
     const query = `{
       deposits(
@@ -246,8 +232,7 @@ function calculateSummary(transactions: ReportTransaction[]): EarningsSummary {
   const totalYieldEarned = Math.max(0, vaultWithdrawals - vaultDeposits);
 
   // Net position = total in - total out + yield
-  const netPosition =
-    totalDeposited - totalWithdrawn + totalYieldEarned;
+  const netPosition = totalDeposited - totalWithdrawn + totalYieldEarned;
 
   return {
     totalDeposited: totalDeposited.toFixed(2),

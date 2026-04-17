@@ -24,9 +24,7 @@ export function Dropdown({ trigger, options }: DropdownProps) {
             key={index}
             className={cn(
               "flex items-center gap-2 rounded-md px-2 py-1.5 focus-visible:outline-none",
-              option.disabled
-                ? "cursor-not-allowed opacity-50"
-                : "cursor-pointer hover:bg-gray-300"
+              option.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-gray-300"
             )}
             onClick={(e) => {
               if (!option.disabled && option.onClick) {

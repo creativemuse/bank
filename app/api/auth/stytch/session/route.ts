@@ -10,10 +10,7 @@ export async function POST(request: NextRequest) {
     const { sessionToken } = await request.json();
 
     if (!sessionToken) {
-      return NextResponse.json(
-        { error: "session_token is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "session_token is required" }, { status: 400 });
     }
 
     const stytch = getStytchClient();
@@ -28,9 +25,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (err: any) {
     console.error("Stytch session validation failed:", err.message);
-    return NextResponse.json(
-      { error: "Invalid or expired session" },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
   }
 }

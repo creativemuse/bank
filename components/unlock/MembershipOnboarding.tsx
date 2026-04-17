@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  MEMBERSHIP_LOCKS,
-  TIER_PRICING,
-  type MembershipTier,
-} from "@/lib/config/memberships";
+import { MEMBERSHIP_LOCKS, TIER_PRICING, type MembershipTier } from "@/lib/config/memberships";
 import { CheckoutIframe } from "./CheckoutIframe";
 
 interface MembershipOnboardingProps {
@@ -17,10 +13,7 @@ interface MembershipOnboardingProps {
  * First-login blocking modal that explains membership tiers and their value.
  * Shows the 20% vs 10% fee comparison to drive conversion.
  */
-export function MembershipOnboarding({
-  onSkip,
-  onPurchaseComplete,
-}: MembershipOnboardingProps) {
+export function MembershipOnboarding({ onSkip, onPurchaseComplete }: MembershipOnboardingProps) {
   const [showCheckout, setShowCheckout] = useState(false);
 
   const tiers = [...MEMBERSHIP_LOCKS].sort((a, b) => a.priority - b.priority);
@@ -45,29 +38,23 @@ export function MembershipOnboarding({
       <div className="w-full max-w-2xl rounded-2xl bg-white p-8 shadow-xl">
         {/* Header */}
         <div className="mb-6 text-center">
-          <h2 className="text-2xl font-bold text-slate-900">
-            Maximize Your Yield
-          </h2>
+          <h2 className="text-2xl font-bold text-slate-900">Maximize Your Yield</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Creative Finance members keep more of what they earn. Choose a tier
-            to unlock lower fees and premium features.
+            Creative Finance members keep more of what they earn. Choose a tier to unlock lower fees
+            and premium features.
           </p>
         </div>
 
         {/* Fee comparison */}
         <div className="mb-6 flex items-center justify-center gap-4">
           <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-slate-50 px-6 py-4">
-            <span className="text-xs font-medium uppercase text-slate-500">
-              Standard
-            </span>
+            <span className="text-xs font-medium text-slate-500 uppercase">Standard</span>
             <span className="text-3xl font-bold text-slate-400">20%</span>
             <span className="text-xs text-slate-500">performance fee</span>
           </div>
           <div className="text-2xl text-slate-300">→</div>
           <div className="flex flex-col items-center rounded-xl border-2 border-emerald-500 bg-emerald-50 px-6 py-4">
-            <span className="text-xs font-medium uppercase text-emerald-600">
-              Member
-            </span>
+            <span className="text-xs font-medium text-emerald-600 uppercase">Member</span>
             <span className="text-3xl font-bold text-emerald-700">10%</span>
             <span className="text-xs text-emerald-600">performance fee</span>
           </div>
@@ -97,20 +84,12 @@ export function MembershipOnboarding({
                   )}
                 </div>
                 <div className="mb-3">
-                  <span className="text-xl font-bold text-slate-900">
-                    {pricing.price}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    {" "}
-                    / {pricing.duration}
-                  </span>
+                  <span className="text-xl font-bold text-slate-900">{pricing.price}</span>
+                  <span className="text-xs text-slate-500"> / {pricing.duration}</span>
                 </div>
                 <ul className="flex flex-col gap-1">
                   {pricing.features.map((feature, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-1.5 text-xs text-slate-600"
-                    >
+                    <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600">
                       <span className="mt-0.5 text-emerald-500">✓</span>
                       {feature}
                     </li>

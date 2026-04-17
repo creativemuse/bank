@@ -82,12 +82,11 @@ export const YearnVaultCard = ({
   // Get user's position
   const { shareBalance, assetValue } = useYearnVaultBalance(vaultAddress, userAddress);
 
-  const depositDisabled = Boolean(
-    bouncerAddress && (bouncerLoading || !canDepositByBouncer),
-  );
-  const depositTitle = bouncerAddress && !canDepositByBouncer && !bouncerLoading
-    ? "Kalani Vault is for members only. Get a Creative Brand, Investor, or Creator NFT to deposit."
-    : undefined;
+  const depositDisabled = Boolean(bouncerAddress && (bouncerLoading || !canDepositByBouncer));
+  const depositTitle =
+    bouncerAddress && !canDepositByBouncer && !bouncerLoading
+      ? "Kalani Vault is for members only. Get a Creative Brand, Investor, or Creator NFT to deposit."
+      : undefined;
 
   const handleOpenDeposit = useCallback(() => {
     if (depositDisabled) return;
@@ -112,9 +111,7 @@ export const YearnVaultCard = ({
   const aprDisplay = formatPercentage(estimatedApr);
 
   const hasPosition = shareBalance && shareBalance > 0n;
-  const positionValue = hasPosition && assetValue
-    ? formatUnits(assetValue, assetDecimals)
-    : "0";
+  const positionValue = hasPosition && assetValue ? formatUnits(assetValue, assetDecimals) : "0";
 
   return (
     <>
@@ -141,7 +138,7 @@ export const YearnVaultCard = ({
               window.open(
                 `${BASE_BLOCK_EXPLORER_ADDRESS_URL}/${vaultAddress}`,
                 "_blank",
-                "noopener,noreferrer",
+                "noopener,noreferrer"
               ),
           },
           ...(hasPosition
@@ -231,4 +228,3 @@ export const YearnVaultCard = ({
     </>
   );
 };
-

@@ -1,9 +1,9 @@
 /**
  * Script to query Yearn V3 Registry on Base
- * 
+ *
  * This script helps developers discover available Yearn V3 vaults
  * Run with: npx tsx scripts/queryYearnRegistry.ts
- * 
+ *
  * Requirements:
  * - Install tsx: pnpm add -D tsx
  * - Or use ts-node: pnpm add -D ts-node
@@ -11,11 +11,7 @@
 
 import { createPublicClient, http, Address } from "viem";
 import { base } from "viem/chains";
-import {
-  YEARN_V3_ADDRESSES,
-  YEARN_REGISTRY_ABI,
-  USDC_ADDRESS_BASE,
-} from "../lib/config/yearn";
+import { YEARN_V3_ADDRESSES, YEARN_REGISTRY_ABI, USDC_ADDRESS_BASE } from "../lib/config/yearn";
 
 // Create a public client to interact with Base
 const client = createPublicClient({
@@ -67,7 +63,7 @@ async function queryUsdcVaults() {
         console.log(`   Release Version: ${info.releaseVersion}`);
         console.log(`   Tag: ${info.tag || "N/A"}`);
         console.log(
-          `   Deployed: ${new Date(Number(info.deploymentTimestamp) * 1000).toLocaleDateString()}`,
+          `   Deployed: ${new Date(Number(info.deploymentTimestamp) * 1000).toLocaleDateString()}`
         );
       } catch (error) {
         console.log(`   ⚠️  Could not fetch vault info: ${error}`);
@@ -141,4 +137,3 @@ main()
     console.error("Fatal error:", error);
     process.exit(1);
   });
-

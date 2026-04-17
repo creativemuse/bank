@@ -129,9 +129,7 @@ export function useOnrampOrder(): UseOnrampOrderReturn {
         const data = await response.json();
         const status = data.order?.status || data.status;
 
-        setOrder((prev) =>
-          prev ? { ...prev, status } : prev,
-        );
+        setOrder((prev) => (prev ? { ...prev, status } : prev));
 
         if (status === "COMPLETED" || status === "FAILED") {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -149,8 +147,7 @@ export function useOnrampOrder(): UseOnrampOrderReturn {
       setError(null);
 
       try {
-        const domain =
-          typeof window !== "undefined" ? window.location.hostname : undefined;
+        const domain = typeof window !== "undefined" ? window.location.hostname : undefined;
 
         const response = await fetch("/api/onramp/order", {
           method: "POST",
@@ -188,7 +185,7 @@ export function useOnrampOrder(): UseOnrampOrderReturn {
         setIsCreatingOrder(false);
       }
     },
-    [pollOrderStatus],
+    [pollOrderStatus]
   );
 
   const reset = useCallback(() => {

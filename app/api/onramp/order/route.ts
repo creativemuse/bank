@@ -33,36 +33,27 @@ export async function POST(request: NextRequest) {
           error:
             "Missing required fields: paymentAmount, destinationAddress, phoneNumber, email, agreementAcceptedAt",
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     // Validate Stytch session server-side (mandatory for protected actions)
     if (!sessionToken) {
-      return NextResponse.json(
-        { error: "Session token is required" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Session token is required" }, { status: 401 });
     }
 
     try {
       const stytch = getStytchClient();
       await stytch.sessions.authenticate({ session_token: sessionToken });
     } catch {
-      return NextResponse.json(
-        { error: "Invalid or expired session" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
     }
 
     const keyId = process.env.COINBASE_API_KEY_ID;
     const keySecret = process.env.COINBASE_API_KEY_SECRET;
 
     if (!keyId || !keySecret) {
-      return NextResponse.json(
-        { error: "Coinbase API keys not configured" },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: "Coinbase API keys not configured" }, { status: 500 });
     }
 
     const jwt = await generateJWT(
@@ -70,7 +61,7 @@ export async function POST(request: NextRequest) {
       keySecret,
       "POST",
       "/platform/v2/onramp/orders",
-      "api.cdp.coinbase.com",
+      "api.cdp.coinbase.com"
     );
 
     // Determine partnerUserRef — use sandbox- prefix for testing
@@ -99,34 +90,25 @@ export async function POST(request: NextRequest) {
       orderBody.domain = domain;
     }
 
-    const response = await fetch(
-      "https://api.cdp.coinbase.com/platform/v2/onramp/orders",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(orderBody),
+    const response = await fetch("https://api.cdp.coinbase.com/platform/v2/onramp/orders", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify(orderBody),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Coinbase order API error:", errorText);
-      return NextResponse.json(
-        { error: "Failed to create order" },
-        { status: response.status },
-      );
+      return NextResponse.json({ error: "Failed to create order" }, { status: response.status });
     }
 
     const data = await response.json();
     return NextResponse.json(data);
   } catch (err: any) {
     console.error("Order creation error:", err.message);
-    return NextResponse.json(
-      { error: err.message || "Failed to create order" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: err.message || "Failed to create order" }, { status: 500 });
   }
 }

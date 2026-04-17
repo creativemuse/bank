@@ -10,18 +10,19 @@ Your **USDC Creative Bank (cbUSDC)** Yearn V3 vault is now **LIVE on Base mainne
 
 ### Creative Bank USDC Vault (cbUSDC)
 
-| Property | Value |
-|----------|-------|
-| **Vault Address** | `0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE` |
-| **Name** | USDC Creative Bank |
-| **Symbol** | cbUSDC |
-| **Network** | Base (Chain ID: 8453) |
-| **Type** | Creative Bank Allocator (Yearn V3 Multi-Strategy) |
-| **Standard** | ERC-4626 Compliant |
-| **Asset** | USDC (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) |
+| Property           | Value                                               |
+| ------------------ | --------------------------------------------------- |
+| **Vault Address**  | `0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE`        |
+| **Name**           | USDC Creative Bank                                  |
+| **Symbol**         | cbUSDC                                              |
+| **Network**        | Base (Chain ID: 8453)                               |
+| **Type**           | Creative Bank Allocator (Yearn V3 Multi-Strategy)   |
+| **Standard**       | ERC-4626 Compliant                                  |
+| **Asset**          | USDC (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) |
 | **Access Control** | Token-Gated (Unlock Protocol - Creative Brand Tier) |
 
 **View on Basescan:**
+
 - Vault: https://basescan.org/address/0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE
 - USDC Asset: https://basescan.org/address/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 
@@ -31,22 +32,23 @@ Your **USDC Creative Bank (cbUSDC)** Yearn V3 vault is now **LIVE on Base mainne
 
 ### Role Manager & Governance
 
-| Component | Address |
-|-----------|---------|
-| **Role Manager** | `0xAE31C2098a42aAB31b447876E4DAa649c16A307b` |
-| **Registry** | `0x2aC025aE91dddcda3BB7D8EaB11efA3608dAF634` |
-| **Accountant** | `0x928a31A7727e53CBE9f99fAb39eFb705c933093e` |
+| Component          | Address                                      |
+| ------------------ | -------------------------------------------- |
+| **Role Manager**   | `0xAE31C2098a42aAB31b447876E4DAa649c16A307b` |
+| **Registry**       | `0x2aC025aE91dddcda3BB7D8EaB11efA3608dAF634` |
+| **Accountant**     | `0x928a31A7727e53CBE9f99fAb39eFb705c933093e` |
 | **Debt Allocator** | `0xD1803ECCb53645D5bde0AE2FB1b55a2254fe358e` |
 
 ### Factory & Oracle
 
-| Component | Address |
-|-----------|---------|
+| Component                | Address                                      |
+| ------------------------ | -------------------------------------------- |
 | **Role Manager Factory** | `0xca12459a931643BF28388c67639b3F352fe9e5Ce` |
-| **APR Oracle** | `0x1981AD9F44F2EA9aDd2dC4AD7D075c102C70aF92` |
-| **Address Provider** | `0x1e9778aAD41Aa3E0884C276fB4C2D03C4036Aa0B` |
+| **APR Oracle**           | `0x1981AD9F44F2EA9aDd2dC4AD7D075c102C70aF92` |
+| **Address Provider**     | `0x1e9778aAD41Aa3E0884C276fB4C2D03C4036Aa0B` |
 
 ### Project ID
+
 ```
 0xb549b5f4ad020a1591e9c449c758d5d1e6f0b84d62b3aa133a98be87f2b51a9b
 ```
@@ -56,25 +58,28 @@ Your **USDC Creative Bank (cbUSDC)** Yearn V3 vault is now **LIVE on Base mainne
 ## 🚀 What's Been Integrated
 
 ### 1. Configuration Updated
+
 **File:** `lib/config/kalani.ts`
 
 ✅ All real deployment addresses added  
 ✅ `CREATIVE_BANK_VAULT` constant exported  
 ✅ Vault metadata included (name, symbol, asset)  
-✅ Infrastructure addresses organized  
+✅ Infrastructure addresses organized
 
 ### 2. Strategies Page Updated
+
 **File:** `app/strategies/page.tsx`
 
 ✅ **Premium vault now uses `YearnVaultCard`** with real vault address  
 ✅ Replaced old `StrategyCard` with full Yearn V3 integration  
 ✅ APR data connected from Kalani APR hook  
 ✅ User USDC balance passed for deposits  
-✅ Token-gated access via `PremiumGuard` (Creative Brand tier required)  
+✅ Token-gated access via `PremiumGuard` (Creative Brand tier required)
 
 ### 3. Yearn V3 Section Updated
 
 Added beautiful "Live on Base" badge showing:
+
 - ✅ Vault is deployed and operational
 - 💎 Token-gated access requirement
 - 🔗 Direct link to Basescan
@@ -95,6 +100,7 @@ Added beautiful "Live on Base" badge showing:
 ### User Flow
 
 **For Creative Brand Members:**
+
 ```
 1. Visit /strategies
 2. See "USDC Creative Bank" vault card
@@ -103,6 +109,7 @@ Added beautiful "Live on Base" badge showing:
 ```
 
 **For Non-Members:**
+
 ```
 1. Visit /strategies
 2. See locked/blurred vault card
@@ -127,6 +134,7 @@ Added beautiful "Live on Base" badge showing:
 ```
 
 **Smart Contracts Called:**
+
 - USDC: `approve(vault, amount)`
 - Vault: `deposit(assets, receiver)`
 
@@ -143,6 +151,7 @@ Added beautiful "Live on Base" badge showing:
 ```
 
 **Smart Contracts Called:**
+
 - Vault: `redeem(shares, receiver, owner, maxLoss)`
 
 ---
@@ -154,21 +163,21 @@ Added beautiful "Live on Base" badge showing:
 ✅ **APR Display**: Connected to Kalani APR Oracle  
 ✅ **TVL Tracking**: Shows total assets under management  
 ✅ **User Position**: Displays user's cbUSDC shares and USDC value  
-✅ **Balance Updates**: Refreshes after deposits/withdrawals  
+✅ **Balance Updates**: Refreshes after deposits/withdrawals
 
 ### Transaction Management
 
 ✅ **State Tracking**: Loading, approving, depositing, success, error  
 ✅ **Preview Calculations**: Show expected shares/assets before tx  
 ✅ **Error Handling**: User-friendly error messages  
-✅ **Success Confirmation**: Basescan link after successful tx  
+✅ **Success Confirmation**: Basescan link after successful tx
 
 ### Safety Features
 
 ✅ **MaxLoss Protection**: Configurable slippage protection (1% default)  
 ✅ **Balance Validation**: Prevents overdraft attempts  
 ✅ **Approval Management**: Checks allowance before requesting  
-✅ **Transaction Reversion**: Fails safely if loss exceeds maxLoss  
+✅ **Transaction Reversion**: Fails safely if loss exceeds maxLoss
 
 ---
 
@@ -190,6 +199,7 @@ Before users interact:
 ### Test Scenarios
 
 **Scenario 1: First-Time Deposit**
+
 ```
 User: Creative Brand member with 100 USDC
 Expected: Approval + Deposit transactions
@@ -197,6 +207,7 @@ Result: Receives ~100 cbUSDC shares (1:1 on first deposit)
 ```
 
 **Scenario 2: Withdrawal with MaxLoss**
+
 ```
 User: Has 50 cbUSDC shares
 MaxLoss: 1% (100 bps)
@@ -205,6 +216,7 @@ Result: Transaction reverts if < 49.5 USDC available
 ```
 
 **Scenario 3: Non-Member Access**
+
 ```
 User: No Creative Brand membership
 Expected: Vault card locked/blurred
@@ -253,21 +265,21 @@ Result: Prompted to upgrade membership
 ✅ **Yearn V3 Audited**: Battle-tested protocol  
 ✅ **ERC-4626 Standard**: Well-understood interface  
 ✅ **Kalani Deployment**: Professional vault operator  
-✅ **Role-Based Access**: Granular permissions via Role Manager  
+✅ **Role-Based Access**: Granular permissions via Role Manager
 
 ### User Safety
 
 ✅ **MaxLoss Protection**: Prevents excessive slippage  
 ✅ **Token-Gated**: Limits exposure to verified members  
 ✅ **Preview Calculations**: Transparent before execution  
-✅ **Transaction Limits**: Can set via `maxDeposit`/`maxRedeem`  
+✅ **Transaction Limits**: Can set via `maxDeposit`/`maxRedeem`
 
 ### Frontend Security
 
 ✅ **Input Validation**: All amounts sanitized  
 ✅ **Balance Checks**: Prevents overdraft attempts  
 ✅ **Error Boundaries**: Graceful failure handling  
-✅ **HTTPS Only**: Secure communication  
+✅ **HTTPS Only**: Secure communication
 
 ---
 
@@ -276,21 +288,25 @@ Result: Prompted to upgrade membership
 ### Common Issues
 
 **Issue: "Transaction reverts on withdrawal"**
+
 - **Cause**: MaxLoss too restrictive
 - **Solution**: Increase maxLoss to 500 bps (5%) or 1000 bps (10%)
 - **Note**: 1% maxLoss is very conservative
 
 **Issue: "Can't see vault card"**
+
 - **Cause**: No Creative Brand membership
 - **Solution**: Purchase membership NFT via Unlock Protocol
 - **Verify**: Check membership in context
 
 **Issue: "APY shows 'Pending oracle update'"**
+
 - **Cause**: Oracle hasn't updated yet
 - **Solution**: Wait for next oracle update (usually 24h)
 - **Fallback**: Show estimated APY from Aave base rate
 
 **Issue: "Shares calculation seems wrong"**
+
 - **Cause**: First depositor gets 1:1, later depositors get priced shares
 - **Solution**: This is correct ERC-4626 behavior
 - **Formula**: `shares = (assets * totalShares) / totalAssets`
@@ -356,7 +372,7 @@ Your **Creative Bank USDC Vault** is now **LIVE** with:
 ✅ Token-gated premium access  
 ✅ Professional UI with real-time data  
 ✅ MaxLoss protection for safety  
-✅ Comprehensive documentation  
+✅ Comprehensive documentation
 
 **The vault is ready for Creative Brand members to start earning yield!** 💰
 
@@ -371,6 +387,7 @@ Your **Creative Bank USDC Vault** is now **LIVE** with:
 **Access Requirement**: Creative Brand NFT membership
 
 **Supported Actions**:
+
 - ✅ Deposit USDC
 - ✅ Withdraw USDC
 - ✅ View position
@@ -378,6 +395,7 @@ Your **Creative Bank USDC Vault** is now **LIVE** with:
 - ✅ Monitor TVL
 
 **User Experience**:
+
 - 🚀 Fast deposits (2 transactions: approve + deposit)
 - 🛡️ Safe withdrawals (maxLoss protection)
 - 📊 Real-time balance updates
@@ -388,4 +406,3 @@ Your **Creative Bank USDC Vault** is now **LIVE** with:
 **Questions or issues?** Refer to the documentation or reach out for support!
 
 **Happy Yielding!** 🌟
-

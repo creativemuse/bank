@@ -21,9 +21,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, message: "Migration complete" });
   } catch (err: any) {
     console.error("[Migration] Failed:", err.message);
-    return NextResponse.json(
-      { error: err.message || "Migration failed" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: err.message || "Migration failed" }, { status: 500 });
   }
 }

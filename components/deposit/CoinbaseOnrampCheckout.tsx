@@ -84,7 +84,7 @@ export function CoinbaseOnrampCheckout({
       window.removeEventListener("message", messageHandlerRef.current);
       messageHandlerRef.current = null;
     }
-    
+
     // Reset flags for new session
     paymentInitiatedRef.current = false;
     paymentCompletedRef.current = false;
@@ -148,31 +148,31 @@ export function CoinbaseOnrampCheckout({
             clearInterval(checkIntervalRef.current);
             checkIntervalRef.current = null;
           }
-          
+
           // Clear payment initiation timeout if popup closes
           if (paymentInitiationTimeoutRef.current) {
             clearTimeout(paymentInitiationTimeoutRef.current);
             paymentInitiationTimeoutRef.current = null;
           }
-          
+
           // Clear any existing popup close timeout before creating a new one
           if (popupCloseTimeoutRef.current) {
             clearTimeout(popupCloseTimeoutRef.current);
             popupCloseTimeoutRef.current = null;
           }
-          
+
           // Give a small delay to allow any pending success messages to arrive
           // This handles the case where popup closes right after payment completes
           popupCloseTimeoutRef.current = setTimeout(() => {
             // Clear the ref since timeout is executing
             popupCloseTimeoutRef.current = null;
-            
+
             // If payment was already completed via message, don't do anything
             // (the message handler already called onPaymentCompleted)
             if (paymentCompletedRef.current) {
               return;
             }
-            
+
             // User closed popup without completing payment - always reset to options.
             // We never transition to processing on close; only explicit postMessage
             // (payment-initiated) in the message handler can show "Processing payment...".
@@ -213,7 +213,7 @@ export function CoinbaseOnrampCheckout({
         }
 
         // Handle payment completion events - check multiple possible formats
-        const isSuccess = 
+        const isSuccess =
           event.data?.type === "payment-success" ||
           event.data?.type === "payment-completed" ||
           event.data?.type === "onramp-purchase-success" ||
@@ -222,13 +222,13 @@ export function CoinbaseOnrampCheckout({
           event.data?.status === "completed" ||
           event.data?.event === "purchase-success" ||
           event.data?.event === "purchase-completed" ||
-          (event.data?.event === "onramp_purchase_success") ||
-          (event.data?.event === "onramp_purchase_completed");
+          event.data?.event === "onramp_purchase_success" ||
+          event.data?.event === "onramp_purchase_completed";
 
         if (isSuccess) {
           // Mark payment as completed to prevent popup close handler from overriding
           paymentCompletedRef.current = true;
-          
+
           if (checkIntervalRef.current) {
             clearInterval(checkIntervalRef.current);
             checkIntervalRef.current = null;
@@ -255,7 +255,7 @@ export function CoinbaseOnrampCheckout({
         }
 
         // Handle payment cancellation/error events
-        const isCancelled = 
+        const isCancelled =
           event.data?.type === "payment-cancelled" ||
           event.data?.type === "payment-canceled" ||
           event.data?.type === "payment-error" ||
@@ -365,4 +365,3 @@ export function CoinbaseOnrampCheckout({
     </div>
   );
 }
-

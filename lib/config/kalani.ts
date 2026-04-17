@@ -28,8 +28,7 @@ export const KALANI_CHAIN_ID = 8453;
  * Use this address when integrating with the Yearn Registry or GOAT agent.
  * ERC-4626 compliant; underlying asset: USDC.
  */
-export const YEARN_USDC_VAULT_BASE =
-  "0xb13CF163d916917d9cD6E836905cA5f12a1dEF4B" as Address;
+export const YEARN_USDC_VAULT_BASE = "0xb13CF163d916917d9cD6E836905cA5f12a1dEF4B" as Address;
 
 /** Fallback vault address when NEXT_PUBLIC_CREATIVE_BANK_YEARN_VAULT_ADDRESS is not set (legacy Kalani). */
 const CREATIVE_BANK_VAULT_ADDRESS_FALLBACK =
@@ -59,6 +58,5 @@ export const CREATIVE_BANK_VAULT = {
  * with (brandNFT, investorNFT, creatorNFT) = Creative Brand, Creative Investor, Creative Creator lock addresses.
  * Then call set_deposit_limit_module(bouncerAddress) on the Yearn vault.
  */
-export const CREATIVE_BANK_BOUNCER_ADDRESS: Address | undefined =
-  process.env.NEXT_PUBLIC_CREATIVE_BANK_BOUNCER_ADDRESS as Address | undefined;
-
+export const CREATIVE_BANK_BOUNCER_ADDRESS: Address | undefined = process.env
+  .NEXT_PUBLIC_CREATIVE_BANK_BOUNCER_ADDRESS as Address | undefined;

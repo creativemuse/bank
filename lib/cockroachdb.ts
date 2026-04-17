@@ -13,7 +13,7 @@ export function getPool(): Pool {
   const connectionString = process.env.COCKROACHDB_URL;
   if (!connectionString) {
     throw new Error(
-      "COCKROACHDB_URL is required. Set it to your CockroachDB Serverless connection string.",
+      "COCKROACHDB_URL is required. Set it to your CockroachDB Serverless connection string."
     );
   }
 

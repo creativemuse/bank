@@ -7,10 +7,10 @@ import { Address } from "viem";
 export const YEARN_V3_ADDRESSES = {
   // Protocol Address Provider - top-level directory for all protocol contracts
   protocolAddressProvider: "0x775F09d6f3c8D2182DFA8bce8628acf51105653c" as Address,
-  
+
   // Current V3 Registry - retrieve endorsed vaults
   registry: "0xd40ecF29e001c76Dcc4cC0D9cd50520CE845B038" as Address,
-  
+
   // Role Manager (Ethereum Mainnet) - manages multi-strategy vaults
   // Note: This address may differ on Base, update if needed
   roleManager: "0x0000000000000000000000000000000000000000" as Address, // TODO: Update for Base
@@ -27,7 +27,7 @@ export const YEARN_CHAIN_ID = 8453; // Base Mainnet
  * older history (must be before the user's first vault interaction).
  */
 export const YEARN_CASHFLOW_RPC_FROM_BLOCK = BigInt(
-  process.env.NEXT_PUBLIC_YEARN_CASHFLOW_RPC_FROM_BLOCK ?? "15000000",
+  process.env.NEXT_PUBLIC_YEARN_CASHFLOW_RPC_FROM_BLOCK ?? "15000000"
 );
 
 /** Base mainnet contract URL for explorers. */
@@ -105,7 +105,7 @@ export const ERC4626_ABI = [
     stateMutability: "view",
     type: "function",
   },
-  
+
   // Deposit function (recommended over mint)
   {
     inputs: [
@@ -117,7 +117,7 @@ export const ERC4626_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
-  
+
   // Redeem function (recommended over withdraw)
   // V3 adds optional maxLoss parameter (basis points)
   {
@@ -132,7 +132,7 @@ export const ERC4626_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
-  
+
   // Standard redeem without maxLoss
   {
     inputs: [
@@ -145,7 +145,7 @@ export const ERC4626_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
-  
+
   // Withdraw function with optional maxLoss
   {
     inputs: [
@@ -327,4 +327,3 @@ export const CREATIVE_BANK_BOUNCER_ABI = [
     type: "function",
   },
 ] as const;
-

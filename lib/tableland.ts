@@ -8,20 +8,20 @@ export const getTablelandDatabase = async () => {
   }
 
   const { Wallet, getDefaultProvider } = await import("ethers");
-  
+
   // Use public Base RPC for server-side (Alchemy keys often have origin restrictions)
   // getDefaultProvider can try multiple providers, but we specify Base mainnet
   const baseRpcUrl = "https://mainnet.base.org";
-  
+
   const wallet = new Wallet(process.env.TABLELAND_PRIVATE_KEY);
   // Use getDefaultProvider as recommended in Tableland docs, with explicit Base URL
   const provider = getDefaultProvider(baseRpcUrl);
   const signer = wallet.connect(provider);
-  
+
   // Database constructor only needs signer - chain is inferred from signer
   // Project ID and Environment ID are used for Tableland Cloud API, not the SDK
   const db = new Database({ signer });
-  
+
   return db;
 };
 
@@ -44,4 +44,3 @@ export const TRANSACTIONS_TABLE_SCHEMA = `
     raw_data TEXT
   );
 `;
-

@@ -32,7 +32,6 @@ export async function generateJWT(
   requestPath: string = "/onramp/v1/token",
   requestHost: string = "api.developer.coinbase.com"
 ): Promise<string> {
-
   try {
     console.log("Generating JWT with CDP SDK...", {
       hasKeyName: !!keyName,

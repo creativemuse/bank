@@ -39,6 +39,7 @@ NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
 ```
 
 **Important:** The app now uses multiple fallback RPC endpoints:
+
 1. Alchemy (if API key provided) - Highest priority
 2. Custom RPC URL (if provided)
 3. Default Base public RPC
@@ -73,11 +74,11 @@ If `NEXT_PUBLIC_CREATIVE_BANK_YEARN_VAULT_ADDRESS` is not set, the app falls bac
 
 The following Unlock Protocol locks are deployed on **Base Mainnet (8453)**:
 
-| Tier | Contract Address | Priority |
-|------|-----------------|----------|
-| Creative Brand | `0x9c3744c96200a52d05a630d4aec0db707d7509be` | 3 (Highest) |
-| Creative Investor | `0x13b818daf7016b302383737ba60c3a39fef231cf` | 2 |
-| Creative Creator | `0xf7c4cd399395d80f9d61fde833849106775269c6` | 1 |
+| Tier              | Contract Address                             | Priority    |
+| ----------------- | -------------------------------------------- | ----------- |
+| Creative Brand    | `0x9c3744c96200a52d05a630d4aec0db707d7509be` | 3 (Highest) |
+| Creative Investor | `0x13b818daf7016b302383737ba60c3a39fef231cf` | 2           |
+| Creative Creator  | `0xf7c4cd399395d80f9d61fde833849106775269c6` | 1           |
 
 ## Troubleshooting Membership Detection
 
@@ -95,6 +96,7 @@ Without these settings, the app will query the wrong network (Base Sepolia by de
 Look for these log sections:
 
 #### Network Configuration Check
+
 ```
 [unlockMemberships] Network Configuration Check:
   unlockChainId: 8453
@@ -106,6 +108,7 @@ Look for these log sections:
 If you see a warning here, your network is misconfigured.
 
 #### Active Address Detection
+
 ```
 [MembershipContext] ✓ Using Crossmint wallet address: 0x...
 ```
@@ -113,6 +116,7 @@ If you see a warning here, your network is misconfigured.
 Verify this is the correct address that holds the membership NFT.
 
 #### Membership Status
+
 ```
 [unlockMemberships] ✓ Creative Creator status:
   hasValidKey: true
@@ -137,8 +141,8 @@ Enter your wallet address in the search box to see if you hold a key.
 Unlock Protocol memberships can expire. Check the `expiresAt` timestamp in the console logs:
 
 ```javascript
-expiresAt: "2025-12-31T23:59:59.000Z"  // Future date = valid
-expiresAt: "2023-01-01T00:00:00.000Z"  // Past date = expired
+expiresAt: "2025-12-31T23:59:59.000Z"; // Future date = valid
+expiresAt: "2023-01-01T00:00:00.000Z"; // Past date = expired
 ```
 
 ### 5. Use the Debug Panel
@@ -161,6 +165,7 @@ Membership locks are deployed on Base Mainnet (8453)
 ```
 
 **Solution:** Add to your `.env.local`:
+
 ```bash
 NEXT_PUBLIC_UNLOCK_CHAIN_ID=8453
 NEXT_PUBLIC_CHAIN_ID=base
@@ -180,7 +185,8 @@ NEXT_PUBLIC_CHAIN_ID=base
 [unlockMemberships] ✗ Failed to fetch Creative Creator membership
 ```
 
-**Solution:** 
+**Solution:**
+
 - Check network connectivity
 - Verify RPC endpoint is accessible
 - Check for API rate limiting
@@ -195,11 +201,13 @@ If the Crossmint wallet address doesn't match your expected address:
 ## Development vs Production
 
 ### Development Mode
+
 - Debug panel is visible
 - Extensive console logging
 - Defaults to Base Sepolia unless configured otherwise
 
 ### Production Mode
+
 - Debug panel hidden
 - Less verbose logging
 - Defaults to Base Mainnet
@@ -221,6 +229,7 @@ If the Crossmint wallet address doesn't match your expected address:
 If you're seeing 403 errors from Alchemy or other RPC providers:
 
 ### Problem: RPC Rate Limiting
+
 ```
 base-mainnet.g.alchemy.com/v2/xxx: Failed to load resource: 403
 ```
@@ -250,6 +259,7 @@ base-mainnet.g.alchemy.com/v2/xxx: Failed to load resource: 403
 ### Verification
 
 After adding your Alchemy key, you should see in the console:
+
 ```
 [wagmiConfig] Configured 5 RPC endpoints for Base Mainnet
 ```
@@ -265,4 +275,3 @@ If you're still experiencing issues after following this guide:
 3. Verify your wallet address on BaseScan
 4. Check that you're using the correct wallet/account
 5. Check for RPC 403 errors and consider adding an Alchemy API key
-

@@ -21,12 +21,7 @@ export async function POST(request: NextRequest) {
     const computed = createHmac("sha256", key).update(payload).digest("hex");
 
     try {
-      if (
-        !timingSafeEqual(
-          Buffer.from(signature, "hex"),
-          Buffer.from(computed, "hex"),
-        )
-      ) {
+      if (!timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(computed, "hex"))) {
         return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
       }
     } catch {
@@ -44,15 +39,11 @@ export async function POST(request: NextRequest) {
   try {
     const event = JSON.parse(body);
     const eventType = event.type || event.event || "unknown";
-    const eventId =
-      event.id || event.event_id || `crossmint-${Date.now()}`;
+    const eventId = event.id || event.event_id || `crossmint-${Date.now()}`;
 
     // Extract wallet address from event data
     const walletAddress =
-      event.data?.walletAddress ||
-      event.data?.wallet?.address ||
-      event.data?.address ||
-      null;
+      event.data?.walletAddress || event.data?.wallet?.address || event.data?.address || null;
 
     if (!process.env.COCKROACHDB_URL) {
       return NextResponse.json({ received: true });
@@ -65,12 +56,10 @@ export async function POST(request: NextRequest) {
       `INSERT INTO webhook_events (event_type, event_id, source, payload, wallet_address, status)
        VALUES ($1, $2, 'crossmint', $3, $4, 'processed')
        ON CONFLICT (event_id) DO NOTHING`,
-      [eventType, eventId, JSON.stringify(event), walletAddress?.toLowerCase()],
+      [eventType, eventId, JSON.stringify(event), walletAddress?.toLowerCase()]
     );
 
-    console.log(
-      `[Crossmint Webhook] ${eventType} for ${walletAddress || "unknown"}`,
-    );
+    console.log(`[Crossmint Webhook] ${eventType} for ${walletAddress || "unknown"}`);
 
     return NextResponse.json({ received: true });
   } catch (err: any) {

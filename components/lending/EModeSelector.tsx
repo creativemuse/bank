@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import {
-  useUserEMode,
-  evmAddress,
-  bigDecimal,
-  type Market,
-} from "@aave/react";
+import { useUserEMode, evmAddress, bigDecimal, type Market } from "@aave/react";
 import { useSendTransaction } from "@aave/react/viem";
 import { usePublicClient } from "wagmi";
 import { toast } from "sonner";
@@ -37,20 +32,15 @@ export function EModeSelector({
   const [sendTransaction] = useSendTransaction(walletClient);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(
-    currentEModeCategoryId ?? null,
+    currentEModeCategoryId ?? null
   );
 
-  const categories = useMemo(
-    () => market.eModeCategories ?? [],
-    [market.eModeCategories],
-  );
+  const categories = useMemo(() => market.eModeCategories ?? [], [market.eModeCategories]);
 
   const currentCategory = useMemo(
     () =>
-      currentEModeCategoryId
-        ? categories.find((c: any) => c.id === currentEModeCategoryId)
-        : null,
-    [categories, currentEModeCategoryId],
+      currentEModeCategoryId ? categories.find((c: any) => c.id === currentEModeCategoryId) : null,
+    [categories, currentEModeCategoryId]
   );
 
   const handleToggleEMode = useCallback(
@@ -80,7 +70,7 @@ export function EModeSelector({
         toast.success(
           categoryId
             ? `E-Mode enabled: ${categories.find((c: any) => c.id === categoryId)?.label ?? "Category " + categoryId}`
-            : "E-Mode disabled",
+            : "E-Mode disabled"
         );
       } catch (err: any) {
         toast.error("Transaction failed", {
@@ -90,15 +80,7 @@ export function EModeSelector({
         setIsSubmitting(false);
       }
     },
-    [
-      setEMode,
-      sendTransaction,
-      walletClient,
-      publicClient,
-      market.address,
-      userAddress,
-      categories,
-    ],
+    [setEMode, sendTransaction, walletClient, publicClient, market.address, userAddress, categories]
   );
 
   if (categories.length === 0) return null;
@@ -107,12 +89,8 @@ export function EModeSelector({
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-sm font-semibold text-slate-900">
-            Efficiency Mode (E-Mode)
-          </h4>
-          <p className="text-xs text-slate-500">
-            Maximize borrowing power for correlated assets
-          </p>
+          <h4 className="text-sm font-semibold text-slate-900">Efficiency Mode (E-Mode)</h4>
+          <p className="text-xs text-slate-500">Maximize borrowing power for correlated assets</p>
         </div>
         {currentEModeEnabled && currentCategory && (
           <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
@@ -129,15 +107,11 @@ export function EModeSelector({
             <div
               key={category.id}
               className={`flex items-center justify-between rounded-lg border p-3 ${
-                isActive
-                  ? "border-blue-300 bg-blue-50"
-                  : "border-slate-200 bg-slate-50"
+                isActive ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-slate-50"
               }`}
             >
               <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-slate-900">
-                  {category.label}
-                </span>
+                <span className="text-sm font-medium text-slate-900">{category.label}</span>
                 <div className="flex gap-3 text-xs text-slate-500">
                   <span>
                     Max LTV:{" "}
@@ -158,9 +132,7 @@ export function EModeSelector({
                 </div>
               </div>
               <button
-                onClick={() =>
-                  handleToggleEMode(isActive ? null : category.id)
-                }
+                onClick={() => handleToggleEMode(isActive ? null : category.id)}
                 disabled={isSubmitting}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                   isActive
@@ -168,11 +140,7 @@ export function EModeSelector({
                     : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                 } disabled:opacity-50`}
               >
-                {isSubmitting
-                  ? "..."
-                  : isActive
-                    ? "Disable"
-                    : "Enable"}
+                {isSubmitting ? "..." : isActive ? "Disable" : "Enable"}
               </button>
             </div>
           );
@@ -181,8 +149,8 @@ export function EModeSelector({
 
       {currentEModeEnabled && (
         <p className="text-xs text-blue-600">
-          E-Mode is active. You can only borrow assets within the same category
-          for higher LTV ratios.
+          E-Mode is active. You can only borrow assets within the same category for higher LTV
+          ratios.
         </p>
       )}
     </div>

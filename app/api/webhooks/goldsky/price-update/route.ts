@@ -19,12 +19,7 @@ export async function POST(request: NextRequest) {
   if (secret && signature) {
     const computed = createHmac("sha256", secret).update(body).digest("hex");
     try {
-      if (
-        !timingSafeEqual(
-          Buffer.from(signature, "hex"),
-          Buffer.from(computed, "hex"),
-        )
-      ) {
+      if (!timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(computed, "hex"))) {
         return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
       }
     } catch {
@@ -49,7 +44,7 @@ export async function POST(request: NextRequest) {
       `INSERT INTO webhook_events (event_type, event_id, source, payload, status)
        VALUES ('price_update', $1, 'goldsky', $2, 'received')
        ON CONFLICT (event_id) DO NOTHING`,
-      [eventId, JSON.stringify(payload)],
+      [eventId, JSON.stringify(payload)]
     );
 
     // Find at-risk users: those with health factor < 1.5 and holding this asset
@@ -59,7 +54,7 @@ export async function POST(request: NextRequest) {
          AND last_health_factor < 1.5
          ${asset ? "AND collateral_assets @> $1" : ""}
        LIMIT 50`,
-      asset ? [JSON.stringify([asset])] : [],
+      asset ? [JSON.stringify([asset])] : []
     );
 
     if (atRiskUsers.length === 0) {
@@ -86,14 +81,14 @@ export async function POST(request: NextRequest) {
           data.status,
           data.totalCollateralBase.toString(),
           data.totalDebtBase.toString(),
-        ],
+        ]
       );
 
       // Update user's cached health factor
       await pool.query(
         `UPDATE users SET last_health_factor = $1, updated_at = now()
          WHERE wallet_address = $2`,
-        [data.healthFactor, data.walletAddress.toLowerCase()],
+        [data.healthFactor, data.walletAddress.toLowerCase()]
       );
 
       // Check for threshold breach — get previous status
@@ -101,7 +96,7 @@ export async function POST(request: NextRequest) {
         `SELECT status FROM health_factor_snapshots
          WHERE wallet_address = $1
          ORDER BY created_at DESC LIMIT 1 OFFSET 1`,
-        [data.walletAddress.toLowerCase()],
+        [data.walletAddress.toLowerCase()]
       );
 
       const prevStatus = prevSnapshots[0]?.status || "safe";
@@ -128,7 +123,7 @@ export async function POST(request: NextRequest) {
             data.healthFactor,
             message,
             data.status === "danger",
-          ],
+          ]
         );
         alertsCreated++;
       }

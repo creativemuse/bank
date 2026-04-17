@@ -103,9 +103,7 @@ export function OTPVerification({
       <p className="text-center text-sm text-gray-900">
         Enter the {CODE_LENGTH}-digit code sent to your {label}
       </p>
-      <p className="text-center text-xs font-medium text-black">
-        {destination}
-      </p>
+      <p className="text-center text-xs font-medium text-black">{destination}</p>
 
       <div className="flex gap-2" onPaste={handlePaste}>
         {digits.map((digit, i) => (
@@ -121,17 +119,14 @@ export function OTPVerification({
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             disabled={isVerifying}
-            className="h-12 w-10 rounded-md border border-gray-600 bg-gray-300 text-center text-lg font-semibold text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            className="h-12 w-10 rounded-md border border-gray-600 bg-gray-300 text-center text-lg font-semibold text-black focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
           />
         ))}
       </div>
 
       {error && <p className="text-center text-sm text-red-700">{error}</p>}
 
-      <PrimaryButton
-        onClick={() => onVerify(code)}
-        disabled={!isComplete || isVerifying}
-      >
+      <PrimaryButton onClick={() => onVerify(code)} disabled={!isComplete || isVerifying}>
         {isVerifying ? "Verifying..." : "Verify"}
       </PrimaryButton>
 
@@ -140,9 +135,7 @@ export function OTPVerification({
         disabled={resendCooldown > 0 || isVerifying}
         className="text-sm text-blue-700 hover:underline disabled:text-gray-900 disabled:no-underline"
       >
-        {resendCooldown > 0
-          ? `Resend code in ${resendCooldown}s`
-          : "Resend code"}
+        {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
       </button>
     </div>
   );

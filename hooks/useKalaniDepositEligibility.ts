@@ -21,7 +21,7 @@ type UseKalaniDepositEligibilityReturn = {
  * PremiumGuard / membership context instead.
  */
 export const useKalaniDepositEligibility = (
-  bouncerAddress: Address | undefined,
+  bouncerAddress: Address | undefined
 ): UseKalaniDepositEligibilityReturn => {
   const { address: wagmiAddress } = useAccount();
   const { wallet: crossmintWallet } = useWallet();
@@ -33,7 +33,11 @@ export const useKalaniDepositEligibility = (
     return wagmiAddress ?? undefined;
   }, [crossmintWallet?.address, wagmiAddress]);
 
-  const { data: depositLimit, isLoading, error } = useReadContract({
+  const {
+    data: depositLimit,
+    isLoading,
+    error,
+  } = useReadContract({
     address: bouncerAddress,
     abi: CREATIVE_BANK_BOUNCER_ABI,
     functionName: "available_deposit_limit",

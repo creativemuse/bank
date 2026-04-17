@@ -21,7 +21,9 @@ type UseUserVaultPositionsResult = {
  * Fetches Aave Earn vaults that the user has shares in (positions).
  * Uses userVaults({ user, orderBy: { shares: Desc }, pageSize }).
  */
-export function useUserVaultPositions(userAddress: string | undefined): UseUserVaultPositionsResult {
+export function useUserVaultPositions(
+  userAddress: string | undefined
+): UseUserVaultPositionsResult {
   const request = useMemo(() => {
     if (!userAddress) return null;
     try {
@@ -36,7 +38,7 @@ export function useUserVaultPositions(userAddress: string | undefined): UseUserV
   }, [userAddress]);
 
   const { data, loading, error } = useUserVaults(
-    request ?? ({} as Parameters<typeof useUserVaults>[0]),
+    request ?? ({} as Parameters<typeof useUserVaults>[0])
   );
 
   const vaults = data?.items ?? [];

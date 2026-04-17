@@ -20,40 +20,33 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const {
-      amount,
-      receiptEmail,
-      walletAddress,
-    } = body;
+    const { amount, receiptEmail, walletAddress } = body;
 
-    const response = await fetch(
-      `https://${CROSSMINT_ENV}.crossmint.com/api/2022-06-09/orders`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": CROSSMINT_SERVER_SIDE_API_KEY,
-        },
-        body: JSON.stringify({
-          lineItems: [
-            {
-              tokenLocator: USDC_LOCATOR,
-              executionParameters: {
-                mode: "exact-in",
-                amount,
-              },
+    const response = await fetch(`https://${CROSSMINT_ENV}.crossmint.com/api/2022-06-09/orders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": CROSSMINT_SERVER_SIDE_API_KEY,
+      },
+      body: JSON.stringify({
+        lineItems: [
+          {
+            tokenLocator: USDC_LOCATOR,
+            executionParameters: {
+              mode: "exact-in",
+              amount,
             },
-          ],
-          payment: {
-            method: "checkoutcom-flow",
-            receiptEmail,
           },
-          recipient: {
-            walletAddress,
-          },
-        }),
-      }
-    );
+        ],
+        payment: {
+          method: "checkoutcom-flow",
+          receiptEmail,
+        },
+        recipient: {
+          walletAddress,
+        },
+      }),
+    });
 
     const data = await response.json();
     if (!response.ok) {
@@ -71,4 +64,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

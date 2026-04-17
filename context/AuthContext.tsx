@@ -49,13 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!stytchUser) return null;
 
     const primaryEmail =
-      stytchUser.emails?.find((e) => e.verified)?.email ??
-      stytchUser.emails?.[0]?.email ??
-      "";
+      stytchUser.emails?.find((e) => e.verified)?.email ?? stytchUser.emails?.[0]?.email ?? "";
 
     const verifiedPhone = stytchUser.phone_numbers?.find((p) => p.verified);
-    const phoneNumberVerifiedAt =
-      stytchUser.trusted_metadata?.phoneNumberVerifiedAt as string | undefined;
+    const phoneNumberVerifiedAt = stytchUser.trusted_metadata?.phoneNumberVerifiedAt as
+      | string
+      | undefined;
 
     return {
       id: stytchUser.user_id,
@@ -112,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       showLogin,
       setShowLogin,
     }),
-    [status, user, jwt, login, logout, showLogin],
+    [status, user, jwt, login, logout, showLogin]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

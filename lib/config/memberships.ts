@@ -51,11 +51,7 @@ export const TIER_PRICING: Record<
   "Creative Investor": {
     price: "$100",
     duration: "1 month",
-    features: [
-      "All Creative features",
-      "Higher deposit limits",
-      "Advanced analytics",
-    ],
+    features: ["All Creative features", "Higher deposit limits", "Advanced analytics"],
   },
   "Creative Brand": {
     price: "$1,000",
@@ -70,23 +66,17 @@ export const TIER_PRICING: Record<
 };
 
 // Fee infrastructure addresses (Base Mainnet)
-export const CREATIVE_TREASURY_ADDRESS: Address =
-  "0xf46F1BA19A9280F752a451d0973b047D81c63D70";
+export const CREATIVE_TREASURY_ADDRESS: Address = "0xf46F1BA19A9280F752a451d0973b047D81c63D70";
 
-export const YEARN_ACCOUNTANT_ADDRESS: Address =
-  "0x1f399808fE52d0E960CAB84b6b54d5707ab27c8a";
+export const YEARN_ACCOUNTANT_ADDRESS: Address = "0x1f399808fE52d0E960CAB84b6b54d5707ab27c8a";
 
 // Tiers that can set a custom Fee Receiver Address
-export const FEE_RECEIVER_TIERS: MembershipTier[] = [
-  "Creative Brand",
-  "Creative Creator",
-];
+export const FEE_RECEIVER_TIERS: MembershipTier[] = ["Creative Brand", "Creative Creator"];
 
 export const MEMBERSHIP_CHECKSUM = MEMBERSHIP_LOCKS.reduce<Record<Address, MembershipTier>>(
   (accumulator, lock) => {
     accumulator[lock.address] = lock.tier;
     return accumulator;
   },
-  {},
+  {}
 );
-

@@ -19,12 +19,10 @@ export function TermsAcceptance({ onAccept, isLoading }: TermsAcceptanceProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="text-center text-sm font-semibold text-black">
-        Legal Authorization
-      </h3>
+      <h3 className="text-center text-sm font-semibold text-black">Legal Authorization</h3>
       <p className="text-center text-xs text-gray-900">
-        To proceed with your USDC purchase, please review and accept the
-        following agreements from our infrastructure partner, Coinbase.
+        To proceed with your USDC purchase, please review and accept the following agreements from
+        our infrastructure partner, Coinbase.
       </p>
 
       <div className="flex items-start gap-3 rounded-lg border border-gray-600 p-3">
@@ -35,13 +33,9 @@ export function TermsAcceptance({ onAccept, isLoading }: TermsAcceptanceProps) {
           checked={checked}
           onChange={(e) => setChecked(e.target.checked)}
         />
-        <label
-          htmlFor="coinbase-terms"
-          className="text-xs leading-relaxed text-gray-900"
-        >
-          I agree to the Creative Finance Terms and acknowledge that
-          fiat-to-crypto services are provided by Coinbase. I specifically agree
-          to the{" "}
+        <label htmlFor="coinbase-terms" className="text-xs leading-relaxed text-gray-900">
+          I agree to the Creative Finance Terms and acknowledge that fiat-to-crypto services are
+          provided by Coinbase. I specifically agree to the{" "}
           <a
             href="https://www.coinbase.com/legal/coinbase-payments/terms-of-service"
             target="_blank"
@@ -69,10 +63,7 @@ export function TermsAcceptance({ onAccept, isLoading }: TermsAcceptanceProps) {
         </label>
       </div>
 
-      <PrimaryButton
-        disabled={!checked || isLoading}
-        onClick={handleProceed}
-      >
+      <PrimaryButton disabled={!checked || isLoading} onClick={handleProceed}>
         {isLoading ? "Processing..." : "Confirm and View Quote"}
       </PrimaryButton>
     </div>

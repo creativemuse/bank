@@ -12,10 +12,7 @@ export async function GET(request: NextRequest) {
   const wallet = request.nextUrl.searchParams.get("wallet");
 
   if (!wallet) {
-    return NextResponse.json(
-      { error: "wallet parameter is required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "wallet parameter is required" }, { status: 400 });
   }
 
   if (!process.env.COCKROACHDB_URL) {
@@ -31,7 +28,7 @@ export async function GET(request: NextRequest) {
        WHERE wallet_address = $1 AND acknowledged = false
        ORDER BY created_at DESC
        LIMIT 10`,
-      [wallet.toLowerCase()],
+      [wallet.toLowerCase()]
     );
 
     return NextResponse.json({ alerts: rows });
@@ -46,10 +43,7 @@ export async function PATCH(request: NextRequest) {
     const { alertId } = await request.json();
 
     if (!alertId) {
-      return NextResponse.json(
-        { error: "alertId is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "alertId is required" }, { status: 400 });
     }
 
     if (!process.env.COCKROACHDB_URL) {
@@ -61,7 +55,7 @@ export async function PATCH(request: NextRequest) {
       `UPDATE health_alerts
        SET acknowledged = true, acknowledged_at = now()
        WHERE id = $1`,
-      [alertId],
+      [alertId]
     );
 
     return NextResponse.json({ acknowledged: true });

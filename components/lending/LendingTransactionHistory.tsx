@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import {
-  evmAddress,
-  useUserTransactionHistory,
-  OrderDirection,
-  PageSize,
-} from "@aave/react";
+import { evmAddress, useUserTransactionHistory, OrderDirection, PageSize } from "@aave/react";
 import type { ChainId } from "@aave/react";
 
 import { AAVE_TARGET_CHAIN_ID } from "@/lib/config/aave";
@@ -61,7 +56,8 @@ export function LendingTransactionHistory({
     if (txNextCursor != null) setTxCursor(txNextCursor);
   }, [txNextCursor]);
 
-  const displayItems = txCursor == null ? accumulatedTxItems : (txHistory?.items ?? accumulatedTxItems) as TxItem[];
+  const displayItems =
+    txCursor == null ? accumulatedTxItems : ((txHistory?.items ?? accumulatedTxItems) as TxItem[]);
   const showLoadMore = Boolean(txNextCursor && !txHistoryLoading);
 
   if (!walletAddress) {
@@ -80,7 +76,10 @@ export function LendingTransactionHistory({
         <p className="text-sm text-slate-500">Loading…</p>
       ) : displayItems.length > 0 ? (
         <>
-          <ul className="max-h-48 list-none space-y-2 overflow-y-auto text-sm" aria-label="Aave lending transaction history">
+          <ul
+            className="max-h-48 list-none space-y-2 overflow-y-auto text-sm"
+            aria-label="Aave lending transaction history"
+          >
             {displayItems.map((item, i) => (
               <li
                 key={item.txHash ?? i}
@@ -109,7 +108,7 @@ export function LendingTransactionHistory({
               type="button"
               onClick={handleLoadMore}
               disabled={txHistoryLoading}
-              className="mt-2 text-xs font-medium text-primary hover:underline disabled:opacity-50"
+              className="text-primary mt-2 text-xs font-medium hover:underline disabled:opacity-50"
             >
               Load more
             </button>

@@ -25,12 +25,14 @@ npx tsx scripts/queryYearnRegistry.ts
 ```
 
 This will output:
+
 - All endorsed USDC vaults on Base
 - Vault addresses
 - Vault types (multi-strategy vs single-strategy)
 - Deployment timestamps
 
 **Expected Output:**
+
 ```
 Found 1 endorsed USDC vault(s):
 
@@ -88,15 +90,17 @@ Once you have a vault address, verify it's legitimate:
 You have three options for APR display:
 
 **Option A: Static APR**
+
 ```typescript
 estimatedApr={8.5} // Fixed percentage
 ```
 
 **Option B: Fetch from Yearn API** (if available)
+
 ```typescript
 // Create a new hook: hooks/useYearnApr.ts
 const { data: apr } = useQuery({
-  queryKey: ['yearn-apr', vaultAddress],
+  queryKey: ["yearn-apr", vaultAddress],
   queryFn: async () => {
     const response = await fetch(`https://api.yearn.fi/v1/chains/8453/vaults/${vaultAddress}`);
     const data = await response.json();
@@ -106,6 +110,7 @@ const { data: apr } = useQuery({
 ```
 
 **Option C: Calculate from Vault Data**
+
 ```typescript
 // Use totalAssets and historical data to calculate APR
 // This requires storing historical snapshots
@@ -124,6 +129,7 @@ Before going live, test thoroughly:
    - Ensure USDC balance available
 
 2. **Test Deposit Flow:**
+
    ```
    ✓ Click "Deposit" button
    ✓ Enter amount (try 1 USDC)
@@ -134,6 +140,7 @@ Before going live, test thoroughly:
    ```
 
 3. **Test Withdrawal Flow:**
+
    ```
    ✓ Click "Withdraw" button
    ✓ Enter shares amount or use "MAX"
@@ -171,6 +178,7 @@ After deployment:
 ### Analytics Setup
 
 Consider tracking:
+
 - Total deposits through your interface
 - Number of unique depositors
 - Average deposit size
@@ -180,6 +188,7 @@ Consider tracking:
 ### Documentation Updates
 
 Once live:
+
 1. Update `README.md` with live vault addresses
 2. Add screenshots to documentation
 3. Create user guide for deposit/withdrawal
@@ -188,6 +197,7 @@ Once live:
 ### Maintenance
 
 Regular tasks:
+
 - [ ] Monitor vault TVL and APR
 - [ ] Check for Yearn protocol upgrades
 - [ ] Update APR data regularly
@@ -199,21 +209,25 @@ Regular tasks:
 ### Common Issues
 
 **"No vaults found"**
+
 - Yearn V3 not yet deployed on Base
 - Check Yearn Discord/Twitter for deployment announcements
 - Verify registry address is correct
 
 **"Transaction reverts"**
+
 - Check maxLoss setting (try 100 = 1%)
 - Verify sufficient allowance
 - Ensure vault accepts deposits (check maxDeposit)
 
 **"Incorrect share amount"**
+
 - Verify you're using correct decimals (18 for shares, 6 for USDC)
 - Check convertToShares preview before deposit
 - Report if pricing seems wrong
 
 **"Approval fails"**
+
 - Check user has USDC balance
 - Verify USDC contract address is correct
 - Try manual approval on Basescan
@@ -243,4 +257,3 @@ Before going live:
 ---
 
 **Ready to launch?** Follow the steps above and your Yearn V3 integration will be live! 🚀
-

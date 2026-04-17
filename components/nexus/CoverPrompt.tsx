@@ -31,9 +31,7 @@ export function CoverPrompt({
 }: CoverPromptProps) {
   const [showCoverModal, setShowCoverModal] = useState(false);
 
-  const displayAmount = (
-    Number(depositAmountWei) / Math.pow(10, assetDecimals)
-  ).toFixed(2);
+  const displayAmount = (Number(depositAmountWei) / Math.pow(10, assetDecimals)).toFixed(2);
 
   if (showCoverModal) {
     return (
@@ -57,9 +55,7 @@ export function CoverPrompt({
     <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
       <div className="flex items-center gap-2">
         <span className="text-lg">🛡️</span>
-        <h4 className="text-sm font-semibold text-emerald-900">
-          Protect Your Deposit
-        </h4>
+        <h4 className="text-sm font-semibold text-emerald-900">Protect Your Deposit</h4>
       </div>
 
       <p className="text-xs text-emerald-800">
@@ -67,8 +63,8 @@ export function CoverPrompt({
         <strong>
           {displayAmount} {assetSymbol}
         </strong>{" "}
-        deposit in the {productLabel} vault is unprotected. Get Nexus Mutual
-        cover to insure against smart contract risks.
+        deposit in the {productLabel} vault is unprotected. Get Nexus Mutual cover to insure against
+        smart contract risks.
       </p>
 
       <div className="flex gap-2">
@@ -87,8 +83,8 @@ export function CoverPrompt({
       </div>
 
       <p className="text-xs text-emerald-600">
-        Cover is purchased on Ethereum mainnet. A 14-day cooling period applies
-        before claims can be filed.
+        Cover is purchased on Ethereum mainnet. A 14-day cooling period applies before claims can be
+        filed.
       </p>
     </div>
   );

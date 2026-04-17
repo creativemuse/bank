@@ -35,8 +35,7 @@ const publicClient = createPublicClient({
  */
 const resolveVaultAddress = (): Address => {
   const configured =
-    process.env.KALANI_VAULT_ADDRESS ??
-    process.env.NEXT_PUBLIC_KALANI_VAULT_ADDRESS;
+    process.env.KALANI_VAULT_ADDRESS ?? process.env.NEXT_PUBLIC_KALANI_VAULT_ADDRESS;
   if (configured) {
     return configured as Address;
   }
@@ -76,17 +75,19 @@ export const GET = async () => {
     const aprValue = normalizeApr(rawApr);
 
     if (typeof aprValue === "undefined") {
-      return NextResponse.json(
-        { error: "APR oracle returned an invalid value." },
-        { status: 502 },
-      );
+      return NextResponse.json({ error: "APR oracle returned an invalid value." }, { status: 502 });
     }
 
     return NextResponse.json({ aprPercent: aprValue * 100 });
   } catch (error) {
     console.error("Kalani APR oracle fetch failed", error);
 
-    if (error && typeof error === "object" && "shortMessage" in error && typeof error.shortMessage === "string") {
+    if (
+      error &&
+      typeof error === "object" &&
+      "shortMessage" in error &&
+      typeof error.shortMessage === "string"
+    ) {
       return NextResponse.json({ error: error.shortMessage }, { status: 502 });
     }
 
@@ -96,5 +97,3 @@ export const GET = async () => {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 };
-
-

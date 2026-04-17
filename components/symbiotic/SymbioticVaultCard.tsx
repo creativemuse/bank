@@ -22,8 +22,10 @@ interface SymbioticVaultCardProps {
 export function SymbioticVaultCard({ vault }: SymbioticVaultCardProps) {
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
-  const { formattedTvl, hasPosition, formattedBalance, isLoading } =
-    useSymbioticVault(vault.address as Address, vault.collateralDecimals);
+  const { formattedTvl, hasPosition, formattedBalance, isLoading } = useSymbioticVault(
+    vault.address as Address,
+    vault.collateralDecimals
+  );
 
   const [showInfo, setShowInfo] = useState(false);
   const isCorrectChain = chainId === SYMBIOTIC_CHAIN_ID;
@@ -38,7 +40,7 @@ export function SymbioticVaultCard({ vault }: SymbioticVaultCardProps) {
     window.open(
       `https://app.symbiotic.fi/restake/${vault.address}`,
       "_blank",
-      "noopener,noreferrer",
+      "noopener,noreferrer"
     );
   };
 
@@ -83,14 +85,12 @@ export function SymbioticVaultCard({ vault }: SymbioticVaultCardProps) {
             {hasPosition && (
               <div className="flex justify-between">
                 <span>Your Balance</span>
-                <span className="font-medium">
-                  {formattedBalance} shares
-                </span>
+                <span className="font-medium">{formattedBalance} shares</span>
               </div>
             )}
             <p className="mt-1 text-slate-500">
-              Recommended deposit: ${SYMBIOTIC_RECOMMENDED_MIN_USD.toLocaleString()}+.
-              Smaller deposits may see yield diluted by Ethereum mainnet gas fees.
+              Recommended deposit: ${SYMBIOTIC_RECOMMENDED_MIN_USD.toLocaleString()}+. Smaller
+              deposits may see yield diluted by Ethereum mainnet gas fees.
             </p>
           </div>
         ) : undefined

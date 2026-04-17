@@ -39,9 +39,7 @@ export function OnrampQuoteDisplay({
 
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="text-center text-sm font-semibold text-black">
-        Order Summary
-      </h3>
+      <h3 className="text-center text-sm font-semibold text-black">Order Summary</h3>
 
       <div className="flex flex-col gap-2 rounded-lg border border-gray-600 p-4">
         <div className="flex justify-between text-sm">
@@ -70,7 +68,9 @@ export function OnrampQuoteDisplay({
           <div className="border-t border-gray-500 pt-2">
             <div className="flex justify-between text-xs text-gray-900">
               <span>Total fees</span>
-              <span>-${totalFees.toFixed(2)} {paymentCurrency}</span>
+              <span>
+                -${totalFees.toFixed(2)} {paymentCurrency}
+              </span>
             </div>
           </div>
         )}
@@ -88,8 +88,7 @@ export function OnrampQuoteDisplay({
           <div className="flex justify-between text-xs text-gray-900">
             <span>Exchange rate</span>
             <span>
-              1 {purchaseCurrency} = ${Number(exchangeRate).toFixed(4)}{" "}
-              {paymentCurrency}
+              1 {purchaseCurrency} = ${Number(exchangeRate).toFixed(4)} {paymentCurrency}
             </span>
           </div>
         )}
@@ -108,9 +107,7 @@ export function OnrampQuoteDisplay({
         </PrimaryButton>
       </div>
 
-      <p className="text-center text-xs text-gray-900">
-        Quote auto-refreshes in {countdown}s
-      </p>
+      <p className="text-center text-xs text-gray-900">Quote auto-refreshes in {countdown}s</p>
     </div>
   );
 }

@@ -43,10 +43,10 @@ export function ThemeToggle() {
     <button
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       onClick={toggleTheme}
-      className="p-2 rounded-full border border-gray-300 bg-muted dark:bg-gray-800 dark:border-gray-600 transition-colors"
+      className="bg-muted rounded-full border border-gray-300 p-2 transition-colors dark:border-gray-600 dark:bg-gray-800"
       style={{ fontSize: 20 }}
     >
       {isDark ? "🌙" : "🔆"}
     </button>
   );
-} 
+}

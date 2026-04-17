@@ -4,12 +4,12 @@ This guide describes how to route the Yearn Kalani (ERC-4626) vault and Creative
 
 ## Addresses (Base)
 
-| Contract | Address |
-|----------|---------|
-| USDC | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
-| Creative Bank Kalani Vault (cbUSDC) | `0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE` |
-| Yearn V3 USDC Allocator Vault | `0xb13CF163d916917d9cD6E836905cA5f12a1dEF4B` |
-| Creative Bank Bouncer | Set after deploy; configure `NEXT_PUBLIC_CREATIVE_BANK_BOUNCER_ADDRESS` |
+| Contract                            | Address                                                                 |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| USDC                                | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`                            |
+| Creative Bank Kalani Vault (cbUSDC) | `0xec8C6e90e8e84A368cbF2c2fd13DdF67884Ec5EE`                            |
+| Yearn V3 USDC Allocator Vault       | `0xb13CF163d916917d9cD6E836905cA5f12a1dEF4B`                            |
+| Creative Bank Bouncer               | Set after deploy; configure `NEXT_PUBLIC_CREATIVE_BANK_BOUNCER_ADDRESS` |
 
 ## 1. Frontend wiring (Wagmi/Viem)
 

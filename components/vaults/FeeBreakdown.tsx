@@ -32,17 +32,16 @@ export function FeeBreakdown({ performanceFee, hasMembership }: FeeBreakdownProp
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3">
       <div className="flex items-center justify-between">
-        <h5 className="text-xs font-semibold uppercase text-slate-600">
-          Fee Breakdown
-        </h5>
-        <span className="text-xs text-slate-400">
-          on ${exampleProfit.toLocaleString()} profit
-        </span>
+        <h5 className="text-xs font-semibold text-slate-600 uppercase">Fee Breakdown</h5>
+        <span className="text-xs text-slate-400">on ${exampleProfit.toLocaleString()} profit</span>
       </div>
 
       <div className="flex flex-col gap-1 text-xs">
         <div className="flex justify-between">
-          <span className="text-slate-500" title="Aave takes 50% of performance fees to maintain the lending market's security and liquidity.">
+          <span
+            className="text-slate-500"
+            title="Aave takes 50% of performance fees to maintain the lending market's security and liquidity."
+          >
             Aave Labs (50% of fee)
           </span>
           <span className="font-medium text-slate-700">
@@ -51,9 +50,7 @@ export function FeeBreakdown({ performanceFee, hasMembership }: FeeBreakdownProp
         </div>
 
         <div className="flex justify-between">
-          <span className="text-slate-500">
-            Yearn V3 (10% of manager)
-          </span>
+          <span className="text-slate-500">Yearn V3 (10% of manager)</span>
           <span className="font-medium text-slate-700">
             {formatPct(yearnPercent)} &middot; ${yearnDollars.toFixed(0)}
           </span>

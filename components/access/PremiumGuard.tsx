@@ -22,9 +22,7 @@ export function PremiumGuard({ requiredTier, children }: PremiumGuardProps) {
   if (isLoading) {
     return (
       <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/70 p-6 text-sm text-slate-600">
-        <span className="animate-pulse text-slate-500">
-          Checking membership access…
-        </span>
+        <span className="animate-pulse text-slate-500">Checking membership access…</span>
       </section>
     );
   }

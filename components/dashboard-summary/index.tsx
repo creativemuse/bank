@@ -78,7 +78,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
             setWithdrawalStatus(null);
             return;
           }
-          
+
           // Allow withdrawals in any environment if API keys are configured
           // This enables testing in development/staging environments
         } catch (error) {
@@ -195,7 +195,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
   ];
 
   const dropdownTrigger = (
-    <button className="rounded-full bg-secondary p-2.5 hover:bg-secondary/80">
+    <button className="bg-secondary hover:bg-secondary/80 rounded-full p-2.5">
       <EllipsisVerticalIcon className="h-5 w-5 text-gray-500" />
     </button>
   );
@@ -207,7 +207,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
         <DepositButton onClick={onDepositClick} />
         <button
           type="button"
-          className="flex h-12 flex-grow items-center justify-center gap-2 rounded-full bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground transition hover:bg-secondary/80 md:w-40"
+          className="bg-secondary text-secondary-foreground hover:bg-secondary/80 flex h-12 flex-grow items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition md:w-40"
           onClick={onSendClick}
         >
           <ArrowUpRightIcon className="h-4 w-4 text-gray-500" /> Send

@@ -19,7 +19,7 @@ if (parts.length >= 3) {
   const prefix = parts[0];
   const chainId = parts[1];
   const tableId = parts.slice(2).join("_"); // In case tableId has underscores
-  
+
   console.log("📋 Table Name Breakdown:");
   console.log("");
   console.log(`   Full Name: ${tableName}`);
@@ -34,4 +34,3 @@ if (parts.length >= 3) {
   console.log(`⚠️  Table name format unexpected: ${tableName}`);
   console.log("   Expected format: {prefix}_{chainId}_{tableId}");
 }
-

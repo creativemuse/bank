@@ -7,26 +7,20 @@ import { generateJWT } from "@/utils/coinbase-sdk";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> },
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
     const { orderId } = await params;
 
     if (!orderId) {
-      return NextResponse.json(
-        { error: "orderId is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "orderId is required" }, { status: 400 });
     }
 
     const keyId = process.env.COINBASE_API_KEY_ID;
     const keySecret = process.env.COINBASE_API_KEY_SECRET;
 
     if (!keyId || !keySecret) {
-      return NextResponse.json(
-        { error: "Coinbase API keys not configured" },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: "Coinbase API keys not configured" }, { status: 500 });
     }
 
     const jwt = await generateJWT(
@@ -34,7 +28,7 @@ export async function GET(
       keySecret,
       "GET",
       `/platform/v2/onramp/orders/${orderId}`,
-      "api.cdp.coinbase.com",
+      "api.cdp.coinbase.com"
     );
 
     const response = await fetch(
@@ -44,7 +38,7 @@ export async function GET(
         headers: {
           Authorization: `Bearer ${jwt}`,
         },
-      },
+      }
     );
 
     if (!response.ok) {
@@ -52,7 +46,7 @@ export async function GET(
       console.error("Coinbase order status error:", errorText);
       return NextResponse.json(
         { error: "Failed to fetch order status" },
-        { status: response.status },
+        { status: response.status }
       );
     }
 
@@ -62,7 +56,7 @@ export async function GET(
     console.error("Order status error:", err.message);
     return NextResponse.json(
       { error: err.message || "Failed to fetch order status" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

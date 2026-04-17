@@ -11,8 +11,7 @@ interface PaymentIframeProps {
 
 const isLocalhost =
   typeof window !== "undefined" &&
-  (window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1");
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
 /**
  * Renders the Coinbase payment link.
@@ -72,8 +71,7 @@ export function PaymentIframe({
     return (
       <div className="flex flex-col items-center gap-4">
         <p className="text-center text-sm text-gray-900">
-          Coinbase payment cannot be embedded on localhost. Complete your payment
-          in a new tab.
+          Coinbase payment cannot be embedded on localhost. Complete your payment in a new tab.
         </p>
         {!tabOpened ? (
           <PrimaryButton
@@ -90,16 +88,10 @@ export function PaymentIframe({
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-600 border-t-gray-900" />
               Waiting for payment...
             </div>
-            <button
-              onClick={onPaymentComplete}
-              className="text-xs text-blue-700 underline"
-            >
+            <button onClick={onPaymentComplete} className="text-xs text-blue-700 underline">
               I completed the payment
             </button>
-            <button
-              onClick={onPaymentFailed}
-              className="text-xs text-gray-900 underline"
-            >
+            <button onClick={onPaymentFailed} className="text-xs text-gray-900 underline">
               Cancel
             </button>
           </div>
@@ -112,8 +104,8 @@ export function PaymentIframe({
   return (
     <div className="flex flex-col items-center gap-3">
       <p className="text-center text-xs text-gray-900">
-        Complete your payment below. If you don&apos;t see a Pay button, scan
-        the QR code with your phone.
+        Complete your payment below. If you don&apos;t see a Pay button, scan the QR code with your
+        phone.
       </p>
       <iframe
         src={paymentUrl}
