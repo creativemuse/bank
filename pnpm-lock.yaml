@@ -87,8 +87,8 @@ importers:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       stytch:
-        specifier: ^13.2.5
-        version: 13.2.5
+        specifier: ^14.0.0
+        version: 14.0.0
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
@@ -7191,8 +7191,8 @@ packages:
   stylis@4.2.0:
     resolution: {integrity: sha512-Orov6g6BB1sDfYgzWfTHDOxamtX1bE/zo104Dh9e6fqJ3PooipYyfJ0pUmrZO2wAvO8YbEyeFrkV91XTsGMSrw==}
 
-  stytch@13.2.5:
-    resolution: {integrity: sha512-RrYJMRqqelChmOkj90G/K8whHIkXo4kQT7qFWMK1mvrWGgnAoDDvpYKRrTfXuax75bfm3P6wXXjQWCrqLP5m2g==}
+  stytch@14.0.0:
+    resolution: {integrity: sha512-W4C6JaP/GiMMbKGZ40ECNoNajkcvF7oJAo114ZcycF34P+HXML5B/28xRwwlZh9CJzAinQ33/cDw9/9imCnv/Q==}
     engines: {node: '>= 18.0.0'}
 
   sudo-prompt@9.2.1:
@@ -19104,7 +19104,7 @@ snapshots:
 
   stylis@4.2.0: {}
 
-  stytch@13.2.5:
+  stytch@14.0.0:
     dependencies:
       jose: 5.10.0
       undici: 6.24.1
