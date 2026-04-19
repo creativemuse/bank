@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@aave/react':
-        specifier: ^0.7.1
-        version: 0.7.1(c65208232a3ab0d4525bbd90abc7e0db)
+        specifier: ^0.8.2
+        version: 0.8.2(c65208232a3ab0d4525bbd90abc7e0db)
       '@coinbase/cdp-sdk':
         specifier: ^1.48.0
         version: 1.48.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -164,8 +164,8 @@ packages:
       graphql: ^15.5.0 || ^16.0.0 || ^17.0.0
       typescript: ^5.0.0
 
-  '@aave/client@0.8.0':
-    resolution: {integrity: sha512-QW2IKOuae0jp7XV9YCUwtB00QNdO2LbybGXRV0SkehcCIgFAx6SeY3daXrtm/s1d6ysqvEJJEvXkoaXhAt76QQ==}
+  '@aave/client@0.9.2':
+    resolution: {integrity: sha512-PTbbgzZQWdjUNJQZd0Mvrk5NG5RhLEnhG283fjIYnZCSeu2YUSeyiHTUCONY7C0u5dwdt/CpZZ309isgNkwPVA==}
     peerDependencies:
       '@privy-io/server-auth': ^1.28.8
       ethers: ^6.14.4
@@ -184,11 +184,11 @@ packages:
   '@aave/core@0.1.0':
     resolution: {integrity: sha512-c+QsD/XO7y1pr6hGqufWAbAVI5w2E4s8IzEI545HbWa+Qqe4EhfRZ67P+yXBayfjUROU33AgIuI0Fq+7qMdHMA==}
 
-  '@aave/graphql@0.8.0':
-    resolution: {integrity: sha512-S5NoQk50ypHjdTP6hJvNQW336J2fgqRrFdDlgmr6u3j7DShVTIKw3taP9spbyfGQnkIYmgzs2ZCQN/8Xq81f3Q==}
+  '@aave/graphql@0.11.0':
+    resolution: {integrity: sha512-jXQdgHo8Q0nz7slKKdIOVJvbAO92XnrlEjglbBI8ycrBlnT3eDhh2moCGj/f1kSauc/Y/fsvIlC/rrmemeR3LA==}
 
-  '@aave/react@0.7.1':
-    resolution: {integrity: sha512-ycnzgCz3RVrhfruuhi1P93e470KE3RyzVdTh71KgM7bM4Z8b/Gr8ocMqhkK/WCnue9p1QZGNVt00/l3d9DtY0A==}
+  '@aave/react@0.8.2':
+    resolution: {integrity: sha512-4r3zkikrPNb2iAIz2A2AWuI7Ve+GXA+FL+RHvZXybLzj1C6XSVIjCGQoLNxoDobyu7OEvzNVPU/iRxcnzrv62g==}
     peerDependencies:
       '@privy-io/react-auth': ^2.20.0
       '@types/react': ^19.1.8
@@ -7818,10 +7818,10 @@ snapshots:
       graphql: 16.13.2
       typescript: 5.8.3
 
-  '@aave/client@0.8.0(9d322b260d96e22563d3533a401f0aba)':
+  '@aave/client@0.9.2(9d322b260d96e22563d3533a401f0aba)':
     dependencies:
       '@aave/core': 0.1.0
-      '@aave/graphql': 0.8.0(typescript@5.8.3)
+      '@aave/graphql': 0.11.0(typescript@5.8.3)
       '@aave/types': 0.2.0
       '@urql/core': 5.2.0(graphql@16.13.2)
       graphql: 16.13.2
@@ -7840,7 +7840,7 @@ snapshots:
       '@urql/core': 5.2.0(graphql@16.13.2)
       graphql: 16.13.2
 
-  '@aave/graphql@0.8.0(typescript@5.8.3)':
+  '@aave/graphql@0.11.0(typescript@5.8.3)':
     dependencies:
       '@aave/types': 0.2.0
       gql.tada: 1.8.13(graphql@16.13.2)(typescript@5.8.3)
@@ -7851,10 +7851,10 @@ snapshots:
       - '@gql.tada/vue-support'
       - typescript
 
-  '@aave/react@0.7.1(c65208232a3ab0d4525bbd90abc7e0db)':
+  '@aave/react@0.8.2(c65208232a3ab0d4525bbd90abc7e0db)':
     dependencies:
-      '@aave/client': 0.8.0(9d322b260d96e22563d3533a401f0aba)
-      '@aave/graphql': 0.8.0(typescript@5.8.3)
+      '@aave/client': 0.9.2(9d322b260d96e22563d3533a401f0aba)
+      '@aave/graphql': 0.11.0(typescript@5.8.3)
       '@aave/types': 0.2.0
       react: 19.2.5
       thirdweb: 5.111.8(@hey-api/openapi-ts@0.87.1(typescript@5.8.3))(@react-native-async-storage/async-storage@2.2.0(react-native@0.74.0(@babel/core@7.28.3)(@babel/preset-env@7.28.3(@babel/core@7.28.3))(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.5)(utf-8-validate@5.0.10)))(@solana/sysvars@5.5.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3))(@tanstack/query-core@5.99.0)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(bufferutil@4.1.0)(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.5(react@19.2.5))(react-native@0.74.0(@babel/core@7.28.3)(@babel/preset-env@7.28.3(@babel/core@7.28.3))(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.5)(utf-8-validate@5.0.10))(react@19.2.5)(typescript@5.8.3)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))
