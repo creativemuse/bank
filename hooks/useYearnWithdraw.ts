@@ -21,13 +21,13 @@ type UseYearnWithdrawReturn = {
  * Hook to handle Yearn V3 vault withdrawals using the redeem function
  * Recommended over withdraw function per Yearn V3 best practices
  * Supports both Crossmint wallet and wagmi wallet
- * 
+ *
  * @param vaultAddress - Address of the Yearn V3 vault
  * @param walletClient - Optional wallet client (for Crossmint support)
  */
 export const useYearnWithdraw = (
   vaultAddress: Address | undefined,
-  walletClient?: WalletClient,
+  walletClient?: WalletClient
 ): UseYearnWithdrawReturn => {
   const [state, setState] = useState<WithdrawState>({ status: "idle" });
 
@@ -47,7 +47,7 @@ export const useYearnWithdraw = (
       shares: bigint,
       receiver: Address,
       owner: Address,
-      maxLossBps: number = MAX_LOSS_BPS.UNLIMITED,
+      maxLossBps: number = MAX_LOSS_BPS.UNLIMITED
     ) => {
       if (!vaultAddress) {
         setState({
@@ -63,18 +63,18 @@ export const useYearnWithdraw = (
         // Try with maxLoss first (for Yearn V3 vaults)
         // If that fails, fall back to standard ERC-4626 redeem (for Aave vaults)
         let redeemHash: `0x${string}`;
-        
+
         try {
           // Use custom wallet client if provided (Crossmint), otherwise use wagmi
           if (activeWalletClient) {
             // Get account from wallet client
             const accounts = await activeWalletClient.getAddresses();
             const account = accounts[0];
-            
+
             if (!account) {
               throw new Error("No account available in wallet");
             }
-            
+
             // Attempt with maxLoss parameter (Yearn V3 style)
             try {
               const data = encodeFunctionData({
@@ -82,7 +82,7 @@ export const useYearnWithdraw = (
                 functionName: "redeem",
                 args: [shares, receiver, owner, BigInt(maxLossBps)],
               });
-              
+
               redeemHash = await activeWalletClient.sendTransaction({
                 account,
                 to: vaultAddress,
@@ -109,7 +109,7 @@ export const useYearnWithdraw = (
                 functionName: "redeem",
                 args: [shares, receiver, owner],
               });
-              
+
               redeemHash = await activeWalletClient.sendTransaction({
                 account,
                 to: vaultAddress,
@@ -180,7 +180,7 @@ export const useYearnWithdraw = (
         });
       }
     },
-    [vaultAddress, activeWalletClient, writeRedeem],
+    [vaultAddress, activeWalletClient, writeRedeem]
   );
 
   return {
@@ -193,12 +193,12 @@ export const useYearnWithdraw = (
 /**
  * Hook to handle Yearn V3 vault withdrawals using the withdraw function
  * Note: redeem is recommended over withdraw, but this is provided for completeness
- * 
+ *
  * @param vaultAddress - Address of the Yearn V3 vault
  * @param maxLossBps - Maximum loss in basis points (default: 0 = 0%)
  */
 export const useYearnWithdrawAssets = (
-  vaultAddress: Address | undefined,
+  vaultAddress: Address | undefined
 ): UseYearnWithdrawReturn => {
   const [state, setState] = useState<WithdrawState>({ status: "idle" });
 
@@ -214,7 +214,7 @@ export const useYearnWithdrawAssets = (
       assets: bigint,
       receiver: Address,
       owner: Address,
-      maxLossBps: number = MAX_LOSS_BPS.NONE,
+      maxLossBps: number = MAX_LOSS_BPS.NONE
     ) => {
       if (!vaultAddress) {
         setState({
@@ -259,7 +259,7 @@ export const useYearnWithdrawAssets = (
         });
       }
     },
-    [vaultAddress, writeWithdraw],
+    [vaultAddress, writeWithdraw]
   );
 
   return {
@@ -268,4 +268,3 @@ export const useYearnWithdrawAssets = (
     reset,
   };
 };
-

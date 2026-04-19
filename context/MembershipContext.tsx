@@ -53,7 +53,7 @@ const createInitialLockState = () =>
       "Creative Brand": { hasValidKey: false, expiresAtMs: null },
       "Creative Investor": { hasValidKey: false, expiresAtMs: null },
       "Creative Creator": { hasValidKey: false, expiresAtMs: null },
-    },
+    }
   );
 
 const initialLockState = createInitialLockState();
@@ -103,40 +103,40 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
     return null;
   }, [address, authStatus, wallet, walletStatus]);
 
-  const applyResults = useCallback(
-    (locks: Record<MembershipTier, MembershipLockState>) => {
-      console.log("[MembershipContext] ========================================");
-      console.log("[MembershipContext] Applying membership results");
-      console.log("[MembershipContext] Raw locks data:", locks);
+  const applyResults = useCallback((locks: Record<MembershipTier, MembershipLockState>) => {
+    console.log("[MembershipContext] ========================================");
+    console.log("[MembershipContext] Applying membership results");
+    console.log("[MembershipContext] Raw locks data:", locks);
 
-      const validLocks = MEMBERSHIP_LOCKS.filter((lock) => {
-        const isValid = locks[lock.tier]?.hasValidKey;
-        console.log(`[MembershipContext] ${lock.tier}:`, {
-          hasValidKey: isValid,
-          priority: lock.priority,
-          expiresAtMs: locks[lock.tier]?.expiresAtMs,
-          expiresAt: locks[lock.tier]?.expiresAtMs 
-            ? new Date(locks[lock.tier].expiresAtMs!).toISOString() 
-            : "N/A",
-        });
-        return isValid;
+    const validLocks = MEMBERSHIP_LOCKS.filter((lock) => {
+      const isValid = locks[lock.tier]?.hasValidKey;
+      console.log(`[MembershipContext] ${lock.tier}:`, {
+        hasValidKey: isValid,
+        priority: lock.priority,
+        expiresAtMs: locks[lock.tier]?.expiresAtMs,
+        expiresAt: locks[lock.tier]?.expiresAtMs
+          ? new Date(locks[lock.tier].expiresAtMs!).toISOString()
+          : "N/A",
       });
+      return isValid;
+    });
 
-      const sorted = validLocks.sort((a, b) => b.priority - a.priority);
-      const tier = sorted.length > 0 ? sorted[0].tier : null;
+    const sorted = validLocks.sort((a, b) => b.priority - a.priority);
+    const tier = sorted.length > 0 ? sorted[0].tier : null;
 
-      console.log("[MembershipContext] Valid locks found:", validLocks.map(l => l.tier));
-      console.log("[MembershipContext] Selected highest priority tier:", tier);
-      console.log("[MembershipContext] ========================================");
+    console.log(
+      "[MembershipContext] Valid locks found:",
+      validLocks.map((l) => l.tier)
+    );
+    console.log("[MembershipContext] Selected highest priority tier:", tier);
+    console.log("[MembershipContext] ========================================");
 
-      setState({
-        tier,
-        isLoading: false,
-        locks,
-      });
-    },
-    [],
-  );
+    setState({
+      tier,
+      isLoading: false,
+      locks,
+    });
+  }, []);
 
   const resetState = useCallback(() => {
     setState({
@@ -198,7 +198,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       locks: state.locks,
       refresh,
     }),
-    [state, refresh],
+    [state, refresh]
   );
 
   return <MembershipContext.Provider value={value}>{children}</MembershipContext.Provider>;
@@ -207,4 +207,3 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
 export function useMembership() {
   return useContext(MembershipContext);
 }
-

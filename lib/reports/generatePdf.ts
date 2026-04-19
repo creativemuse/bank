@@ -29,7 +29,7 @@ export function downloadPdf(report: EarningsReport): void {
         <td>$${tx.amount}</td>
         <td>${tx.fee ? `$${tx.fee}` : "—"}</td>
         <td>${tx.source}</td>
-      </tr>`,
+      </tr>`
     )
     .join("");
 

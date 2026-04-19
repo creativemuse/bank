@@ -13,7 +13,12 @@ import { CoverPrompt } from "@/components/nexus/CoverPrompt";
 import { NEXUS_YEARN_V3_PRODUCT_ID } from "@/lib/config/nexus-mutual";
 import { useYearnDeposit } from "@/hooks/useYearnDeposit";
 import { useYearnWithdraw } from "@/hooks/useYearnWithdraw";
-import { useYearnVaultBalance, usePreviewDeposit, usePreviewRedeem, useMaxDeposit } from "@/hooks/useYearnVaults";
+import {
+  useYearnVaultBalance,
+  usePreviewDeposit,
+  usePreviewRedeem,
+  useMaxDeposit,
+} from "@/hooks/useYearnVaults";
 import { MAX_LOSS_BPS } from "@/lib/config/yearn";
 import { parseInputAmount, formatVaultShares, formatUsdValue } from "@/lib/yearnUtils";
 
@@ -81,39 +86,39 @@ export const YearnVaultModal = ({
                   maxFeePerGas?: string;
                   maxPriorityFeePerGas?: string;
                 };
-                
+
                 // Validate required fields
                 if (!tx.to) {
                   throw new Error("Transaction 'to' address is required");
                 }
-                
+
                 // Convert viem transaction format to Crossmint format
                 const valueHex = tx.value || "0x0";
                 const valueBigInt = BigInt(valueHex);
-                
+
                 const transaction = {
                   to: tx.to as `0x${string}`,
                   value: valueBigInt,
                   data: (tx.data || "0x") as `0x${string}`,
                 };
-                
+
                 // Send transaction using Crossmint's EVMWallet
                 const result = await evmWallet.sendTransaction(transaction);
-                
+
                 // Return the transaction hash in the format viem expects
                 return result.hash;
               }
-              
+
               // Handle account requests
               if (method === "eth_accounts" || method === "eth_requestAccounts") {
                 return [crossmintWallet.address];
               }
-              
+
               // Handle chain ID requests
               if (method === "eth_chainId") {
                 return `0x${chain.id.toString(16)}`;
               }
-              
+
               // For other methods, you might need to implement them or throw
               throw new Error(`Method ${method} not yet supported with Crossmint wallet adapter`);
             },
@@ -123,31 +128,33 @@ export const YearnVaultModal = ({
         console.error("Failed to create wallet client from Crossmint wallet:", error);
       }
     }
-    
+
     // Fallback to wagmi wallet client
     return wagmiWalletClient ?? undefined;
   }, [crossmintWallet, wagmiWalletClient]);
-  
+
   const [inputAmount, setInputAmount] = useState("");
   const [maxLossPercent, setMaxLossPercent] = useState(1); // Default 1% max loss
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Hooks for vault interactions - pass wallet client for Crossmint support
-  const { deposit, state: depositState, reset: resetDeposit } = useYearnDeposit(
-    vaultAddress,
-    assetAddress,
-    walletClient,
-  );
-  const { redeem, state: withdrawState, reset: resetWithdraw } = useYearnWithdraw(
-    vaultAddress,
-    walletClient,
-  );
+  const {
+    deposit,
+    state: depositState,
+    reset: resetDeposit,
+  } = useYearnDeposit(vaultAddress, assetAddress, walletClient);
+  const {
+    redeem,
+    state: withdrawState,
+    reset: resetWithdraw,
+  } = useYearnWithdraw(vaultAddress, walletClient);
 
   // Get user's vault balance
-  const { shareBalance, assetValue, refetch: refetchBalance } = useYearnVaultBalance(
-    vaultAddress,
-    userAddress,
-  );
+  const {
+    shareBalance,
+    assetValue,
+    refetch: refetchBalance,
+  } = useYearnVaultBalance(vaultAddress, userAddress);
 
   // Parse input amount to bigint
   // In withdraw mode, we're entering shares (shareDecimals)
@@ -163,23 +170,21 @@ export const YearnVaultModal = ({
   // Preview deposit (get expected shares)
   const { expectedShares } = usePreviewDeposit(
     vaultAddress,
-    mode === "deposit" ? parsedAmount ?? undefined : undefined,
+    mode === "deposit" ? (parsedAmount ?? undefined) : undefined
   );
 
   // Preview withdrawal (get expected assets)
   const { expectedAssets } = usePreviewRedeem(
     vaultAddress,
-    mode === "withdraw" ? parsedAmount ?? undefined : undefined,
+    mode === "withdraw" ? (parsedAmount ?? undefined) : undefined
   );
 
   // Check max deposit for validation
-  const { maxDeposit } = useMaxDeposit(
-    vaultAddress,
-    mode === "deposit" ? userAddress : undefined,
-  );
+  const { maxDeposit } = useMaxDeposit(vaultAddress, mode === "deposit" ? userAddress : undefined);
 
   const state = mode === "deposit" ? depositState : withdrawState;
-  const isSubmitting = state.status === "approving" || state.status === "depositing" || state.status === "redeeming";
+  const isSubmitting =
+    state.status === "approving" || state.status === "depositing" || state.status === "redeeming";
 
   const resetForm = useCallback(() => {
     setInputAmount("");
@@ -280,16 +285,16 @@ export const YearnVaultModal = ({
       if (isBalanceLoading) {
         return "Balance is loading. Please wait...";
       }
-      
+
       // Ensure we have a valid balance before checking
       if (userAssetBalance === undefined) {
         return "Unable to fetch balance. Please try again.";
       }
-      
+
       if (parsedAmount > userAssetBalance) {
         return `Insufficient ${assetSymbol} balance.`;
       }
-      
+
       // Check maxDeposit limit
       if (maxDeposit !== undefined) {
         if (maxDeposit === 0n) {
@@ -373,7 +378,7 @@ export const YearnVaultModal = ({
       resetDeposit,
       resetWithdraw,
       refetchBalance,
-    ],
+    ]
   );
 
   const handleMaxClick = useCallback(() => {
@@ -398,12 +403,15 @@ export const YearnVaultModal = ({
       showCloseButton
       className="max-w-lg bg-white text-slate-900"
     >
-      <form className="mt-6 flex w-full flex-col gap-5 text-sm text-slate-700" onSubmit={handleSubmit}>
+      <form
+        className="mt-6 flex w-full flex-col gap-5 text-sm text-slate-700"
+        onSubmit={handleSubmit}
+      >
         {/* Amount Input */}
         <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <label className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium uppercase text-slate-500">
+              <span className="text-xs font-medium text-slate-500 uppercase">
                 {mode === "deposit" ? `${assetSymbol} Amount` : "Shares to Redeem"}
               </span>
               <span className="text-xs text-slate-500">
@@ -440,7 +448,9 @@ export const YearnVaultModal = ({
           {mode === "deposit" && expectedShares && (
             <div className="flex items-center justify-between rounded-lg bg-white p-3 text-sm">
               <span className="text-slate-500">Expected Shares:</span>
-              <span className="font-medium text-slate-900">{formatVaultShares(expectedShares, shareDecimals)}</span>
+              <span className="font-medium text-slate-900">
+                {formatVaultShares(expectedShares, shareDecimals)}
+              </span>
             </div>
           )}
 
@@ -464,7 +474,7 @@ export const YearnVaultModal = ({
               </p>
             </div>
             <label className="flex flex-col gap-2">
-              <span className="text-xs font-medium uppercase text-slate-500">
+              <span className="text-xs font-medium text-slate-500 uppercase">
                 Max Loss Percentage
               </span>
               <input
@@ -494,7 +504,9 @@ export const YearnVaultModal = ({
             {mode === "withdraw" && assetValue && (
               <div className="flex justify-between">
                 <span className="text-emerald-700">Your Position Value:</span>
-                <span className="font-medium">{formatUnits(assetValue, assetDecimals)} {assetSymbol}</span>
+                <span className="font-medium">
+                  {formatUnits(assetValue, assetDecimals)} {assetSymbol}
+                </span>
               </div>
             )}
           </div>
@@ -579,4 +591,3 @@ export const YearnVaultModal = ({
     </Modal>
   );
 };
-

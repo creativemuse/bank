@@ -3,6 +3,7 @@
 ## Prerequisites
 
 1. **Environment Variables**: Ensure your `.env` file contains:
+
    ```bash
    PRIVATE_KEY=your_private_key_here
    BASESCAN_API_KEY=your_basescan_api_key_here
@@ -40,6 +41,7 @@ forge script script/DeployStrategies.s.sol:DeployStrategies \
 ```
 
 **Save the deployed addresses** from the console output and update your `.env` file:
+
 ```bash
 AAVE_STRATEGY=0x...
 COMPOUND_STRATEGY=0x...
@@ -61,6 +63,7 @@ forge script script/DeployVault.s.sol:DeployVault \
 ```
 
 **Save the vault address** and update your `.env` file:
+
 ```bash
 VAULT_ADDRESS=0x...
 ```
@@ -79,6 +82,7 @@ forge script script/AddStrategies.s.sol:AddStrategies \
 ## Verification
 
 After deployment, verify contracts on Basescan:
+
 - Go to https://sepolia.basescan.org/
 - Search for your deployed contract addresses
 - Verify they are verified and readable
@@ -86,18 +90,22 @@ After deployment, verify contracts on Basescan:
 ## Troubleshooting
 
 ### "PRIVATE_KEY not found"
+
 - Ensure `.env` file exists in project root
 - Check that `PRIVATE_KEY` is set (without `0x` prefix)
 
 ### "Insufficient funds"
+
 - Get Base Sepolia ETH from a faucet
 - Check your wallet balance
 
 ### "Contract verification failed"
+
 - Ensure `BASESCAN_API_KEY` is set correctly
 - Check that compiler settings match `foundry.toml`
 
 ### "Strategy addresses not found"
+
 - Make sure you deployed strategies first (Step 1)
 - Verify addresses are correct in `.env`
 

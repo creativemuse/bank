@@ -9,9 +9,7 @@ export function getStytchClient(): stytch.Client {
   const secret = process.env.STYTCH_SECRET;
 
   if (!projectId || !secret) {
-    throw new Error(
-      "STYTCH_PROJECT_ID and STYTCH_SECRET must be set in environment variables",
-    );
+    throw new Error("STYTCH_PROJECT_ID and STYTCH_SECRET must be set in environment variables");
   }
 
   client = new stytch.Client({

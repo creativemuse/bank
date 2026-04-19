@@ -40,7 +40,7 @@ export function useSymbioticVault(vaultAddress: Address, decimals: number = 18) 
 
   const hasPosition = useMemo(
     () => userBalance != null && (userBalance as bigint) > 0n,
-    [userBalance],
+    [userBalance]
   );
 
   return {

@@ -16,8 +16,7 @@ export const NEXUS_YEARN_V3_PRODUCT_ID = 123;
 export const NEXUS_COVER_CHAIN_ID = 1;
 
 /** CoverBroker contract on Ethereum mainnet (from @nexusmutual/sdk addresses). */
-export const NEXUS_COVER_BROKER_ADDRESS: Address =
-  "0xCB2B736652D2dBf7d72e4dB880Cf6B7d99507814";
+export const NEXUS_COVER_BROKER_ADDRESS: Address = "0xCB2B736652D2dBf7d72e4dB880Cf6B7d99507814";
 
 /** Min cover period in days (Nexus Mutual). */
 export const NEXUS_MIN_COVER_PERIOD_DAYS = 28;

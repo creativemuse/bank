@@ -19,13 +19,8 @@ export function CheckoutIframe({ onClose }: CheckoutIframeProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-slate-900">
-          Complete Purchase
-        </h4>
-        <button
-          onClick={onClose}
-          className="text-xs text-slate-500 hover:text-slate-700"
-        >
+        <h4 className="text-sm font-semibold text-slate-900">Complete Purchase</h4>
+        <button onClick={onClose} className="text-xs text-slate-500 hover:text-slate-700">
           Cancel
         </button>
       </div>

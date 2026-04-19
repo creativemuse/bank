@@ -2,11 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import {
-  MEMBERSHIP_LOCKS,
-  TIER_PRICING,
-  type MembershipTier,
-} from "@/lib/config/memberships";
+import { MEMBERSHIP_LOCKS, TIER_PRICING, type MembershipTier } from "@/lib/config/memberships";
 import { unlockChainLabel } from "@/lib/config/unlock";
 import { useMembership } from "@/context/MembershipContext";
 import { formatDateMs } from "@/lib/formatters";
@@ -33,12 +29,10 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
         }
         return b.priority - a.priority;
       }),
-    [],
+    []
   );
 
-  const hasAnyKey = sortedLocks.some(
-    (lock) => membership.locks[lock.tier]?.hasValidKey,
-  );
+  const hasAnyKey = sortedLocks.some((lock) => membership.locks[lock.tier]?.hasValidKey);
 
   if (showCheckout) {
     return (
@@ -56,16 +50,13 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
       <header className="flex flex-col gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+        <p className="text-xs font-semibold tracking-wide text-emerald-700 uppercase">
           Creative Membership
         </p>
-        <h3 className="text-xl font-semibold text-emerald-900">
-          Premium Access Required
-        </h3>
+        <h3 className="text-xl font-semibold text-emerald-900">Premium Access Required</h3>
         <p className="text-sm text-emerald-800">
-          Access to this feature requires a Creative membership NFT on{" "}
-          {unlockChainLabel}. Choose from three tiers to unlock premium
-          features and lower fees.
+          Access to this feature requires a Creative membership NFT on {unlockChainLabel}. Choose
+          from three tiers to unlock premium features and lower fees.
         </p>
       </header>
 
@@ -73,9 +64,7 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
         {sortedLocks.map((lock) => {
           const state = membership.locks[lock.tier];
           const hasKey = Boolean(state?.hasValidKey);
-          const expiresAt = state?.expiresAtMs
-            ? formatDateMs(state.expiresAtMs)
-            : null;
+          const expiresAt = state?.expiresAtMs ? formatDateMs(state.expiresAtMs) : null;
           const pricing = TIER_PRICING[lock.tier];
 
           return (
@@ -85,9 +74,7 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
             >
               <div className="flex items-start justify-between">
                 <div className="flex flex-col gap-1">
-                  <span className="text-base font-semibold text-slate-900">
-                    {lock.tier}
-                  </span>
+                  <span className="text-base font-semibold text-slate-900">{lock.tier}</span>
                   <span className="text-xs text-slate-600">
                     {pricing.price} / {pricing.duration}
                   </span>
@@ -99,9 +86,7 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
                 )}
               </div>
               {hasKey && expiresAt && (
-                <span className="text-xs text-emerald-600">
-                  Valid until {expiresAt}
-                </span>
+                <span className="text-xs text-emerald-600">Valid until {expiresAt}</span>
               )}
             </div>
           );
@@ -118,8 +103,7 @@ export function UnlockPrompt({ currentTier }: UnlockPromptProps) {
 
       {currentTier && (
         <p className="text-xs text-emerald-700">
-          Current tier: <strong>{currentTier}</strong>. A higher tier is
-          required for this feature.
+          Current tier: <strong>{currentTier}</strong>. A higher tier is required for this feature.
         </p>
       )}
     </section>

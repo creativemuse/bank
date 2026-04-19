@@ -14,7 +14,7 @@ dotenv.config({ path: resolve(process.cwd(), ".env") });
 async function main() {
   try {
     const tableName = process.env.TABLELAND_TABLE_NAME || "transactions_8453_26";
-    
+
     console.log("🧪 Testing Tableland table query...");
     console.log(`📋 Table Name: ${tableName}`);
     console.log("");
@@ -24,13 +24,11 @@ async function main() {
     }
 
     const db = await getTablelandDatabase();
-    
+
     // Test 1: Query without quotes
     console.log("Test 1: Query without quotes");
     try {
-      const { results } = await db
-        .prepare(`SELECT COUNT(*) as count FROM ${tableName}`)
-        .all();
+      const { results } = await db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).all();
       console.log(`✅ Success! Count: ${results[0]?.count || 0}`);
     } catch (error: any) {
       console.log(`❌ Failed: ${error.message}`);
@@ -40,9 +38,7 @@ async function main() {
     // Test 2: Query with quotes
     console.log("Test 2: Query with quotes");
     try {
-      const { results } = await db
-        .prepare(`SELECT COUNT(*) as count FROM "${tableName}"`)
-        .all();
+      const { results } = await db.prepare(`SELECT COUNT(*) as count FROM "${tableName}"`).all();
       console.log(`✅ Success! Count: ${results[0]?.count || 0}`);
     } catch (error: any) {
       console.log(`❌ Failed: ${error.message}`);
@@ -66,7 +62,7 @@ async function main() {
     console.log("");
     console.log("💡 If you're seeing 'Invalid table name' in Studio:");
     console.log("   1. Make sure you're using the full table name: transactions_8453_26");
-    console.log("   2. Try quoting it: \"transactions_8453_26\"");
+    console.log('   2. Try quoting it: "transactions_8453_26"');
     console.log("   3. Tables created via SDK work, but may not show in Studio Definitions");
     console.log("");
   } catch (error) {
@@ -83,4 +79,3 @@ async function main() {
 }
 
 main();
-

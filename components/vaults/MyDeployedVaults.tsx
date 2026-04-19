@@ -48,11 +48,11 @@ export const MyDeployedVaults = () => {
 
   const apiAddressSet = useMemo(
     () => new Set(apiVaults.map((v) => v.address.toLowerCase())),
-    [apiVaults],
+    [apiVaults]
   );
   const localOnlyVaults = useMemo(
     () => localVaults.filter((v) => !apiAddressSet.has(v.address.toLowerCase())),
-    [localVaults, apiAddressSet],
+    [localVaults, apiAddressSet]
   );
 
   const saveLocalVaults = useCallback((newVaults: DeployedVault[]) => {
@@ -98,15 +98,24 @@ export const MyDeployedVaults = () => {
     setNewVaultTxHash("");
     setNewVaultPerformanceFee("");
     setShowAddForm(false);
-  }, [newVaultAddress, newVaultName, newVaultTxHash, newVaultPerformanceFee, localVaults, saveLocalVaults]);
+  }, [
+    newVaultAddress,
+    newVaultName,
+    newVaultTxHash,
+    newVaultPerformanceFee,
+    localVaults,
+    saveLocalVaults,
+  ]);
 
   const handleRemoveVault = useCallback(
     (address: Address) => {
       if (confirm("Remove this vault from your list?")) {
-        saveLocalVaults(localVaults.filter((v) => v.address.toLowerCase() !== address.toLowerCase()));
+        saveLocalVaults(
+          localVaults.filter((v) => v.address.toLowerCase() !== address.toLowerCase())
+        );
       }
     },
-    [localVaults, saveLocalVaults],
+    [localVaults, saveLocalVaults]
   );
 
   const hasAnyVaults = apiVaults.length > 0 || localOnlyVaults.length > 0;
@@ -161,7 +170,7 @@ export const MyDeployedVaults = () => {
                 value={newVaultAddress}
                 onChange={(e) => setNewVaultAddress(e.target.value)}
                 placeholder="0x..."
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-500 focus:outline-none"
               />
               <p className="mt-1 text-xs text-slate-500">
                 Find this in your deployment transaction on Basescan (check "Internal Transactions"
@@ -177,7 +186,7 @@ export const MyDeployedVaults = () => {
                 value={newVaultName}
                 onChange={(e) => setNewVaultName(e.target.value)}
                 placeholder="My Aave Vault"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-500 focus:outline-none"
               />
             </div>
             <div>
@@ -189,7 +198,7 @@ export const MyDeployedVaults = () => {
                 value={newVaultTxHash}
                 onChange={(e) => setNewVaultTxHash(e.target.value)}
                 placeholder="0x..."
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-500 focus:outline-none"
               />
             </div>
             <div>
@@ -202,10 +211,11 @@ export const MyDeployedVaults = () => {
                 value={newVaultPerformanceFee}
                 onChange={(e) => setNewVaultPerformanceFee(e.target.value)}
                 placeholder="12"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-500 focus:outline-none"
               />
               <p className="mt-1 text-xs text-slate-500">
-                Enter the performance fee percentage (e.g., 12 for 12%) to calculate net APR. Aave Labs takes 50% of this fee.
+                Enter the performance fee percentage (e.g., 12 for 12%) to calculate net APR. Aave
+                Labs takes 50% of this fee.
               </p>
             </div>
             <div className="flex gap-2">
@@ -232,9 +242,7 @@ export const MyDeployedVaults = () => {
         </div>
       )}
 
-      {apiLoading ? (
-        <p className="text-sm text-slate-500">Loading your vaults…</p>
-      ) : null}
+      {apiLoading ? <p className="text-sm text-slate-500">Loading your vaults…</p> : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {apiVaults.map((vault) => (
@@ -242,7 +250,9 @@ export const MyDeployedVaults = () => {
             <DeployedVaultCard
               vault={vault}
               vaultAddress={vault.address as Address}
-              assetAddress={(vault.usedReserve?.underlyingToken?.address ?? USDC_ADDRESS_BASE) as Address}
+              assetAddress={
+                (vault.usedReserve?.underlyingToken?.address ?? USDC_ADDRESS_BASE) as Address
+              }
               assetSymbol={vault.usedReserve?.underlyingToken?.symbol ?? "USDC"}
               assetDecimals={vault.usedReserve?.underlyingToken?.decimals ?? 6}
               name={vault.shareName}
@@ -264,7 +274,7 @@ export const MyDeployedVaults = () => {
             />
             <button
               onClick={() => handleRemoveVault(vault.address)}
-              className="absolute right-2 top-2 z-10 rounded-full bg-red-100 p-1.5 text-red-600 transition hover:bg-red-200"
+              className="absolute top-2 right-2 z-10 rounded-full bg-red-100 p-1.5 text-red-600 transition hover:bg-red-200"
               aria-label="Remove vault"
               title="Remove vault"
             >
@@ -289,4 +299,3 @@ export const MyDeployedVaults = () => {
     </div>
   );
 };
-

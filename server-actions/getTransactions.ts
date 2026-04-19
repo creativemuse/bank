@@ -8,10 +8,7 @@ import { getPool } from "@/lib/cockroachdb";
  * Primary lookup is by wallet_address (stable identifier across auth migrations).
  * Stytch user ID is stored alongside for identity correlation.
  */
-export async function getTransactions(
-  walletAddress: string,
-  stytchUserId?: string,
-) {
+export async function getTransactions(walletAddress: string, stytchUserId?: string) {
   if (!walletAddress) {
     throw new Error("Wallet address is required to fetch transactions");
   }
@@ -24,17 +21,17 @@ export async function getTransactions(
         `SELECT raw_data FROM transactions
          WHERE wallet_address = $1
          ORDER BY created_at DESC`,
-        [walletAddress.toLowerCase()],
+        [walletAddress.toLowerCase()]
       );
 
       if (rows.length > 0) {
         console.log(
-          `[CockroachDB] Returning ${rows.length} cached transactions for wallet: ${walletAddress}`,
+          `[CockroachDB] Returning ${rows.length} cached transactions for wallet: ${walletAddress}`
         );
 
         // Background sync (don't await)
         syncTransactionsFromAPI(walletAddress, stytchUserId).catch((err) =>
-          console.error("Background sync failed:", err),
+          console.error("Background sync failed:", err)
         );
 
         return rows.map((row: any) => row.raw_data);
@@ -42,7 +39,7 @@ export async function getTransactions(
     } catch (error) {
       console.warn(
         "[CockroachDB] Fetch failed, falling back to API:",
-        error instanceof Error ? error.message : error,
+        error instanceof Error ? error.message : error
       );
     }
   }
@@ -57,7 +54,7 @@ export async function upsertUser(
   stytchUserId: string,
   walletAddress: string,
   email?: string,
-  phoneNumber?: string,
+  phoneNumber?: string
 ) {
   if (!process.env.COCKROACHDB_URL) return;
 
@@ -71,17 +68,14 @@ export async function upsertUser(
          email = COALESCE(EXCLUDED.email, users.email),
          phone_number = COALESCE(EXCLUDED.phone_number, users.phone_number),
          updated_at = now()`,
-      [stytchUserId, walletAddress.toLowerCase(), email || null, phoneNumber || null],
+      [stytchUserId, walletAddress.toLowerCase(), email || null, phoneNumber || null]
     );
   } catch (error) {
     console.error("[CockroachDB] Failed to upsert user:", error);
   }
 }
 
-async function fetchTransactionsFromAPI(
-  walletAddress: string,
-  stytchUserId?: string,
-) {
+async function fetchTransactionsFromAPI(walletAddress: string, stytchUserId?: string) {
   if (!process.env.COINBASE_API_KEY_ID || !process.env.COINBASE_API_KEY_SECRET) {
     console.warn("Coinbase API keys not configured, skipping transaction fetch");
     return [];
@@ -99,7 +93,7 @@ async function fetchTransactionsFromAPI(
       process.env.COINBASE_API_KEY_ID,
       process.env.COINBASE_API_KEY_SECRET,
       method,
-      request_path,
+      request_path
     );
 
     const response = await fetch(`https://${url}${request_path}`, {
@@ -135,7 +129,7 @@ async function fetchTransactionsFromAPI(
     await storeTransactions(walletAddress, transactions, stytchUserId);
 
     console.log(
-      `Fetched and stored ${transactions.length} transactions for wallet ${walletAddress}`,
+      `Fetched and stored ${transactions.length} transactions for wallet ${walletAddress}`
     );
     return transactions;
   } catch (error) {
@@ -149,10 +143,7 @@ async function fetchTransactionsFromAPI(
   }
 }
 
-async function syncTransactionsFromAPI(
-  walletAddress: string,
-  stytchUserId?: string,
-) {
+async function syncTransactionsFromAPI(walletAddress: string, stytchUserId?: string) {
   try {
     await fetchTransactionsFromAPI(walletAddress, stytchUserId);
   } catch (error) {
@@ -163,7 +154,7 @@ async function syncTransactionsFromAPI(
 async function storeTransactions(
   walletAddress: string,
   transactions: any[],
-  stytchUserId?: string,
+  stytchUserId?: string
 ) {
   if (!transactions || transactions.length === 0) return;
   if (!process.env.COCKROACHDB_URL) return;
@@ -173,9 +164,7 @@ async function storeTransactions(
     const normalizedAddress = walletAddress.toLowerCase();
 
     // Filter valid transactions and build batch values
-    const validTxs = transactions.filter(
-      (tx) => tx && (tx.transaction_id || tx.id),
-    );
+    const validTxs = transactions.filter((tx) => tx && (tx.transaction_id || tx.id));
 
     if (validTxs.length === 0) return;
 
@@ -187,7 +176,7 @@ async function storeTransactions(
       const tx = validTxs[i];
       const offset = i * 13;
       placeholders.push(
-        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13}, now())`,
+        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13}, now())`
       );
       values.push(
         normalizedAddress,
@@ -202,7 +191,7 @@ async function storeTransactions(
         tx.buy_amount?.value || null,
         tx.buy_amount?.currency || null,
         tx.onchain_hash || null,
-        JSON.stringify(tx),
+        JSON.stringify(tx)
       );
     }
 
@@ -219,12 +208,10 @@ async function storeTransactions(
         onchain_hash = EXCLUDED.onchain_hash,
         raw_data = EXCLUDED.raw_data,
         updated_at = now()`,
-      values,
+      values
     );
 
-    console.log(
-      `[CockroachDB] Stored ${validTxs.length} transactions for wallet ${walletAddress}`,
-    );
+    console.log(`[CockroachDB] Stored ${validTxs.length} transactions for wallet ${walletAddress}`);
   } catch (error) {
     console.error("[CockroachDB] Error storing transactions:", error);
   }

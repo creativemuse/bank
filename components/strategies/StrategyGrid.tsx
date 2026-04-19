@@ -4,10 +4,7 @@ import { StrategyCard } from "@/components/strategies/StrategyCard";
 
 type StrategyGridProps = {
   items: Array<
-    Omit<
-      React.ComponentProps<typeof StrategyCard>,
-      "actions" | "description" | "title"
-    > & {
+    Omit<React.ComponentProps<typeof StrategyCard>, "actions" | "description" | "title"> & {
       id: string;
       title: string;
       description: string;
@@ -25,4 +22,3 @@ export function StrategyGrid({ items }: StrategyGridProps) {
     </div>
   );
 }
-

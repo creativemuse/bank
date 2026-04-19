@@ -45,11 +45,11 @@ export function StrategyCard({
         </div>
         <div className="grid grid-cols-2 gap-4 text-sm text-slate-700">
           <div className="flex flex-col">
-            <span className="text-xs uppercase tracking-wide text-slate-400">Estimated APY</span>
+            <span className="text-xs tracking-wide text-slate-400 uppercase">Estimated APY</span>
             <span className="text-lg font-medium text-slate-900">{apr ?? "—"}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs uppercase tracking-wide text-slate-400">TVL</span>
+            <span className="text-xs tracking-wide text-slate-400 uppercase">TVL</span>
             <span className="text-lg font-medium text-slate-900">{tvl ?? "—"}</span>
           </div>
         </div>
@@ -96,4 +96,3 @@ export function StrategyCard({
     </section>
   );
 }
-

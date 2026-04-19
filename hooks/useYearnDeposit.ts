@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { useWriteContract, useReadContract, useAccount, usePublicClient, useWalletClient } from "wagmi";
+import {
+  useWriteContract,
+  useReadContract,
+  useAccount,
+  usePublicClient,
+  useWalletClient,
+} from "wagmi";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { Address, type WalletClient } from "viem";
 import { encodeFunctionData } from "viem";
@@ -12,7 +18,12 @@ function ensureTxHash(value: unknown): `0x${string}` {
   if (typeof value === "string" && value.startsWith("0x") && value.length >= 64) {
     return value as `0x${string}`;
   }
-  if (value && typeof value === "object" && "hash" in value && typeof (value as { hash: unknown }).hash === "string") {
+  if (
+    value &&
+    typeof value === "object" &&
+    "hash" in value &&
+    typeof (value as { hash: unknown }).hash === "string"
+  ) {
     const h = (value as { hash: string }).hash;
     return h as unknown as `0x${string}`;
   }
@@ -24,14 +35,17 @@ const YEARN_VAULT_CHAIN_ID = 8453;
 
 const BOUNCER_MESSAGE =
   "Deposit failed: This vault is for Creative Bank members only. Get a Creative Brand, Investor, or Creator NFT to deposit.";
-const WRONG_NETWORK_MESSAGE =
-  "Please switch your wallet to Base mainnet and try again.";
+const WRONG_NETWORK_MESSAGE = "Please switch your wallet to Base mainnet and try again.";
 
 function extractRevertReason(error: unknown): string {
   if (!error || typeof error !== "object") return "";
   const e = error as Record<string, unknown>;
   if (typeof e.message === "string") return e.message;
-  if (e.data && typeof e.data === "object" && typeof (e.data as Record<string, unknown>).message === "string") {
+  if (
+    e.data &&
+    typeof e.data === "object" &&
+    typeof (e.data as Record<string, unknown>).message === "string"
+  ) {
     return (e.data as Record<string, unknown>).message as string;
   }
   if (e.cause && typeof e.cause === "object") return extractRevertReason(e.cause);
@@ -99,7 +113,11 @@ function normalizeDepositError(error: unknown): string {
   }
 
   // Already a clear message from our code
-  if (msg.startsWith("Deposit failed:") || msg.startsWith("Transaction") || msg.startsWith("Insufficient")) {
+  if (
+    msg.startsWith("Deposit failed:") ||
+    msg.startsWith("Transaction") ||
+    msg.startsWith("Insufficient")
+  ) {
     return msg;
   }
 
@@ -135,7 +153,7 @@ type UseYearnDepositReturn = {
 export const useYearnDeposit = (
   vaultAddress: Address | undefined,
   assetAddress: Address | undefined,
-  walletClient?: WalletClient,
+  walletClient?: WalletClient
 ): UseYearnDepositReturn => {
   const [state, setState] = useState<DepositState>({ status: "idle" });
   const { address: wagmiAddress } = useAccount();
@@ -164,10 +182,7 @@ export const useYearnDeposit = (
     address: assetAddress,
     abi: ERC20_ABI,
     functionName: "allowance",
-    args:
-      vaultAddress && assetAddress && ownerAddress
-        ? [ownerAddress, vaultAddress]
-        : undefined,
+    args: vaultAddress && assetAddress && ownerAddress ? [ownerAddress, vaultAddress] : undefined,
     chainId: YEARN_VAULT_CHAIN_ID,
     query: {
       enabled: !!vaultAddress && !!assetAddress && !!ownerAddress,
@@ -208,9 +223,10 @@ export const useYearnDeposit = (
             });
 
             if (maxDeposit < assets) {
-              const maxDepositFormatted = maxDeposit === 0n 
-                ? "0 (vault may be paused or at capacity)"
-                : `${Number(maxDeposit) / 1e6} USDC`;
+              const maxDepositFormatted =
+                maxDeposit === 0n
+                  ? "0 (vault may be paused or at capacity)"
+                  : `${Number(maxDeposit) / 1e6} USDC`;
               throw new Error(
                 `Deposit amount exceeds maximum allowed. Maximum deposit: ${maxDepositFormatted}. Your requested amount: ${Number(assets) / 1e6} USDC.`
               );
@@ -239,15 +255,15 @@ export const useYearnDeposit = (
               functionName: "approve",
               args: [vaultAddress, assets],
             });
-            
+
             // Get account from wallet client
             const accounts = await activeWalletClient.getAddresses();
             const account = accounts[0];
-            
+
             if (!account) {
               throw new Error("No account available in wallet");
             }
-            
+
             // Yearn vaults are on Base mainnet only; always send on Base
             const approveResult = await activeWalletClient.sendTransaction({
               account,
@@ -295,15 +311,15 @@ export const useYearnDeposit = (
             functionName: "deposit",
             args: [assets, receiver],
           });
-          
+
           // Get account from wallet client
           const accounts = await activeWalletClient.getAddresses();
           const account = accounts[0];
-          
+
           if (!account) {
             throw new Error("No account available in wallet");
           }
-          
+
           // Estimate gas before sending (helps catch errors early)
           let gasEstimate: bigint | undefined;
           try {
@@ -317,11 +333,11 @@ export const useYearnDeposit = (
           } catch (gasError: any) {
             // If gas estimation fails, the transaction will likely fail
             console.error("Gas estimation error:", gasError);
-            
+
             // Try to extract the actual revert reason from viem error
             let errorMessage = gasError?.message || "Transaction would fail";
             let revertReason = "";
-            
+
             // Check for revert reason in error data
             if (gasError?.data) {
               if (typeof gasError.data === "string") {
@@ -332,7 +348,7 @@ export const useYearnDeposit = (
                 revertReason = gasError.data.reason;
               }
             }
-            
+
             // Check for revert reason in cause
             if (!revertReason && gasError?.cause) {
               if (typeof gasError.cause === "string") {
@@ -343,14 +359,20 @@ export const useYearnDeposit = (
                 revertReason = gasError.cause.data.message;
               }
             }
-            
+
             // Try to parse common revert reasons
-            if (revertReason || errorMessage.includes("revert") || errorMessage.includes("execution reverted")) {
+            if (
+              revertReason ||
+              errorMessage.includes("revert") ||
+              errorMessage.includes("execution reverted")
+            ) {
               // Check for specific revert reasons
               const lowerReason = (revertReason + " " + errorMessage).toLowerCase();
 
               if (lowerReason.includes("paused") || lowerReason.includes("pause")) {
-                throw new Error("Deposit failed: The vault is currently paused. Deposits are not available at this time.");
+                throw new Error(
+                  "Deposit failed: The vault is currently paused. Deposits are not available at this time."
+                );
               }
 
               if (
@@ -362,12 +384,20 @@ export const useYearnDeposit = (
                 throw new Error(BOUNCER_MESSAGE);
               }
 
-              if (lowerReason.includes("capacity") || lowerReason.includes("limit") || lowerReason.includes("max")) {
-                throw new Error("Deposit failed: The vault has reached its deposit capacity. Please try a smaller amount or try again later.");
+              if (
+                lowerReason.includes("capacity") ||
+                lowerReason.includes("limit") ||
+                lowerReason.includes("max")
+              ) {
+                throw new Error(
+                  "Deposit failed: The vault has reached its deposit capacity. Please try a smaller amount or try again later."
+                );
               }
 
               if (lowerReason.includes("allowance") || lowerReason.includes("approval")) {
-                throw new Error("Deposit failed: Insufficient token allowance. Please approve the vault to spend your tokens.");
+                throw new Error(
+                  "Deposit failed: Insufficient token allowance. Please approve the vault to spend your tokens."
+                );
               }
 
               // Prefer decoded revert reason when available
@@ -377,10 +407,10 @@ export const useYearnDeposit = (
 
               throw new Error(detailedError);
             }
-            
+
             throw new Error(`Transaction validation failed: ${errorMessage}`);
           }
-          
+
           // Yearn vaults are on Base mainnet only; always send on Base
           try {
             const depositResult = await activeWalletClient.sendTransaction({
@@ -388,13 +418,14 @@ export const useYearnDeposit = (
               to: vaultAddress,
               data,
               chain: base,
-              gas: gasEstimate ? (gasEstimate * 120n / 100n) : undefined, // Add 20% buffer
+              gas: gasEstimate ? (gasEstimate * 120n) / 100n : undefined, // Add 20% buffer
             });
             depositHash = ensureTxHash(depositResult);
           } catch (txError: unknown) {
-            const errorMessage = txError && typeof txError === "object" && "message" in txError
-              ? String((txError as { message: unknown }).message)
-              : "Transaction failed";
+            const errorMessage =
+              txError && typeof txError === "object" && "message" in txError
+                ? String((txError as { message: unknown }).message)
+                : "Transaction failed";
             const revertReason = extractRevertReason(txError);
             const combined = (revertReason + " " + errorMessage).toLowerCase();
 
@@ -410,7 +441,11 @@ export const useYearnDeposit = (
               throw new Error(BOUNCER_MESSAGE);
             }
             const displayReason = revertReason || errorMessage;
-            throw new Error(displayReason.startsWith("Deposit failed:") ? displayReason : `Deposit failed: ${displayReason}`);
+            throw new Error(
+              displayReason.startsWith("Deposit failed:")
+                ? displayReason
+                : `Deposit failed: ${displayReason}`
+            );
           }
         } else {
           try {
@@ -426,9 +461,10 @@ export const useYearnDeposit = (
             }
             depositHash = hash;
           } catch (txError: unknown) {
-            const errorMessage = txError && typeof txError === "object" && "message" in txError
-              ? String((txError as { message: unknown }).message)
-              : "Transaction failed";
+            const errorMessage =
+              txError && typeof txError === "object" && "message" in txError
+                ? String((txError as { message: unknown }).message)
+                : "Transaction failed";
             const revertReason = extractRevertReason(txError);
             const combined = (revertReason + " " + errorMessage).toLowerCase();
 
@@ -444,7 +480,11 @@ export const useYearnDeposit = (
               throw new Error(BOUNCER_MESSAGE);
             }
             const displayReason = revertReason || errorMessage;
-            throw new Error(displayReason.startsWith("Deposit failed:") ? displayReason : `Deposit failed: ${displayReason}`);
+            throw new Error(
+              displayReason.startsWith("Deposit failed:")
+                ? displayReason
+                : `Deposit failed: ${displayReason}`
+            );
           }
         }
 
@@ -455,16 +495,20 @@ export const useYearnDeposit = (
               hash: depositHash,
               timeout: 120_000, // 2 minute timeout
             });
-            
+
             // Check if transaction was reverted
             if (receipt.status === "reverted") {
-              throw new Error("Transaction was reverted on-chain. Please check the transaction on Basescan for more details.");
+              throw new Error(
+                "Transaction was reverted on-chain. Please check the transaction on Basescan for more details."
+              );
             }
           } catch (waitError: any) {
             // If waiting fails, the transaction might still be pending or reverted
             const errorMessage = waitError?.message || "Failed to confirm transaction";
             if (errorMessage.includes("timeout")) {
-              throw new Error("Transaction is taking longer than expected. Please check the transaction status on Basescan.");
+              throw new Error(
+                "Transaction is taking longer than expected. Please check the transaction status on Basescan."
+              );
             }
             throw new Error(`Failed to confirm transaction: ${errorMessage}`);
           }
@@ -496,7 +540,7 @@ export const useYearnDeposit = (
       writeDeposit,
       refetchAllowance,
       publicClient,
-    ],
+    ]
   );
 
   return {
@@ -505,4 +549,3 @@ export const useYearnDeposit = (
     reset,
   };
 };
-

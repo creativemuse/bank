@@ -3,6 +3,7 @@
 ## Problem
 
 You were experiencing 403 errors from Alchemy RPC endpoints:
+
 ```
 base-mainnet.g.alchemy.com/v2/xxx: Failed to load resource: 403
 ```
@@ -16,6 +17,7 @@ This indicates rate limiting from using a shared/public Alchemy API key or hitti
 Your app now uses **multiple RPC endpoints with automatic fallback**:
 
 **Priority Order:**
+
 1. **Alchemy (if you provide your own API key)** - Highest priority, best performance
 2. **Custom RPC URL** - If you specify `NEXT_PUBLIC_BASE_RPC_URL`
 3. **Base Official RPC** - `https://mainnet.base.org` (default)
@@ -30,6 +32,7 @@ Your app now uses **multiple RPC endpoints with automatic fallback**:
 ### 2. Smart Rate Limit Handling
 
 Each RPC endpoint now has:
+
 - **Request batching** - Combines multiple requests (50-100ms wait)
 - **Retry logic** - Automatically retries failed requests 1-3 times
 - **Exponential backoff** - Waits 1 second between retries
@@ -50,6 +53,7 @@ NEXT_PUBLIC_BASE_RPC_URL=https://your-rpc-provider.com
 ## Benefits
 
 ### Without Alchemy API Key (Current State)
+
 - ✓ Uses 3-5 free public RPC endpoints
 - ✓ Automatic fallback if one fails
 - ✓ Request batching reduces total calls
@@ -57,6 +61,7 @@ NEXT_PUBLIC_BASE_RPC_URL=https://your-rpc-provider.com
 - ⚠️ Slower than dedicated API
 
 ### With Alchemy API Key (Recommended)
+
 - ✓ Higher rate limits (100K compute units/day on free tier)
 - ✓ Better performance and reliability
 - ✓ Still has fallbacks if Alchemy has issues
@@ -97,6 +102,7 @@ This means you have multiple endpoints configured!
 ## Technical Details
 
 ### Before (Single Endpoint)
+
 ```typescript
 transports: {
   [base.id]: fallback([
@@ -106,6 +112,7 @@ transports: {
 ```
 
 ### After (Multi-Endpoint with Ranking)
+
 ```typescript
 transports: {
   [base.id]: fallback([
@@ -138,4 +145,3 @@ transports: {
 ---
 
 **Questions?** Check CONFIGURATION.md for detailed troubleshooting steps.
-

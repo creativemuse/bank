@@ -22,6 +22,7 @@ Core Yearn V3 contract addresses and ABIs:
 ### Utilities (`lib/yearnUtils.ts`)
 
 Helper functions for:
+
 - Share/asset conversions
 - Price per share calculations
 - APR/APY conversions
@@ -31,6 +32,7 @@ Helper functions for:
 ### Hooks
 
 #### `useYearnVaults.ts`
+
 - `useYearnVaults`: Fetch all endorsed vaults for an asset
 - `useYearnVault`: Get specific vault details
 - `useYearnVaultBalance`: Get user's share balance and asset value
@@ -39,11 +41,13 @@ Helper functions for:
 - `usePreviewRedeem`: Preview expected assets from withdrawal
 
 #### `useYearnDeposit.ts`
+
 - `useYearnDeposit`: Handle deposit flow with token approval
 - Automatically checks allowance and requests approval if needed
 - Executes deposit transaction after approval
 
 #### `useYearnWithdraw.ts`
+
 - `useYearnWithdraw`: Handle withdrawal using `redeem` (recommended)
 - `useYearnWithdrawAssets`: Handle withdrawal using `withdraw`
 - Supports maxLoss parameter in basis points
@@ -51,7 +55,9 @@ Helper functions for:
 ### Components
 
 #### `YearnVaultModal.tsx`
+
 Full-featured modal for deposits and withdrawals:
+
 - Input validation
 - Balance checking
 - Preview calculations
@@ -60,7 +66,9 @@ Full-featured modal for deposits and withdrawals:
 - Error handling
 
 #### `YearnVaultCard.tsx`
+
 Display component for vault strategies:
+
 - Shows APR and TVL
 - User position tracking
 - Deposit/withdraw actions
@@ -71,13 +79,15 @@ Display component for vault strategies:
 ### Deposit Flow
 
 1. **Token Approval** (if needed)
+
    ```typescript
-   token.approve(vault, amount)
+   token.approve(vault, amount);
    ```
 
 2. **Vault Deposit**
+
    ```typescript
-   vault.deposit(amount, receiver)
+   vault.deposit(amount, receiver);
    ```
 
 3. **Receive Shares**
@@ -86,14 +96,17 @@ Display component for vault strategies:
 ### Withdrawal Flow (Recommended: Redeem)
 
 1. **Preview Withdrawal**
+
    ```typescript
-   expectedAssets = vault.convertToAssets(shares)
+   expectedAssets = vault.convertToAssets(shares);
    ```
 
 2. **Execute Redeem**
+
    ```typescript
-   vault.redeem(shares, receiver, owner, maxLoss)
+   vault.redeem(shares, receiver, owner, maxLoss);
    ```
+
    - `maxLoss`: Basis points (default: 10000 = 100%)
    - Recommended: Set to 100 (1%) for standard withdrawals
 
@@ -103,6 +116,7 @@ Display component for vault strategies:
 ## ERC-4626 Standard Functions
 
 ### View Functions
+
 - `asset()`: Underlying token address
 - `totalAssets()`: Total assets under management
 - `convertToShares(assets)`: Preview deposit
@@ -112,6 +126,7 @@ Display component for vault strategies:
 - `balanceOf(account)`: User's share balance
 
 ### State-Changing Functions
+
 - `deposit(assets, receiver)`: Deposit assets, receive shares
 - `redeem(shares, receiver, owner, maxLoss?)`: Burn shares, receive assets
 - `withdraw(assets, receiver, owner, maxLoss?)`: Withdraw assets, burn shares
@@ -147,15 +162,16 @@ const expectedShares = vault.convertToShares(depositAmount);
 
 ## Contract Addresses on Base Mainnet
 
-| Contract | Address |
-|----------|---------|
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
 | Protocol Address Provider | `0x775F09d6f3c8D2182DFA8bce8628acf51105653c` |
-| V3 Registry | `0xd40ecF29e001c76Dcc4cC0D9cd50520CE845B038` |
-| USDC | `0x833589fcd6edb6e08f4c7c32d4f71b54bda02913` |
+| V3 Registry               | `0xd40ecF29e001c76Dcc4cC0D9cd50520CE845B038` |
+| USDC                      | `0x833589fcd6edb6e08f4c7c32d4f71b54bda02913` |
 
 ## Vault Categories
 
 Category 1 vaults are generally:
+
 - Lowest risk
 - Most similar to V2 style vaults
 - Conservative strategy allocation
@@ -202,6 +218,6 @@ import { USDC_ADDRESS_BASE } from "@/lib/config/yearn";
 ## Support
 
 For integration questions or issues, refer to:
+
 - Yearn Discord: https://discord.yearn.fi
 - Developer Docs: https://docs.yearn.fi
-

@@ -106,9 +106,7 @@ export function StytchLoginModal() {
     setError(null);
     try {
       const redirectUrl =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/api/auth/stytch/callback`
-          : "";
+        typeof window !== "undefined" ? `${window.location.origin}/api/auth/stytch/callback` : "";
       stytch.oauth.google.start({
         login_redirect_url: redirectUrl,
         signup_redirect_url: redirectUrl,
@@ -215,15 +213,12 @@ export function StytchLoginModal() {
               onKeyDown={(e) => e.key === "Enter" && handleEmailSubmit()}
               placeholder="you@example.com"
               autoFocus
-              className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
             />
 
             {error && <p className="text-center text-sm text-red-500">{error}</p>}
 
-            <PrimaryButton
-              onClick={handleEmailSubmit}
-              disabled={!email.trim() || isLoading}
-            >
+            <PrimaryButton onClick={handleEmailSubmit} disabled={!email.trim() || isLoading}>
               {isLoading ? "Sending..." : "Send Code"}
             </PrimaryButton>
           </>

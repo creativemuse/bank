@@ -30,11 +30,17 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
         <div className="mb-2 flex w-full justify-center md:hidden">
           <ThemeToggle />
         </div>
-        
+
         {/* Mobile: Logo row */}
         <div className="relative mb-3 flex h-14 w-full max-w-5xl items-center justify-center px-2 md:hidden">
           <div className="flex items-center gap-2">
-            <Image src="/creative_finance_logo.svg" alt="Creative Finance logo" width={54} height={54} style={{ height: "auto" }} />
+            <Image
+              src="/creative_finance_logo.svg"
+              alt="Creative Finance logo"
+              width={54}
+              height={54}
+              style={{ height: "auto" }}
+            />
             <h1 className="text-lg" style={{ fontFamily: "var(--font-conthrax), sans-serif" }}>
               CREATIVE
               <span
@@ -46,7 +52,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
             </h1>
           </div>
         </div>
-        
+
         {/* Mobile: Membership badge and Logout button */}
         <div className="relative mb-3 flex w-full max-w-5xl items-center justify-center gap-2 px-2 md:hidden">
           {tier && (
@@ -54,17 +60,23 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
               {tier}
             </div>
           )}
-          <button onClick={logout} className="flex items-center gap-1 text-base text-secondary">
+          <button onClick={logout} className="text-secondary flex items-center gap-1 text-base">
             Logout
             <ArrowRightOnRectangleIcon className="text h-6 w-6" />
           </button>
         </div>
-        
+
         {/* Desktop: Everything on one line */}
         <div className="relative mb-3 hidden h-14 w-full max-w-5xl items-center justify-between px-2 md:flex">
           {/* Left: Logo */}
           <div className="flex items-center gap-2">
-            <Image src="/creative_finance_logo.svg" alt="Creative Finance logo" width={54} height={54} style={{ height: "auto" }} />
+            <Image
+              src="/creative_finance_logo.svg"
+              alt="Creative Finance logo"
+              width={54}
+              height={54}
+              style={{ height: "auto" }}
+            />
             <h1 className="text-lg" style={{ fontFamily: "var(--font-conthrax), sans-serif" }}>
               CREATIVE
               <span
@@ -75,7 +87,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
               </span>
             </h1>
           </div>
-          
+
           {/* Right: Membership badge, Theme Toggle, and Logout button */}
           <div className="flex items-center gap-2">
             {tier && (
@@ -84,13 +96,13 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
               </div>
             )}
             <ThemeToggle />
-            <button onClick={logout} className="flex items-center gap-1 text-base text-secondary">
+            <button onClick={logout} className="text-secondary flex items-center gap-1 text-base">
               Logout
               <ArrowRightOnRectangleIcon className="text h-6 w-6" />
             </button>
           </div>
         </div>
-        
+
         {/* Dashboard title */}
         <div className="relative mb-2 flex w-full max-w-5xl items-center justify-center">
           <div className="w-full text-center text-xl font-medium">Dashboard</div>

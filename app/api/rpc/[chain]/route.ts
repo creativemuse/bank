@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 
 type AllowedChain = "mainnet" | "base" | "base-sepolia";
 
-const ALLOWED_CHAINS: ReadonlySet<AllowedChain> = new Set([
-  "mainnet",
-  "base",
-  "base-sepolia",
-]);
+const ALLOWED_CHAINS: ReadonlySet<AllowedChain> = new Set(["mainnet", "base", "base-sepolia"]);
 
 const getUpstreamRpcUrl = (chain: AllowedChain): string | null => {
   const alchemyKey = process.env.ALCHEMY_API_KEY?.trim();
@@ -29,10 +25,7 @@ const getUpstreamRpcUrl = (chain: AllowedChain): string | null => {
   return null;
 };
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ chain: string }> }
-) {
+export async function POST(request: Request, context: { params: Promise<{ chain: string }> }) {
   const { chain } = await context.params;
 
   if (!ALLOWED_CHAINS.has(chain as AllowedChain)) {
@@ -102,8 +95,7 @@ export async function POST(
   return new NextResponse(upstreamText, {
     status: upstreamResponse.status,
     headers: {
-      "content-type":
-        upstreamResponse.headers.get("content-type") ?? "application/json",
+      "content-type": upstreamResponse.headers.get("content-type") ?? "application/json",
       "cache-control": "no-store",
     },
   });
@@ -115,4 +107,3 @@ export async function GET() {
     { status: 405, headers: { Allow: "POST", "Cache-Control": "no-store" } }
   );
 }
-

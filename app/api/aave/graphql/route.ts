@@ -13,17 +13,14 @@ export async function POST(request: Request) {
   if (!contentType.toLowerCase().includes("application/json")) {
     return NextResponse.json(
       { error: "Invalid content-type; expected application/json" },
-      { status: 415 },
+      { status: 415 }
     );
   }
 
   try {
     const body = await request.text();
     if (!body) {
-      return NextResponse.json(
-        { error: "Missing request body" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Missing request body" }, { status: 400 });
     }
 
     const upstream = await fetch(AAVE_GRAPHQL_URL, {
@@ -53,30 +50,26 @@ export async function POST(request: Request) {
             },
           ],
         },
-        { status: 200, headers: { "cache-control": "no-store" } },
+        { status: 200, headers: { "cache-control": "no-store" } }
       );
     }
 
     return new NextResponse(data, {
       status: upstream.status,
       headers: {
-        "content-type":
-          upstream.headers.get("content-type") ?? "application/json",
+        "content-type": upstream.headers.get("content-type") ?? "application/json",
         "cache-control": "no-store",
       },
     });
   } catch (error) {
     console.error("Aave proxy error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch from Aave API" },
-      { status: 502 },
-    );
+    return NextResponse.json({ error: "Failed to fetch from Aave API" }, { status: 502 });
   }
 }
 
 export async function GET() {
   return NextResponse.json(
     { error: "Method not allowed" },
-    { status: 405, headers: { Allow: "POST" } },
+    { status: 405, headers: { Allow: "POST" } }
   );
 }

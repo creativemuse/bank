@@ -77,7 +77,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
       showCloseButton={true}
       className={cn(
         "top-[70px] h-[calc(100dvh-174px)] md:max-h-[calc(100dvh-174px)] lg:top-0 lg:max-h-[calc(100dvh-32px)]",
-        amount && " lg:min-h-[718px]",
+        amount && "lg:min-h-[718px]"
       )}
       title="Deposit"
     >
@@ -96,9 +96,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
       {/* Payment method selector */}
       {step === "options" && !paymentMethod && (
         <div className="flex w-full flex-col gap-3">
-          <p className="text-center text-sm font-medium text-black">
-            How would you like to pay?
-          </p>
+          <p className="text-center text-sm font-medium text-black">How would you like to pay?</p>
           <button
             onClick={() => setPaymentMethod("digital-wallet")}
             disabled={!isAmountValid}
@@ -106,12 +104,8 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
           >
             <span className="text-2xl">📱</span>
             <div>
-              <p className="text-sm font-semibold text-black">
-                Express Checkout
-              </p>
-              <p className="text-xs text-gray-600">
-                Apple Pay or Google Pay — never leave the app
-              </p>
+              <p className="text-sm font-semibold text-black">Express Checkout</p>
+              <p className="text-xs text-gray-600">Apple Pay or Google Pay — never leave the app</p>
             </div>
           </button>
           <button
@@ -121,9 +115,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
           >
             <span className="text-2xl">💳</span>
             <div>
-              <p className="text-sm font-semibold text-black">
-                All Payment Methods
-              </p>
+              <p className="text-sm font-semibold text-black">All Payment Methods</p>
               <p className="text-xs text-gray-600">
                 Card, bank transfer, Apple Pay, Google Pay via Coinbase
               </p>

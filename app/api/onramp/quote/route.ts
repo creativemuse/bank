@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
           error:
             "Missing required fields: paymentAmount, destinationAddress, email, phoneNumber, agreementAcceptedAt",
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -36,10 +36,7 @@ export async function POST(request: NextRequest) {
     const keySecret = process.env.COINBASE_API_KEY_SECRET;
 
     if (!keyId || !keySecret) {
-      return NextResponse.json(
-        { error: "Coinbase API keys not configured" },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: "Coinbase API keys not configured" }, { status: 500 });
     }
 
     const jwt = await generateJWT(
@@ -47,14 +44,12 @@ export async function POST(request: NextRequest) {
       keySecret,
       "POST",
       "/platform/v2/onramp/orders",
-      "api.cdp.coinbase.com",
+      "api.cdp.coinbase.com"
     );
 
     // Determine partnerUserRef — use sandbox- prefix for testing
     const isTestnet = process.env.NEXT_PUBLIC_CHAIN_ID === "base-sepolia";
-    const userRef = isTestnet
-      ? `sandbox-${destinationAddress}`
-      : destinationAddress;
+    const userRef = isTestnet ? `sandbox-${destinationAddress}` : destinationAddress;
 
     const orderBody: Record<string, any> = {
       paymentAmount: String(paymentAmount),
@@ -73,24 +68,21 @@ export async function POST(request: NextRequest) {
 
     console.log("Coinbase quote request:", JSON.stringify(orderBody, null, 2));
 
-    const response = await fetch(
-      "https://api.cdp.coinbase.com/platform/v2/onramp/orders",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(orderBody),
+    const response = await fetch("https://api.cdp.coinbase.com/platform/v2/onramp/orders", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify(orderBody),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Coinbase quote API error:", response.status, errorText);
       return NextResponse.json(
         { error: "Failed to fetch quote", details: errorText },
-        { status: response.status },
+        { status: response.status }
       );
     }
 
@@ -98,9 +90,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data);
   } catch (err: any) {
     console.error("Quote API error:", err.message);
-    return NextResponse.json(
-      { error: err.message || "Failed to fetch quote" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: err.message || "Failed to fetch quote" }, { status: 500 });
   }
 }

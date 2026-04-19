@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     // Get all known wallet addresses
     const { rows: users } = await pool.query(
-      `SELECT wallet_address FROM users WHERE wallet_address IS NOT NULL`,
+      `SELECT wallet_address FROM users WHERE wallet_address IS NOT NULL`
     );
 
     if (users.length === 0) {
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
           data.status,
           data.totalCollateralBase.toString(),
           data.totalDebtBase.toString(),
-        ],
+        ]
       );
       snapshotsCreated++;
 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       await pool.query(
         `UPDATE users SET last_health_factor = $1, updated_at = now()
          WHERE wallet_address = $2`,
-        [data.healthFactor, walletLower],
+        [data.healthFactor, walletLower]
       );
 
       // Detect threshold transitions
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         `SELECT status FROM health_factor_snapshots
          WHERE wallet_address = $1
          ORDER BY created_at DESC LIMIT 1 OFFSET 1`,
-        [walletLower],
+        [walletLower]
       );
 
       const prevStatus = prevSnapshots[0]?.status || "safe";
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
             data.healthFactor,
             message,
             data.status === "danger",
-          ],
+          ]
         );
         alertsCreated++;
       }

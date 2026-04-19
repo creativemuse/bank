@@ -17,12 +17,7 @@ export async function POST(request: NextRequest) {
   if (secret && signature) {
     const computed = createHmac("sha256", secret).update(body).digest("hex");
     try {
-      if (
-        !timingSafeEqual(
-          Buffer.from(signature, "hex"),
-          Buffer.from(computed, "hex"),
-        )
-      ) {
+      if (!timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(computed, "hex"))) {
         return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
       }
     } catch {
@@ -46,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!user || !transactionHash) {
       return NextResponse.json(
         { error: "Missing required fields: user, transactionHash" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -63,16 +58,14 @@ export async function POST(request: NextRequest) {
       `INSERT INTO webhook_events (event_type, event_id, source, payload, wallet_address, status)
        VALUES ('liquidation', $1, 'goldsky', $2, $3, 'processed')
        ON CONFLICT (event_id) DO NOTHING`,
-      [eventId, JSON.stringify(payload), walletAddress],
+      [eventId, JSON.stringify(payload), walletAddress]
     );
 
     // Calculate liquidation penalty (Aave V3 typically charges 5-10%)
     const collateralLost = Number(liquidatedCollateralAmount || 0);
     const debtCleared = Number(debtToCover || 0);
     const penaltyUsd =
-      collateralLost > 0 && debtCleared > 0
-        ? Math.max(0, collateralLost - debtCleared)
-        : null;
+      collateralLost > 0 && debtCleared > 0 ? Math.max(0, collateralLost - debtCleared) : null;
 
     // Store liquidation event
     await pool.query(
@@ -89,7 +82,7 @@ export async function POST(request: NextRequest) {
         debtCleared,
         penaltyUsd,
         transactionHash,
-      ],
+      ]
     );
 
     // Create a high-priority danger alert
@@ -100,12 +93,10 @@ export async function POST(request: NextRequest) {
       [
         walletAddress,
         `Your position was liquidated. ${collateralLost > 0 ? `${collateralLost} collateral was seized` : "Collateral was seized"} to cover your debt. Review the post-mortem in your Reports section.`,
-      ],
+      ]
     );
 
-    console.log(
-      `[Liquidation] Recorded for ${walletAddress}: tx ${transactionHash}`,
-    );
+    console.log(`[Liquidation] Recorded for ${walletAddress}: tx ${transactionHash}`);
 
     return NextResponse.json({ received: true, recorded: true });
   } catch (err: any) {

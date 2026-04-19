@@ -12,10 +12,7 @@ export async function POST(request: NextRequest) {
     const { methodId, code, type } = await request.json();
 
     if (!methodId || !code) {
-      return NextResponse.json(
-        { error: "methodId and code are required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "methodId and code are required" }, { status: 400 });
     }
 
     const stytch = getStytchClient();
@@ -38,10 +35,7 @@ export async function POST(request: NextRequest) {
         });
       } catch (metadataErr: any) {
         // Non-critical: log but don't fail the verification
-        console.warn(
-          "Failed to update phone verification timestamp:",
-          metadataErr.message,
-        );
+        console.warn("Failed to update phone verification timestamp:", metadataErr.message);
       }
     }
 
@@ -52,9 +46,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (err: any) {
     console.error("Stytch OTP verification failed:", err.message);
-    return NextResponse.json(
-      { error: err.message || "Invalid OTP code" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: err.message || "Invalid OTP code" }, { status: 400 });
   }
 }

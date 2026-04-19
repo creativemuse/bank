@@ -53,6 +53,7 @@ Since the strategies are working, you could deploy directly to Base mainnet wher
 ### Option 3: Manual Vault Deployment
 
 If Yearn V3 infrastructure exists but addresses differ, you may need to:
+
 1. Manually deploy the vault components
 2. Use different factory addresses
 3. Or wait for Yearn V3 to fully deploy on Base Sepolia
@@ -60,6 +61,7 @@ If Yearn V3 infrastructure exists but addresses differ, you may need to:
 ## 📝 Environment Variables Used
 
 Make sure your `.env` file contains:
+
 ```bash
 PRIVATE_KEY=your_private_key
 BASESCAN_API_KEY=your_api_key

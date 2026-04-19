@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     if (!type || !destination) {
       return NextResponse.json(
         { error: "type ('email' or 'sms') and destination are required" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -32,15 +32,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ methodId: response.phone_id });
     }
 
-    return NextResponse.json(
-      { error: "type must be 'email' or 'sms'" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "type must be 'email' or 'sms'" }, { status: 400 });
   } catch (err: any) {
     console.error("Stytch OTP send failed:", err.message);
-    return NextResponse.json(
-      { error: err.message || "Failed to send OTP" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: err.message || "Failed to send OTP" }, { status: 500 });
   }
 }

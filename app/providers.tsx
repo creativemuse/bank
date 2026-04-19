@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  CrossmintProvider,
-  CrossmintWalletProvider,
-} from "@crossmint/client-sdk-react-ui";
+import { CrossmintProvider, CrossmintWalletProvider } from "@crossmint/client-sdk-react-ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
@@ -34,12 +31,11 @@ const queryClient = new QueryClient({
 });
 
 const walletConnectMissing =
-  !process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID &&
-  process.env.NODE_ENV !== "production";
+  !process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID && process.env.NODE_ENV !== "production";
 
 if (walletConnectMissing) {
   console.warn(
-    "⚠️ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set. WalletConnect will be disabled.",
+    "⚠️ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set. WalletConnect will be disabled."
   );
 }
 
@@ -89,9 +85,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AaveProvider client={aaveClient}>
           <StytchProvider stytch={stytchClient}>
             <AuthProvider>
-              <CrossmintProvider
-                apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}
-              >
+              <CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}>
                 <CrossmintWalletProvider
                   showPasskeyHelpers={true}
                   createOnLogin={{

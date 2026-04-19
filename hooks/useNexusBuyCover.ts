@@ -8,7 +8,11 @@ import {
   NEXUS_COVER_CHAIN_ID,
   COVER_BROKER_ABI,
 } from "@/lib/config/nexus-mutual";
-import type { NexusQuoteResult, NexusBuyCoverParams, NexusPoolAllocationRequest } from "./useNexusCoverQuote";
+import type {
+  NexusQuoteResult,
+  NexusBuyCoverParams,
+  NexusPoolAllocationRequest,
+} from "./useNexusCoverQuote";
 
 /**
  * Converts IPFS CID or hex string to bytes for CoverBroker.buyCover ipfsData.
@@ -47,9 +51,9 @@ function quoteToContractArgs(quote: NexusQuoteResult): [
   const p: NexusBuyCoverParams = quote.buyCoverInput.buyCoverParams;
   const coverAssetNum =
     typeof p.coverAsset === "string"
-      ? (["ETH", "DAI", "USDC", "cbBTC"].indexOf(p.coverAsset) >= 0
-          ? ["ETH", "DAI", "USDC", "cbBTC"].indexOf(p.coverAsset)
-          : 0)
+      ? ["ETH", "DAI", "USDC", "cbBTC"].indexOf(p.coverAsset) >= 0
+        ? ["ETH", "DAI", "USDC", "cbBTC"].indexOf(p.coverAsset)
+        : 0
       : p.coverAsset;
   const commissionBps = Math.round((p.commissionRatio ?? 0) * 10000);
 
@@ -63,7 +67,8 @@ function quoteToContractArgs(quote: NexusQuoteResult): [
     commissionRatio: commissionBps,
     paymentAsset: BigInt(p.paymentAsset ?? coverAssetNum),
     maxPremiumInAsset: BigInt(p.maxPremiumInAsset),
-    commissionDestination: (p.commissionDestination ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+    commissionDestination: (p.commissionDestination ??
+      "0x0000000000000000000000000000000000000000") as `0x${string}`,
     ipfsData: ipfsDataToBytes(p.ipfsData),
   };
 
@@ -147,7 +152,10 @@ export function useNexusBuyCover({
       functionName: "buyCover",
       args: [params, poolRequests],
       chainId: NEXUS_COVER_CHAIN_ID,
-      value: quote.buyCoverInput.buyCoverParams.paymentAsset === 0 ? BigInt(quote.buyCoverInput.buyCoverParams.maxPremiumInAsset) : 0n,
+      value:
+        quote.buyCoverInput.buyCoverParams.paymentAsset === 0
+          ? BigInt(quote.buyCoverInput.buyCoverParams.maxPremiumInAsset)
+          : 0n,
     });
   }, [
     enabled,

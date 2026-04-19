@@ -62,7 +62,7 @@ export function HeadlessOnrampFlow({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneMethodId, setPhoneMethodId] = useState("");
   const [phoneVerifiedAt, setPhoneVerifiedAt] = useState<string | null>(
-    user?.phoneNumberVerifiedAt || null,
+    user?.phoneNumberVerifiedAt || null
   );
   const [agreementAcceptedAt, setAgreementAcceptedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +72,9 @@ export function HeadlessOnrampFlow({
 
   // Auto-detect payment method based on browser/device
   const paymentMethod =
-    typeof window !== "undefined" && /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent)
+    typeof window !== "undefined" &&
+    /Safari/.test(navigator.userAgent) &&
+    !/Chrome/.test(navigator.userAgent)
       ? "GUEST_CHECKOUT_APPLE_PAY"
       : "GUEST_CHECKOUT_GOOGLE_PAY";
 
@@ -189,7 +191,16 @@ export function HeadlessOnrampFlow({
         }
       };
     }
-  }, [headlessStep, amount, walletAddress, phoneNumber, email, agreementAcceptedAt, phoneVerifiedAt, fetchQuote]);
+  }, [
+    headlessStep,
+    amount,
+    walletAddress,
+    phoneNumber,
+    email,
+    agreementAcceptedAt,
+    phoneVerifiedAt,
+    fetchQuote,
+  ]);
 
   // Create order after reviewing quote
   const handleConfirmQuote = async () => {
@@ -258,9 +269,7 @@ export function HeadlessOnrampFlow({
   if (parentStep === "options" && headlessStep === "idle") {
     return (
       <div className="flex w-full flex-col items-center justify-center space-y-4">
-        {(error || orderError) && (
-          <div className="text-sm text-red-600">{error || orderError}</div>
-        )}
+        {(error || orderError) && <div className="text-sm text-red-600">{error || orderError}</div>}
         <PrimaryButton onClick={handleStartFlow} disabled={!isAmountValid}>
           {hasWarmStartPhone ? "Continue to Deposit" : "Deposit Funds"}
         </PrimaryButton>
@@ -287,7 +296,7 @@ export function HeadlessOnrampFlow({
             onKeyDown={(e) => e.key === "Enter" && handleSendPhoneOTP()}
             placeholder="+1 (555) 555-5555"
             autoFocus
-            className="w-full rounded-md border border-gray-600 bg-gray-300 px-4 py-3 text-sm text-black placeholder:text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-gray-600 bg-gray-300 px-4 py-3 text-sm text-black placeholder:text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
           />
           <p className="text-center text-xs text-gray-900">
             Enter your phone number in E.164 format (e.g., +12025551234)
@@ -314,10 +323,7 @@ export function HeadlessOnrampFlow({
 
       {/* Terms acceptance */}
       {headlessStep === "terms" && (
-        <TermsAcceptance
-          onAccept={handleTermsAccepted}
-          isLoading={isLoadingQuote}
-        />
+        <TermsAcceptance onAccept={handleTermsAccepted} isLoading={isLoadingQuote} />
       )}
 
       {/* Quote display */}
@@ -365,9 +371,7 @@ export function HeadlessOnrampFlow({
       {/* Completed */}
       {headlessStep === "completed" && (
         <div className="flex flex-col items-center gap-4">
-          <div className="text-sm font-medium text-black">
-            Payment completed successfully!
-          </div>
+          <div className="text-sm font-medium text-black">Payment completed successfully!</div>
           <p className="text-center text-xs text-gray-900">
             Your USDC will arrive in your wallet shortly.
           </p>
@@ -377,9 +381,7 @@ export function HeadlessOnrampFlow({
       {/* Failed */}
       {headlessStep === "failed" && (
         <div className="flex flex-col items-center gap-4">
-          <div className="text-sm font-medium text-red-600">
-            Payment failed or was cancelled.
-          </div>
+          <div className="text-sm font-medium text-red-600">Payment failed or was cancelled.</div>
           <PrimaryButton onClick={handleReset}>Try Again</PrimaryButton>
         </div>
       )}

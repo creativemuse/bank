@@ -66,23 +66,27 @@ All 4 strategies implement the three required functions:
 ### Implementation Notes
 
 **Aave V3 Strategy**:
+
 - Supplies USDC to Aave V3 Pool
 - Withdraws USDC from Aave V3 Pool
 - TODO: Implement proper aToken balance calculation
 - TODO: Add reward harvesting (Aave rewards controller)
 
 **Compound V3 Strategy**:
+
 - Supplies USDC to Compound V3 Comet
 - Uses `balanceOf()` for position tracking
 - Simplest implementation
 
 **Curve Strategy**:
+
 - Adds USDC liquidity to Curve 3pool
 - Removes liquidity as single coin (USDC)
 - TODO: Implement proper LP token conversion
 - TODO: Add CRV reward harvesting
 
 **Spark Strategy**:
+
 - Supplies USDC to Spark Pool (Aave fork)
 - Similar structure to Aave strategy
 - TODO: Implement proper sToken balance calculation

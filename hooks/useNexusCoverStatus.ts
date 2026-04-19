@@ -16,10 +16,7 @@ interface CoverStatus {
  * Note: Nexus Mutual has a 14-day cooling period after purchase before
  * claims can be filed. The cover is still "active" during this period.
  */
-export function useNexusCoverStatus(
-  productId: number,
-  buyerAddress?: string,
-): CoverStatus {
+export function useNexusCoverStatus(productId: number, buyerAddress?: string): CoverStatus {
   const [status, setStatus] = useState<CoverStatus>({
     hasCover: false,
     isLoading: true,
@@ -33,9 +30,7 @@ export function useNexusCoverStatus(
 
     try {
       // Query Nexus Mutual API for active covers
-      const response = await fetch(
-        `https://api.nexusmutual.io/v2/covers?buyer=${buyerAddress}`,
-      );
+      const response = await fetch(`https://api.nexusmutual.io/v2/covers?buyer=${buyerAddress}`);
 
       if (!response.ok) {
         setStatus({ hasCover: false, isLoading: false });
@@ -50,9 +45,7 @@ export function useNexusCoverStatus(
       const activeCover = Array.isArray(covers)
         ? covers.find(
             (cover: any) =>
-              cover.productId === productId &&
-              cover.expiry > now &&
-              cover.status !== "expired",
+              cover.productId === productId && cover.expiry > now && cover.status !== "expired"
           )
         : null;
 

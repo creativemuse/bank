@@ -23,12 +23,8 @@ interface JWTPayload {
  * Base64 URL encode (without padding)
  */
 function base64UrlEncode(data: string | Buffer): string {
-  const buffer = typeof data === 'string' ? Buffer.from(data) : data;
-  return buffer
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+  const buffer = typeof data === "string" ? Buffer.from(data) : data;
+  return buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 /**
@@ -39,7 +35,7 @@ function base64UrlEncode(data: string | Buffer): string {
  * @param requestPath - API endpoint path
  */
 export async function generateJWTFallback(
-  apiKeyId: string, 
+  apiKeyId: string,
   apiKeySecret: string,
   requestMethod: string = "POST",
   requestPath: string = "/onramp/v1/token"

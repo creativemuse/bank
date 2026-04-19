@@ -32,6 +32,7 @@ pnpm yearn:query
 ```
 
 **Expected Output:**
+
 ```
 🔍 Querying Yearn V3 Registry on Base...
 
@@ -47,6 +48,7 @@ Found 1 endorsed USDC vault(s):
 ```
 
 **If no vaults found:**
+
 - Yearn V3 hasn't launched on Base yet
 - The integration is ready and waiting
 - Check [Yearn's Discord](https://discord.yearn.fi) for deployment updates
@@ -114,6 +116,7 @@ Yearn V3's unique safety feature:
 - **Behavior:** Transaction reverts if loss exceeds threshold
 
 Example:
+
 ```
 Expected: 1000 USDC
 maxLoss: 1% (100 bps)
@@ -154,13 +157,12 @@ To add more vaults, simply duplicate the `YearnVaultCard`:
 To fetch real APR data:
 
 **Option 1: Yearn API**
+
 ```typescript
 const { data: aprData } = useQuery({
-  queryKey: ['yearn-apr', vaultAddress],
+  queryKey: ["yearn-apr", vaultAddress],
   queryFn: async () => {
-    const response = await fetch(
-      `https://api.yearn.fi/v1/chains/8453/vaults/${vaultAddress}`
-    );
+    const response = await fetch(`https://api.yearn.fi/v1/chains/8453/vaults/${vaultAddress}`);
     return response.json();
   },
 });
@@ -169,6 +171,7 @@ const estimatedApr = aprData?.apy?.net_apy * 100;
 ```
 
 **Option 2: Historical Calculation**
+
 ```typescript
 // Track totalAssets over time and calculate APR
 // from the change in value
@@ -184,7 +187,7 @@ import { USDC_ADDRESS_BASE } from "@/lib/config/yearn";
 
 function StrategiesPage() {
   const { vaultAddresses, isLoading } = useYearnRegistry(USDC_ADDRESS_BASE);
-  
+
   return (
     <div>
       {vaultAddresses.map((address) => (
@@ -205,34 +208,42 @@ function StrategiesPage() {
 ### Hooks
 
 #### `useYearnRegistry(assetAddress)`
+
 Fetch endorsed vaults for an asset.
 
 **Returns:**
+
 - `vaultAddresses: Address[]` - Array of vault addresses
 - `isLoading: boolean`
 - `error: Error | null`
 - `refetch: () => void`
 
 #### `useYearnVault(vaultAddress)`
+
 Get vault details.
 
 **Returns:**
+
 - `totalAssets: bigint` - Total assets under management
 - `assetAddress: Address` - Underlying token address
 - `vaultInfo: VaultInfo` - Vault metadata
 
 #### `useYearnDeposit(vaultAddress, assetAddress)`
+
 Handle deposits with approval.
 
 **Returns:**
+
 - `deposit: (assets, receiver) => Promise<void>`
 - `state: { status, txHash, error }`
 - `reset: () => void`
 
 #### `useYearnWithdraw(vaultAddress)`
+
 Handle withdrawals with maxLoss.
 
 **Returns:**
+
 - `redeem: (shares, receiver, owner, maxLoss) => Promise<void>`
 - `state: { status, txHash, error }`
 - `reset: () => void`
@@ -240,9 +251,11 @@ Handle withdrawals with maxLoss.
 ### Components
 
 #### `<YearnVaultCard />`
+
 Display vault with deposit/withdraw actions.
 
 **Props:**
+
 ```typescript
 {
   vaultAddress: Address;
@@ -257,9 +270,11 @@ Display vault with deposit/withdraw actions.
 ```
 
 #### `<YearnVaultModal />`
+
 Modal for deposit/withdrawal flows.
 
 **Props:**
+
 ```typescript
 {
   open: boolean;
@@ -317,6 +332,7 @@ Before production:
 ### Transaction Status
 
 All transactions include:
+
 - Loading state during confirmation
 - Success message with Basescan link
 - Error message if failed
@@ -325,33 +341,41 @@ All transactions include:
 ### Console Logging
 
 For debugging, check browser console:
+
 ```typescript
 // Deposit state changes:
-"Deposit: idle → approving → depositing → success"
+"Deposit: idle → approving → depositing → success";
 
 // Withdrawal state:
-"Withdraw: idle → redeeming → success"
+"Withdraw: idle → redeeming → success";
 ```
 
 ## 🆘 Troubleshooting
 
 ### "No vaults found"
+
 **Solution:** Yearn V3 not yet on Base. Wait for deployment.
 
 ### "Transaction reverts"
+
 **Check:**
+
 - MaxLoss setting (try 100 bps = 1%)
 - Sufficient USDC balance
 - Sufficient gas
 
 ### "Approval fails"
+
 **Check:**
+
 - USDC balance > 0
 - Connected to Base network
 - Wallet has ETH for gas
 
 ### "Incorrect share preview"
+
 **Verify:**
+
 - Asset decimals correct (6 for USDC)
 - Share decimals correct (18)
 - Vault totalAssets loading
@@ -387,4 +411,3 @@ Your Yearn V3 integration is production-ready. Once vaults launch on Base:
 ---
 
 **Need help?** Open an issue or check the [full documentation](./YEARN_V3_INTEGRATION.md).
-

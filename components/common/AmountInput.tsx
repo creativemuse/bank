@@ -34,9 +34,7 @@ export function AmountInput({ amount, onChange }: AmountInputProps) {
         style={{ maxWidth: 200 }}
       />
       {!amount && (
-        <p className="animate-pulse text-sm font-medium text-gray-900">
-          Tap above to enter amount
-        </p>
+        <p className="animate-pulse text-sm font-medium text-gray-900">Tap above to enter amount</p>
       )}
     </div>
   );

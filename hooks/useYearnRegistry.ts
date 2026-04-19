@@ -6,10 +6,10 @@ import { YEARN_V3_ADDRESSES, YEARN_REGISTRY_ABI, USDC_ADDRESS_BASE } from "@/lib
 
 /**
  * Hook to fetch all endorsed Yearn V3 vaults for a specific asset from the registry
- * 
+ *
  * @param assetAddress - The underlying asset address (e.g., USDC)
  * @returns Array of vault addresses endorsed by Yearn
- * 
+ *
  * @example
  * const { vaultAddresses, isLoading, error } = useYearnRegistry(USDC_ADDRESS_BASE);
  * // Returns: ["0xVault1...", "0xVault2...", ...]
@@ -42,7 +42,7 @@ export const useYearnRegistry = (assetAddress: Address = USDC_ADDRESS_BASE) => {
 
 /**
  * Hook to fetch vault information from the registry
- * 
+ *
  * @param vaultAddress - The vault address to query
  * @returns Vault info including asset, version, type, etc.
  */
@@ -84,7 +84,7 @@ export const useYearnVaultInfo = (vaultAddress: Address | undefined) => {
 /**
  * Hook to fetch all endorsed vaults across all assets
  * Note: This returns a nested array structure
- * 
+ *
  * @returns Nested array of all endorsed vaults
  */
 export const useAllYearnVaults = () => {
@@ -110,4 +110,3 @@ export const useAllYearnVaults = () => {
     refetch,
   };
 };
-

@@ -27,9 +27,7 @@ export function useHealthAlerts() {
     queryKey: ["health-alerts", walletAddress],
     queryFn: async () => {
       if (!walletAddress) return { alerts: [] };
-      const response = await fetch(
-        `/api/alerts?wallet=${encodeURIComponent(walletAddress)}`,
-      );
+      const response = await fetch(`/api/alerts?wallet=${encodeURIComponent(walletAddress)}`);
       if (!response.ok) return { alerts: [] };
       return response.json();
     },
@@ -50,7 +48,7 @@ export function useHealthAlerts() {
         queryKey: ["health-alerts", walletAddress],
       });
     },
-    [walletAddress, queryClient],
+    [walletAddress, queryClient]
   );
 
   const alerts = data?.alerts ?? [];

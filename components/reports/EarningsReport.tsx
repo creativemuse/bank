@@ -23,9 +23,7 @@ export function EarningsReport({ open, onClose }: EarningsReportProps) {
   // Default to current year
   const currentYear = new Date().getFullYear();
   const [fromDate, setFromDate] = useState(`${currentYear}-01-01`);
-  const [toDate, setToDate] = useState(
-    new Date().toISOString().split("T")[0],
-  );
+  const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
 
   const generateReport = useCallback(async () => {
     if (!wallet?.address) {
@@ -81,15 +79,13 @@ export function EarningsReport({ open, onClose }: EarningsReportProps) {
         // Report configuration
         <div className="flex flex-col gap-6">
           <p className="text-center text-sm text-slate-600">
-            Generate a financial report for tax filing and accounting. Includes
-            all deposits, withdrawals, vault activity, and yield earned.
+            Generate a financial report for tax filing and accounting. Includes all deposits,
+            withdrawals, vault activity, and yield earned.
           </p>
 
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium uppercase text-slate-500">
-                From
-              </span>
+              <span className="text-xs font-medium text-slate-500 uppercase">From</span>
               <input
                 type="date"
                 value={fromDate}
@@ -98,9 +94,7 @@ export function EarningsReport({ open, onClose }: EarningsReportProps) {
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium uppercase text-slate-500">
-                To
-              </span>
+              <span className="text-xs font-medium text-slate-500 uppercase">To</span>
               <input
                 type="date"
                 value={toDate}
@@ -110,17 +104,14 @@ export function EarningsReport({ open, onClose }: EarningsReportProps) {
             </label>
           </div>
 
-          {error && (
-            <p className="text-center text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="text-center text-sm text-red-600">{error}</p>}
 
           <PrimaryButton onClick={generateReport} disabled={isLoading}>
             {isLoading ? "Generating..." : "Generate Report"}
           </PrimaryButton>
 
           <p className="text-center text-xs text-slate-400">
-            For informational purposes only. Consult a tax professional for
-            filing guidance.
+            For informational purposes only. Consult a tax professional for filing guidance.
           </p>
         </div>
       ) : (
@@ -128,28 +119,11 @@ export function EarningsReport({ open, onClose }: EarningsReportProps) {
         <div className="flex flex-col gap-6">
           {/* Summary cards */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-            <SummaryCard
-              label="Total Deposited"
-              value={`$${report.summary.totalDeposited}`}
-            />
-            <SummaryCard
-              label="Total Withdrawn"
-              value={`$${report.summary.totalWithdrawn}`}
-            />
-            <SummaryCard
-              label="Net Yield"
-              value={`$${report.summary.totalYieldEarned}`}
-              positive
-            />
-            <SummaryCard
-              label="Fees Paid"
-              value={`$${report.summary.totalFeesPaid}`}
-              negative
-            />
-            <SummaryCard
-              label="Net Position"
-              value={`$${report.summary.netPosition}`}
-            />
+            <SummaryCard label="Total Deposited" value={`$${report.summary.totalDeposited}`} />
+            <SummaryCard label="Total Withdrawn" value={`$${report.summary.totalWithdrawn}`} />
+            <SummaryCard label="Net Yield" value={`$${report.summary.totalYieldEarned}`} positive />
+            <SummaryCard label="Fees Paid" value={`$${report.summary.totalFeesPaid}`} negative />
+            <SummaryCard label="Net Position" value={`$${report.summary.netPosition}`} />
           </div>
 
           {/* Export buttons */}
@@ -179,16 +153,10 @@ function SummaryCard({
 }) {
   return (
     <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <span className="text-xs font-medium uppercase text-slate-500">
-        {label}
-      </span>
+      <span className="text-xs font-medium text-slate-500 uppercase">{label}</span>
       <span
         className={`mt-1 text-lg font-bold ${
-          positive
-            ? "text-emerald-700"
-            : negative
-              ? "text-red-600"
-              : "text-slate-900"
+          positive ? "text-emerald-700" : negative ? "text-red-600" : "text-slate-900"
         }`}
       >
         {value}

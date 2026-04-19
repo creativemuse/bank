@@ -36,9 +36,7 @@ export async function GET(request: NextRequest) {
       sessionToken = response.session_token;
       sessionJwt = response.session_jwt;
     } else {
-      return NextResponse.redirect(
-        new URL("/?error=invalid_token_type", request.url),
-      );
+      return NextResponse.redirect(new URL("/?error=invalid_token_type", request.url));
     }
 
     // Redirect to home and set session cookies so the client-side
@@ -68,8 +66,6 @@ export async function GET(request: NextRequest) {
     return redirectResponse;
   } catch (err: any) {
     console.error("Stytch callback authentication failed:", err.message);
-    return NextResponse.redirect(
-      new URL("/?error=auth_failed", request.url),
-    );
+    return NextResponse.redirect(new URL("/?error=auth_failed", request.url));
   }
 }

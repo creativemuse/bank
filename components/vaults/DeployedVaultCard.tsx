@@ -58,7 +58,7 @@ export const DeployedVaultCard = ({
 }: DeployedVaultCardProps) => {
   const { address: wagmiAddress } = useAccount();
   const { wallet: crossmintWallet } = useWallet();
-  
+
   // Determine active address (Crossmint takes priority, fallback to wagmi)
   // This must match the logic in YearnVaultModal to ensure balance checks use the same address
   const userAddress = useMemo(() => {
@@ -67,7 +67,7 @@ export const DeployedVaultCard = ({
     }
     return wagmiAddress;
   }, [crossmintWallet?.address, wagmiAddress]);
-  
+
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"deposit" | "withdraw">("deposit");
   const [managementModalOpen, setManagementModalOpen] = useState(false);
@@ -77,7 +77,9 @@ export const DeployedVaultCard = ({
   // When vault is from API, use its usedReserve; otherwise fall back to Base USDC reserve
   const { reserve: baseReserve, loading: reserveLoading } = useBaseUsdcReserve();
   const reserve = vaultFromApi?.usedReserve ?? baseReserve;
-  const aTokenAddress = (reserve?.aToken?.address ?? baseReserve?.aToken?.address) as Address | undefined;
+  const aTokenAddress = (reserve?.aToken?.address ?? baseReserve?.aToken?.address) as
+    | Address
+    | undefined;
 
   // Get vault TVL from ERC-4626 totalAssets (this includes accrued interest)
   const { data: totalAssets, isLoading: vaultLoading } = useReadContract({
@@ -205,7 +207,9 @@ export const DeployedVaultCard = ({
       },
     ],
     functionName: "convertToAssets",
-    args: resolvedShareBalanceForConvertToAssets ? [resolvedShareBalanceForConvertToAssets] : undefined,
+    args: resolvedShareBalanceForConvertToAssets
+      ? [resolvedShareBalanceForConvertToAssets]
+      : undefined,
     chainId: 8453, // Base mainnet
     query: {
       enabled: resolvedShareBalanceForConvertToAssets !== undefined,
@@ -219,10 +223,10 @@ export const DeployedVaultCard = ({
   }, [vaultAssetAddress, assetAddress]);
 
   // Get user's asset balance (USDC balance for deposits)
-  const { 
-    data: userAssetBalance, 
+  const {
+    data: userAssetBalance,
     refetch: refetchAssetBalance,
-    isLoading: isBalanceLoading 
+    isLoading: isBalanceLoading,
   } = useReadContract({
     address: actualAssetAddress,
     abi: [
@@ -275,7 +279,8 @@ export const DeployedVaultCard = ({
 
     let grossPercent: number;
     if (formatted != null && formatted !== "") {
-      grossPercent = typeof formatted === "string" ? Number.parseFloat(formatted) : Number(formatted);
+      grossPercent =
+        typeof formatted === "string" ? Number.parseFloat(formatted) : Number(formatted);
     } else if (valueRaw != null) {
       const num = typeof valueRaw === "string" ? Number.parseFloat(valueRaw) : Number(valueRaw);
       if (Number.isNaN(num)) return "—";
@@ -313,7 +318,7 @@ export const DeployedVaultCard = ({
   // totalAssets already includes interest, but we can show the aToken balance for transparency
   const aTokenBalanceDisplay = useMemo(() => {
     if (!aTokenBalance || !aTokenAddress) return null;
-    
+
     const balance = Number(formatUnits(aTokenBalance, assetDecimals));
     return balance.toLocaleString("en-US", {
       minimumFractionDigits: 2,
@@ -325,12 +330,12 @@ export const DeployedVaultCard = ({
   // Note: totalAssets already accounts for interest, but we can show the aToken amount
   const interestInfo = useMemo(() => {
     if (!totalAssets || !aTokenBalance) return null;
-    
+
     // The aToken balance represents the claimable underlying amount (including interest)
     // totalAssets should match this, but we can show both for transparency
     const totalAssetsNum = Number(formatUnits(totalAssets, assetDecimals));
     const aTokenBalanceNum = Number(formatUnits(aTokenBalance, assetDecimals));
-    
+
     // If there's a difference, it's likely due to rounding or the way Aave calculates
     // For now, we'll show the aToken balance as the "earning balance"
     return {
@@ -346,26 +351,26 @@ export const DeployedVaultCard = ({
     resolvedShareBalance > 0n &&
     // If we have the onchain conversion value, ensure it doesn't exceed total vault assets
     // (sanity check against parsing/shape mismatches in `apiShareBalance`).
-    (convertToAssets !== undefined && totalAssets !== undefined ? convertToAssets <= totalAssets : true) &&
+    (convertToAssets !== undefined && totalAssets !== undefined
+      ? convertToAssets <= totalAssets
+      : true) &&
     !isShareBalanceLoading;
-  
+
   // Disable withdraw button only if:
   // 1. No wallet connected, OR
   // 2. We've finished loading AND confirmed user has no shares
   // Keep button enabled during loading to avoid showing inactive state when user actually has shares
-  const isWithdrawDisabled =
-    !userAddress || (!isShareBalanceLoading && !hasPosition);
-  
-  const positionValue = hasPosition && convertToAssets
-    ? formatUnits(convertToAssets, assetDecimals)
-    : "0";
+  const isWithdrawDisabled = !userAddress || (!isShareBalanceLoading && !hasPosition);
+
+  const positionValue =
+    hasPosition && convertToAssets ? formatUnits(convertToAssets, assetDecimals) : "0";
 
   const displayName = name || `My Aave Vault`;
 
   const isOwner =
     !!vaultFromApi &&
     !!userAddress &&
-    (vaultFromApi.owner?.toLowerCase() === userAddress.toLowerCase());
+    vaultFromApi.owner?.toLowerCase() === userAddress.toLowerCase();
 
   const cardActions = useMemo(() => {
     const actions: Array<{
@@ -396,7 +401,7 @@ export const DeployedVaultCard = ({
           window.open(
             `https://basescan.org/address/${vaultAddress}`,
             "_blank",
-            "noopener,noreferrer",
+            "noopener,noreferrer"
           ),
       },
     ];
@@ -409,21 +414,36 @@ export const DeployedVaultCard = ({
       });
     }
     if (hasPosition) {
-      actions.splice(actions.findIndex((a) => a.id === "view-vault"), 0, {
-        id: "buy-cover",
-        label: "Buy Cover",
-        ariaLabel: "Protect position with Nexus Mutual cover",
-        onClick: () => setCoverModalOpen(true),
-      });
-      actions.splice(actions.findIndex((a) => a.id === "view-vault"), 0, {
-        id: "activity",
-        label: "Activity",
-        ariaLabel: "View vault activity and history",
-        onClick: () => setActivityModalOpen(true),
-      });
+      actions.splice(
+        actions.findIndex((a) => a.id === "view-vault"),
+        0,
+        {
+          id: "buy-cover",
+          label: "Buy Cover",
+          ariaLabel: "Protect position with Nexus Mutual cover",
+          onClick: () => setCoverModalOpen(true),
+        }
+      );
+      actions.splice(
+        actions.findIndex((a) => a.id === "view-vault"),
+        0,
+        {
+          id: "activity",
+          label: "Activity",
+          ariaLabel: "View vault activity and history",
+          onClick: () => setActivityModalOpen(true),
+        }
+      );
     }
     return actions;
-  }, [hasPosition, handleOpenDeposit, handleOpenWithdraw, isWithdrawDisabled, vaultAddress, isOwner]);
+  }, [
+    hasPosition,
+    handleOpenDeposit,
+    handleOpenWithdraw,
+    isWithdrawDisabled,
+    vaultAddress,
+    isOwner,
+  ]);
 
   return (
     <>
@@ -442,7 +462,7 @@ export const DeployedVaultCard = ({
                 href={`https://basescan.org/address/${vaultAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline break-all"
+                className="break-all underline"
               >
                 {vaultAddress}
               </Link>
@@ -462,10 +482,13 @@ export const DeployedVaultCard = ({
             )}
             {hasPosition && (
               <div className="mt-1 text-slate-600">
-                Your Position: {Number(positionValue).toLocaleString("en-US", {
+                Your Position:{" "}
+                {Number(positionValue).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 6,
-                })} {assetSymbol} ({formatVaultShares(resolvedShareBalance ?? 0n, shareDecimals ?? 18)} shares)
+                })}{" "}
+                {assetSymbol} ({formatVaultShares(resolvedShareBalance ?? 0n, shareDecimals ?? 18)}{" "}
+                shares)
               </div>
             )}
             {aTokenBalanceDisplay && (
@@ -542,4 +565,3 @@ export const DeployedVaultCard = ({
     </>
   );
 };
-

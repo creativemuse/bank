@@ -33,14 +33,11 @@ export function LiquidationHistory() {
 
     const fetchLiquidations = async () => {
       try {
-        const response = await fetch(
-          `/api/reports/generate`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ walletAddress: wallet.address }),
-          },
-        );
+        const response = await fetch(`/api/reports/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ walletAddress: wallet.address }),
+        });
 
         // For now, fetch liquidations directly from the DB via a simple query
         // This will be enhanced when the full reporting engine includes liquidation data
@@ -55,9 +52,7 @@ export function LiquidationHistory() {
 
   if (isLoading) {
     return (
-      <div className="animate-pulse text-sm text-slate-500">
-        Checking liquidation history...
-      </div>
+      <div className="animate-pulse text-sm text-slate-500">Checking liquidation history...</div>
     );
   }
 
@@ -76,18 +71,14 @@ export function LiquidationHistory() {
 
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-base font-semibold text-slate-900">
-        Liquidation History
-      </h3>
+      <h3 className="text-base font-semibold text-slate-900">Liquidation History</h3>
       {liquidations.map((liq) => (
         <div
           key={liq.id}
           className="flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 p-4"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-red-900">
-              Liquidation Event
-            </span>
+            <span className="text-sm font-semibold text-red-900">Liquidation Event</span>
             <span className="text-xs text-red-600">
               {new Date(liq.created_at).toLocaleDateString("en-US", {
                 month: "short",
@@ -114,8 +105,7 @@ export function LiquidationHistory() {
               <div className="col-span-2">
                 <span className="text-red-600">Liquidation Penalty</span>
                 <p className="font-medium text-red-900">
-                  ${Number(liq.liquidation_penalty_usd).toFixed(2)} lost to
-                  liquidator bonus
+                  ${Number(liq.liquidation_penalty_usd).toFixed(2)} lost to liquidator bonus
                 </p>
               </div>
             )}
@@ -132,9 +122,9 @@ export function LiquidationHistory() {
 
           <div className="mt-1 border-t border-red-200 pt-2">
             <p className="text-xs text-red-700">
-              <strong>Recovery advice:</strong> Maintain a Health Factor above
-              2.0 to provide a larger buffer against price volatility. Consider
-              using E-Mode for correlated assets to improve your LTV ratio.
+              <strong>Recovery advice:</strong> Maintain a Health Factor above 2.0 to provide a
+              larger buffer against price volatility. Consider using E-Mode for correlated assets to
+              improve your LTV ratio.
             </p>
           </div>
         </div>
