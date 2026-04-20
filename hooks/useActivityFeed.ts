@@ -9,12 +9,13 @@ export function useActivityFeed() {
       const response = await wallet?.transfers({ status: "successful" });
       return {
         events: (response?.data ?? []).map((t) => ({
-          from_address: t.sender.address,
-          to_address: t.recipient.address,
-          transaction_hash: t.onChain?.txId ?? "",
+          from_address: t.sender?.address ?? "",
+          to_address: t.recipient?.address ?? "",
+          // Fall back to transferId so React keys stay unique when no on-chain hash
+          transaction_hash: t.onChain?.txId ?? t.transferId ?? "",
           timestamp: t.completedAt,
-          amount: t.token.amount,
-          token_symbol: t.token.symbol,
+          amount: t.token?.amount ?? "0",
+          token_symbol: t.token?.symbol,
         })),
       };
     },
