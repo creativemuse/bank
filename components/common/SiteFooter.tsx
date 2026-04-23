@@ -25,30 +25,6 @@ export function SiteFooter({ variant = "page" }: { variant?: Variant }) {
             "flex items-center gap-2 hover:underline hover:underline-offset-4",
             linkColor
           )}
-          href="https://github.com/creativeplatform/bank"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image aria-hidden src="/file.svg" alt="File icon" width={16} height={16} />
-          View code
-        </a>
-        <a
-          className={cn(
-            "flex items-center gap-2 hover:underline hover:underline-offset-4",
-            linkColor
-          )}
-          href="https://app.creativeplatform.xyz"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image aria-hidden src="/window.svg" alt="Window icon" width={16} height={16} />
-          See all apps
-        </a>
-        <a
-          className={cn(
-            "flex items-center gap-2 hover:underline hover:underline-offset-4",
-            linkColor
-          )}
           href="https://creativeplatform.xyz"
           target="_blank"
           rel="noopener noreferrer"

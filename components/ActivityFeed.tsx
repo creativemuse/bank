@@ -14,11 +14,11 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
   const { wallet } = useWallet();
   return (
     <Container className="flex max-h-[70vh] min-h-[280px] w-full max-w-5xl flex-grow flex-col overflow-hidden sm:max-h-[600px] sm:min-h-[350px]">
-      <div className="mb-2 flex-shrink-0 text-base text-slate-600">Last activity</div>
+      <div className="mb-2 flex-shrink-0 text-base text-slate-600">Last Activity</div>
       <div
         className={`flex w-full flex-1 flex-col items-center overflow-hidden ${isLoading || !data?.events?.length ? "justify-center" : "justify-start"}`}
       >
-        {!isLoading && !data?.events?.length && (
+        {!isLoading && (error || !data?.events?.length) && (
           <>
             <div className="mb-2 text-center text-base font-semibold text-slate-900">
               Your activity feed
@@ -39,7 +39,6 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
           {isLoading && (
             <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
           )}
-          {error && <div className="text-center text-red-500">{error.message}</div>}
           {!isLoading && !error && data?.events?.length && data?.events?.length > 0 ? (
             <ul
               className="max-h-48 w-full overflow-y-auto pt-2 pr-2 pb-2 sm:max-h-56 md:max-h-72"
