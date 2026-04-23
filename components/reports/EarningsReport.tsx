@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
 import type { EarningsReport as EarningsReportType } from "@/lib/reports/types";
 import { TransactionTable } from "./TransactionTable";
 import { ExportButtons } from "./ExportButtons";
@@ -16,6 +17,7 @@ interface EarningsReportProps {
 
 export function EarningsReport({ open, onClose }: EarningsReportProps) {
   const { wallet } = useWallet();
+  const { sessionToken } = useAuth();
   const [report, setReport] = useState<EarningsReportType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,10 @@ export function EarningsReport({ open, onClose }: EarningsReportProps) {
       setError("Wallet not connected");
       return;
     }
+    if (!sessionToken) {
+      setError("Please sign in to generate a report");
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -37,7 +43,10 @@ export function EarningsReport({ open, onClose }: EarningsReportProps) {
     try {
       const response = await fetch("/api/reports/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToken}`,
+        },
         body: JSON.stringify({
           walletAddress: wallet.address,
           from: new Date(fromDate).toISOString(),
@@ -57,7 +66,7 @@ export function EarningsReport({ open, onClose }: EarningsReportProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [wallet?.address, fromDate, toDate]);
+  }, [wallet?.address, sessionToken, fromDate, toDate]);
 
   const handleClose = () => {
     setReport(null);

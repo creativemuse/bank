@@ -24,6 +24,7 @@ interface AuthContextValue {
   status: AuthStatus;
   user: AuthUser | null;
   jwt: string | null;
+  sessionToken: string | null;
   login: () => void;
   logout: () => void;
   showLogin: boolean;
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { user: stytchUser, isInitialized } = useStytchUser();
   const [showLogin, setShowLogin] = useState(false);
   const [jwt, setJwt] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
 
   const status: AuthStatus = useMemo(() => {
     if (!isInitialized) return "initializing";
@@ -64,27 +66,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [stytchUser]);
 
-  // Fetch session JWT for Crossmint BYOA
+  // Fetch session tokens for Crossmint BYOA (JWT) and server API calls (opaque token)
   useEffect(() => {
     if (!session) {
       setJwt(null);
+      setSessionToken(null);
       return;
     }
 
     const tokens = stytch.session.getTokens();
-    if (tokens?.session_jwt) {
-      setJwt(tokens.session_jwt);
-    }
+    if (tokens?.session_jwt) setJwt(tokens.session_jwt);
+    if (tokens?.session_token) setSessionToken(tokens.session_token);
   }, [session, stytch.session]);
 
-  // Refresh JWT when session ID changes (handles background refreshes)
+  // Refresh tokens when session ID changes (handles background refreshes)
   useEffect(() => {
     if (!session?.session_id) return;
 
     const tokens = stytch.session.getTokens();
-    if (tokens?.session_jwt) {
-      setJwt(tokens.session_jwt);
-    }
+    if (tokens?.session_jwt) setJwt(tokens.session_jwt);
+    if (tokens?.session_token) setSessionToken(tokens.session_token);
   }, [session?.session_id, stytch.session]);
 
   const login = useCallback(() => {
@@ -98,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Session may already be expired
     }
     setJwt(null);
+    setSessionToken(null);
     setShowLogin(false);
   }, [stytch.session]);
 
@@ -106,12 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       user,
       jwt,
+      sessionToken,
       login,
       logout,
       showLogin,
       setShowLogin,
     }),
-    [status, user, jwt, login, logout, showLogin]
+    [status, user, jwt, sessionToken, login, logout, showLogin]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

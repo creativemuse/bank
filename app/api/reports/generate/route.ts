@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/cockroachdb";
 import type { EarningsReport, EarningsSummary, ReportTransaction } from "@/lib/reports/types";
+import { requireAuthedWallet, assertWalletMatches } from "@/lib/apiAuth";
 
 const GOLDSKY_ENDPOINT =
   "https://api.goldsky.com/api/public/project_cmh0iv6s500dbw2p22vsxcfo6/subgraphs/usdc-finance-yearn-v3/1.0.0/gn";
@@ -8,17 +9,21 @@ const GOLDSKY_ENDPOINT =
 /**
  * POST /api/reports/generate
  * Aggregates financial data from CockroachDB (Coinbase transactions),
- * Goldsky subgraph (Yearn vault cashflows), and returns a structured report.
+ * Goldsky subgraph (Yearn vault cashflows), and returns a structured report
+ * for the authenticated user's wallet.
  */
 export async function POST(request: NextRequest) {
   try {
-    const { walletAddress, from, to } = await request.json();
+    const body = await request.json();
+    const { walletAddress, from, to, sessionToken } = body ?? {};
 
-    if (!walletAddress) {
-      return NextResponse.json({ error: "walletAddress is required" }, { status: 400 });
-    }
+    const auth = await requireAuthedWallet(request, sessionToken);
+    if (!auth.ok) return auth.response;
 
-    const normalizedAddress = walletAddress.toLowerCase();
+    const mismatch = assertWalletMatches(auth.session.walletAddress, walletAddress);
+    if (mismatch) return mismatch;
+
+    const normalizedAddress = auth.session.walletAddress;
     const fromDate = from || "2024-01-01T00:00:00Z";
     const toDate = to || new Date().toISOString();
 
@@ -37,7 +42,7 @@ export async function POST(request: NextRequest) {
     const summary = calculateSummary(allTransactions);
 
     const report: EarningsReport = {
-      walletAddress,
+      walletAddress: normalizedAddress,
       generatedAt: new Date().toISOString(),
       period: { from: fromDate, to: toDate },
       summary,

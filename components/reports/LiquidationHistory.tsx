@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
 
 interface LiquidationEvent {
   id: string;
@@ -22,20 +23,24 @@ interface LiquidationEvent {
  */
 export function LiquidationHistory() {
   const { wallet } = useWallet();
+  const { sessionToken } = useAuth();
   const [liquidations, setLiquidations] = useState<LiquidationEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!wallet?.address) {
+    if (!wallet?.address || !sessionToken) {
       setIsLoading(false);
       return;
     }
 
     const fetchLiquidations = async () => {
       try {
-        const response = await fetch(`/api/reports/generate`, {
+        await fetch(`/api/reports/generate`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionToken}`,
+          },
           body: JSON.stringify({ walletAddress: wallet.address }),
         });
 
@@ -48,7 +53,7 @@ export function LiquidationHistory() {
     };
 
     fetchLiquidations();
-  }, [wallet?.address]);
+  }, [wallet?.address, sessionToken]);
 
   if (isLoading) {
     return (

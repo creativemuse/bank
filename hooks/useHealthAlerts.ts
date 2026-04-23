@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
 
 interface HealthAlert {
   id: string;
@@ -20,35 +21,41 @@ interface HealthAlert {
  */
 export function useHealthAlerts() {
   const { wallet } = useWallet();
+  const { sessionToken } = useAuth();
   const queryClient = useQueryClient();
   const walletAddress = wallet?.address;
 
   const { data, isLoading } = useQuery<{ alerts: HealthAlert[] }>({
-    queryKey: ["health-alerts", walletAddress],
+    queryKey: ["health-alerts", walletAddress, sessionToken],
     queryFn: async () => {
-      if (!walletAddress) return { alerts: [] };
-      const response = await fetch(`/api/alerts?wallet=${encodeURIComponent(walletAddress)}`);
+      if (!walletAddress || !sessionToken) return { alerts: [] };
+      const response = await fetch("/api/alerts", {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
       if (!response.ok) return { alerts: [] };
       return response.json();
     },
-    enabled: !!walletAddress,
-    refetchInterval: 60_000, // Poll every 60 seconds
+    enabled: !!walletAddress && !!sessionToken,
+    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
 
   const acknowledge = useCallback(
     async (alertId: string) => {
+      if (!sessionToken) return;
       await fetch("/api/alerts", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToken}`,
+        },
         body: JSON.stringify({ alertId }),
       });
-      // Invalidate cache to refresh
       queryClient.invalidateQueries({
-        queryKey: ["health-alerts", walletAddress],
+        queryKey: ["health-alerts", walletAddress, sessionToken],
       });
     },
-    [walletAddress, queryClient]
+    [walletAddress, sessionToken, queryClient]
   );
 
   const alerts = data?.alerts ?? [];
