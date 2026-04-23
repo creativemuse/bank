@@ -5,7 +5,14 @@ import { useAccount, useWalletClient, useReadContract } from "wagmi";
 import { useWallet, EVMWallet } from "@crossmint/client-sdk-react-ui";
 import { createWalletClient, custom, encodeFunctionData, type WalletClient, type Address, formatUnits } from "viem";
 import { base, baseSepolia } from "viem/chains";
-import { bigDecimal, chainId as aaveChainId, evmAddress, useVaultSetFee, useVaultWithdrawFees, useVaultTransferOwnership } from "@aave/react";
+import {
+  bigDecimal,
+  chainId as aaveChainId,
+  evmAddress,
+  useVaultSetFee,
+  useVaultWithdrawFees,
+  useVaultTransferOwnership,
+} from "@aave/react";
 import { useSendTransaction } from "@aave/react/viem";
 import type { Vault } from "@aave/react";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
@@ -254,7 +261,7 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
       onSuccess?.();
       onClose();
     },
-    [feeInput, walletClient, chainId, vault.address, setFee, sendTransaction, onSuccess, onClose],
+    [feeInput, walletClient, chainId, vault.address, setFee, sendTransaction, onSuccess, onClose]
   );
 
   const handleWithdrawFees = useCallback(
@@ -435,6 +442,7 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
         return;
       }
 
+
       if (result.isErr()) {
         setErrorMessage(result.error?.message ?? "Withdraw fees failed");
         return;
@@ -442,7 +450,7 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
       onSuccess?.();
       onClose();
     },
-    [withdrawMax, withdrawAmount, walletClient, crossmintWallet, chainId, vault.address,
+    [withdrawMax, withdrawAmount, walletClient, crossmintWallet, chainId, vault.address, feeManagerAddress,
       withdrawFees, sendTransaction, onChainClaimableFees, refetchClaimable, callSplitRevenue, onSuccess, onClose],
   );
 
@@ -480,7 +488,16 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
       onSuccess?.();
       onClose();
     },
-    [newOwnerAddress, walletClient, chainId, vault.address, transferOwnership, sendTransaction, onSuccess, onClose],
+    [
+      newOwnerAddress,
+      walletClient,
+      chainId,
+      vault.address,
+      transferOwnership,
+      sendTransaction,
+      onSuccess,
+      onClose,
+    ]
   );
 
   const handleDistribute = useCallback(async () => {
@@ -516,7 +533,9 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
         <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <h4 className="text-base font-semibold text-slate-900">Vault summary</h4>
           <p className="text-sm text-slate-600">
-            Current fee: <strong>{currentFee}%</strong> · Fees balance: <strong>{feesBalanceValue}</strong> · Total fee revenue: <strong>{totalFeeRevenueValue}</strong>
+            Current fee: <strong>{currentFee}%</strong> · Fees balance:{" "}
+            <strong>{feesBalanceValue}</strong> · Total fee revenue:{" "}
+            <strong>{totalFeeRevenueValue}</strong>
           </p>
         </section>
 
@@ -543,7 +562,10 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
           </div>
 
           {errorMessage && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+            <p
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              role="alert"
+            >
               {errorMessage}
             </p>
           )}
@@ -551,7 +573,9 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
           {activeTab === "fee" && (
             <form onSubmit={handleSetFee} className="flex flex-col gap-4">
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium uppercase text-slate-500">New performance fee (%)</span>
+                <span className="text-xs font-medium text-slate-500 uppercase">
+                  New performance fee (%)
+                </span>
                 <input
                   type="number"
                   min={10}
@@ -564,7 +588,9 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
                   aria-label="New fee percentage"
                 />
               </label>
-              <p className="text-xs text-slate-500">Minimum 10%. Aave Labs retains 50% of the fee.</p>
+              <p className="text-xs text-slate-500">
+                Minimum 10%. Aave Labs retains 50% of the fee.
+              </p>
               <button
                 type="submit"
                 disabled={isBusy || !feeInput}
@@ -592,7 +618,9 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
               </label>
               {!withdrawMax && (
                 <label className="flex flex-col gap-1">
-                  <span className="text-xs font-medium uppercase text-slate-500">Amount to withdraw</span>
+                  <span className="text-xs font-medium text-slate-500 uppercase">
+                    Amount to withdraw
+                  </span>
                   <input
                     type="text"
                     value={withdrawAmount}
@@ -633,7 +661,9 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
           {activeTab === "transfer" && (
             <form onSubmit={handleTransferOwnership} className="flex flex-col gap-4">
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium uppercase text-slate-500">New owner address</span>
+                <span className="text-xs font-medium text-slate-500 uppercase">
+                  New owner address
+                </span>
                 <input
                   type="text"
                   value={newOwnerAddress}
@@ -643,7 +673,9 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
                   aria-label="New owner address"
                 />
               </label>
-              <p className="text-xs text-slate-500">This action is irreversible. You will lose owner privileges.</p>
+              <p className="text-xs text-slate-500">
+                This action is irreversible. You will lose owner privileges.
+              </p>
               <button
                 type="submit"
                 disabled={isBusy || !newOwnerAddress.trim()}

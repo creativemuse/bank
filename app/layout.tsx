@@ -40,12 +40,28 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/v2/white_bg/white_creative_icon_192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/v2/white_bg/white_creative_products-152x152.png", sizes: "152x152", type: "image/png" },
+      {
+        url: "/icons/v2/white_bg/white_creative_icon_192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        url: "/icons/v2/white_bg/white_creative_products-152x152.png",
+        sizes: "152x152",
+        type: "image/png",
+      },
     ],
     apple: [
-      { url: "/icons/v2/white_bg/white_creative_icons-180x180.png", sizes: "180x180", type: "image/png" },
-      { url: "/icons/v2/white_bg/white_creative_products-152x152.png", sizes: "152x152", type: "image/png" },
+      {
+        url: "/icons/v2/white_bg/white_creative_icons-180x180.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+      {
+        url: "/icons/v2/white_bg/white_creative_products-152x152.png",
+        sizes: "152x152",
+        type: "image/png",
+      },
     ],
   },
   openGraph: {
@@ -92,11 +108,11 @@ export default function RootLayout({
           loop
           muted
           playsInline
-          className="fixed left-0 top-0 -z-20 h-full w-full object-cover"
+          className="fixed top-0 left-0 -z-20 h-full w-full object-cover"
           src="/video/background.mp4"
         />
         {/* Overlay for readability */}
-        <div className="pointer-events-none fixed left-0 top-0 -z-10 h-full w-full bg-black/40" />
+        <div className="pointer-events-none fixed top-0 left-0 -z-10 h-full w-full bg-black/40" />
         <Providers>{children}</Providers>
       </body>
     </html>

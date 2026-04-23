@@ -57,10 +57,11 @@ export function YearnVaultInterestModal({
   assetDecimals = 6,
 }: YearnVaultInterestModalProps) {
   const publicClient = usePublicClient({ chainId: YEARN_CHAIN_ID });
-  const { shareBalance, assetValue, refetch: refetchBalance } = useYearnVaultBalance(
-    vaultAddress,
-    userAddress,
-  );
+  const {
+    shareBalance,
+    assetValue,
+    refetch: refetchBalance,
+  } = useYearnVaultBalance(vaultAddress, userAddress);
 
   const [snapshots, setSnapshots] = useState<YearnInterestSnapshot[]>([]);
   const [cashflowMessage, setCashflowMessage] = useState<string | null>(null);
@@ -76,11 +77,7 @@ export function YearnVaultInterestModal({
     error: cashflowsError,
     refetch: refetchCashflows,
     getNetDepositsWeiAtBlock,
-  } = useYearnVaultCashflows(
-    vaultAddress,
-    userAddress,
-    undefined,
-  );
+  } = useYearnVaultCashflows(vaultAddress, userAddress, undefined);
 
   const [isRefreshingCashflows, setIsRefreshingCashflows] = useState(false);
 
@@ -104,7 +101,7 @@ export function YearnVaultInterestModal({
           blockNumber: BigInt(s.blockNumber),
           positionValueWei: BigInt(s.positionValueWei),
           netProfitWei: s.netProfitWei != null ? BigInt(s.netProfitWei) : null,
-        })),
+        }))
       );
       setCashflowMessage(null);
     } catch (e) {
@@ -119,7 +116,7 @@ export function YearnVaultInterestModal({
       if (!storageKey) return;
       localStorage.setItem(storageKey, JSON.stringify(session));
     },
-    [storageKey],
+    [storageKey]
   );
 
   const handleClearHistory = useCallback(() => {
@@ -156,7 +153,7 @@ export function YearnVaultInterestModal({
       prev.map((s) => ({
         ...s,
         netProfitWei: s.positionValueWei - getNetDepositsWeiAtBlock(s.blockNumber),
-      })),
+      }))
     );
   }, [open, cashflowPoints.length, snapshots.length, getNetDepositsWeiAtBlock]);
 
@@ -202,7 +199,10 @@ export function YearnVaultInterestModal({
           netProfitWei,
         };
 
-        const next = last && last.blockNumber === currentBlockNumber ? [...prev.slice(0, -1), nextSnapshot] : [...prev, nextSnapshot];
+        const next =
+          last && last.blockNumber === currentBlockNumber
+            ? [...prev.slice(0, -1), nextSnapshot]
+            : [...prev, nextSnapshot];
         const capped = next.length > MAX_SNAPSHOTS ? next.slice(next.length - MAX_SNAPSHOTS) : next;
 
         // Persist (best effort)
@@ -220,9 +220,7 @@ export function YearnVaultInterestModal({
         return capped;
       });
     } catch {
-      setCashflowMessage(
-        "Unable to sample position value at this time. Please try again shortly.",
-      );
+      setCashflowMessage("Unable to sample position value at this time. Please try again shortly.");
     }
   }, [
     open,
@@ -280,7 +278,9 @@ export function YearnVaultInterestModal({
     .filter((s): s is YearnInterestSnapshot & { netProfitWei: bigint } => s.netProfitWei != null);
 
   const chart = useMemo(() => {
-    const vals = profitPointsForChart.map((s) => Number(formatUnits(s.netProfitWei, assetDecimals)));
+    const vals = profitPointsForChart.map((s) =>
+      Number(formatUnits(s.netProfitWei, assetDecimals))
+    );
     if (vals.length < 2) return null;
 
     const chartWidth = 600;
@@ -294,11 +294,10 @@ export function YearnVaultInterestModal({
 
     const toX = (i: number) =>
       padding + (vals.length === 1 ? 0 : (i / (vals.length - 1)) * (chartWidth - padding * 2));
-    const toY = (v: number) => padding + (1 - (v - minVal) / safeRange) * (chartHeight - padding * 2);
+    const toY = (v: number) =>
+      padding + (1 - (v - minVal) / safeRange) * (chartHeight - padding * 2);
 
-    const polyPoints = vals
-      .map((v, i) => `${toX(i).toFixed(2)},${toY(v).toFixed(2)}`)
-      .join(" ");
+    const polyPoints = vals.map((v, i) => `${toX(i).toFixed(2)},${toY(v).toFixed(2)}`).join(" ");
 
     return { chartWidth, chartHeight, polyPoints, minVal, maxVal };
   }, [profitPointsForChart, assetDecimals]);
@@ -315,9 +314,11 @@ export function YearnVaultInterestModal({
     >
       <div className="mt-6 flex w-full flex-col gap-5 text-sm">
         {!userAddress ? (
-          <p className="text-sm text-slate-600">Connect a wallet to see your Yearn V3 interest earned history.</p>
+          <p className="text-sm text-slate-600">
+            Connect a wallet to see your Yearn V3 interest earned history.
+          </p>
         ) : cashflowsLoading && snapshots.length === 0 ? (
-          <div className="flex flex-col gap-5 animate-pulse">
+          <div className="flex animate-pulse flex-col gap-5">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="h-3 w-32 rounded bg-slate-200" />
@@ -339,13 +340,15 @@ export function YearnVaultInterestModal({
           <>
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <h4 className="text-xs font-medium tracking-wide text-slate-500 uppercase">
                   Interest Earned (Total Growth)
                 </h4>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
                   {latestNetProfitDisplay} {assetSymbol}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">Total interest earned including realized and unrealized gains.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Total interest earned including realized and unrealized gains.
+                </p>
                 {netDepositsTrackedDisplay != null ? (
                   <p className="mt-2 text-xs text-slate-600">
                     Net deposits tracked: {netDepositsTrackedDisplay} {assetSymbol}
@@ -354,13 +357,13 @@ export function YearnVaultInterestModal({
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <h4 className="text-xs font-medium tracking-wide text-slate-500 uppercase">
                   Current position value
                 </h4>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
                   {latestPositionValueDisplay} {assetSymbol}
                 </p>
-              {/* Keep this card copy short: the modal title and numbers already explain the source. */}
+                {/* Keep this card copy short: the modal title and numbers already explain the source. */}
               </div>
             </section>
 
@@ -385,11 +388,18 @@ export function YearnVaultInterestModal({
                     aria-label="Interest earned over time chart"
                     className="h-[220px] w-full"
                   >
-                    <polyline fill="none" stroke="#0f766e" strokeWidth="3" points={chart.polyPoints} />
+                    <polyline
+                      fill="none"
+                      stroke="#0f766e"
+                      strokeWidth="3"
+                      points={chart.polyPoints}
+                    />
                     <line x1="28" y1={200 - 28} x2={600 - 28} y2={200 - 28} stroke="#e2e8f0" />
                   </svg>
                 ) : (
-                  <p className="text-sm text-slate-500">Not enough samples yet. Start earning interest to see a trend.</p>
+                  <p className="text-sm text-slate-500">
+                    Not enough samples yet. Start earning interest to see a trend.
+                  </p>
                 )}
               </div>
 
@@ -418,33 +428,38 @@ export function YearnVaultInterestModal({
               <div className="mt-3 max-h-[240px] overflow-y-auto">
                 {snapshots.length ? (
                   <ul className="space-y-2">
-                    {[...snapshots].slice(-10).reverse().map((s, idx) => (
-                      <li
-                        key={`${s.blockNumber.toString()}-${s.timestamp}-${idx}`}
-                        className="flex flex-col gap-1 rounded-lg border border-slate-200 bg-slate-50 p-3"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-medium text-slate-600">
-                            {new Date(s.timestamp).toLocaleString()}
-                          </span>
-                          <span className="text-xs text-slate-500">Block {s.blockNumber.toString()}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs text-slate-600">Interest earned</span>
-                          <span className="text-sm font-semibold text-slate-900">
-                            {s.netProfitWei == null
-                              ? "—"
-                              : `${formatMoneyEarnedDisplay(s.netProfitWei, assetDecimals)} ${assetSymbol}`}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs text-slate-600">Position value</span>
-                          <span className="text-sm font-semibold text-slate-900">
-                            {`${formatMoneyEarnedDisplay(s.positionValueWei, assetDecimals)} ${assetSymbol}`}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
+                    {[...snapshots]
+                      .slice(-10)
+                      .reverse()
+                      .map((s, idx) => (
+                        <li
+                          key={`${s.blockNumber.toString()}-${s.timestamp}-${idx}`}
+                          className="flex flex-col gap-1 rounded-lg border border-slate-200 bg-slate-50 p-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-medium text-slate-600">
+                              {new Date(s.timestamp).toLocaleString()}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              Block {s.blockNumber.toString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs text-slate-600">Interest earned</span>
+                            <span className="text-sm font-semibold text-slate-900">
+                              {s.netProfitWei == null
+                                ? "—"
+                                : `${formatMoneyEarnedDisplay(s.netProfitWei, assetDecimals)} ${assetSymbol}`}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs text-slate-600">Position value</span>
+                            <span className="text-sm font-semibold text-slate-900">
+                              {`${formatMoneyEarnedDisplay(s.positionValueWei, assetDecimals)} ${assetSymbol}`}
+                            </span>
+                          </div>
+                        </li>
+                      ))}
                   </ul>
                 ) : (
                   <p className="text-sm text-slate-500">Sampling your history…</p>
@@ -480,4 +495,3 @@ export function YearnVaultInterestModal({
     </Modal>
   );
 }
-

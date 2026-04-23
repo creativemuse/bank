@@ -13,12 +13,12 @@ export const sharesToAssets = (
   shares: bigint,
   totalShares: bigint,
   totalAssets: bigint,
-  decimals: number = 18,
+  decimals: number = 18
 ): string => {
   if (totalShares === 0n) {
     return "0";
   }
-  
+
   const assets = (shares * totalAssets) / totalShares;
   return formatUnits(assets, decimals);
 };
@@ -31,12 +31,12 @@ export const assetsToShares = (
   assets: bigint,
   totalShares: bigint,
   totalAssets: bigint,
-  decimals: number = 18,
+  decimals: number = 18
 ): string => {
   if (totalAssets === 0n) {
     return "0";
   }
-  
+
   const shares = (assets * totalShares) / totalAssets;
   return formatUnits(shares, decimals);
 };
@@ -48,12 +48,12 @@ export const assetsToShares = (
 export const calculatePricePerShare = (
   totalAssets: bigint,
   totalShares: bigint,
-  decimals: number = 18,
+  decimals: number = 18
 ): string => {
   if (totalShares === 0n) {
     return "1.0";
   }
-  
+
   const oneShare = parseUnits("1", decimals);
   const pricePerShare = (oneShare * totalAssets) / totalShares;
   return formatUnits(pricePerShare, decimals);
@@ -73,11 +73,11 @@ export const aprToApy = (apr: number, compoundingPeriodsPerYear: number = 365): 
 export const formatVaultShares = (shares: bigint, decimals: number = 18): string => {
   const formatted = formatUnits(shares, decimals);
   const num = parseFloat(formatted);
-  
+
   if (num === 0) {
     return "0";
   }
-  
+
   // For very small numbers, show more precision instead of scientific notation
   if (num < 0.000001) {
     // Show up to 12 decimal places for very small numbers
@@ -85,12 +85,12 @@ export const formatVaultShares = (shares: bigint, decimals: number = 18): string
     // Remove trailing zeros
     return fixed.replace(/\.?0+$/, "");
   }
-  
+
   if (num < 1) {
     // For numbers between 0.000001 and 1, show 6 decimal places
     return num.toFixed(6).replace(/\.?0+$/, "");
   }
-  
+
   // For numbers >= 1, use locale formatting with 2-6 decimal places
   return num.toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -105,11 +105,11 @@ export const formatUsdValue = (value: number): string => {
   if (value === 0) {
     return "$0.00";
   }
-  
+
   if (value < 0.01) {
     return "<$0.01";
   }
-  
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -147,13 +147,13 @@ export const parseInputAmount = (input: string, decimals: number = 18): bigint |
     if (!input || input.trim() === "") {
       return null;
     }
-    
+
     const cleanedInput = input.replace(/,/g, "");
-    
+
     if (!/^\d*\.?\d*$/.test(cleanedInput)) {
       return null;
     }
-    
+
     return parseUnits(cleanedInput, decimals);
   } catch {
     return null;
@@ -166,12 +166,12 @@ export const parseInputAmount = (input: string, decimals: number = 18): bigint |
 export const calculateExpectedShares = (
   depositAmount: bigint,
   totalAssets: bigint,
-  totalShares: bigint,
+  totalShares: bigint
 ): bigint => {
   if (totalAssets === 0n || totalShares === 0n) {
     return depositAmount; // 1:1 ratio for first deposit
   }
-  
+
   return (depositAmount * totalShares) / totalAssets;
 };
 
@@ -181,12 +181,12 @@ export const calculateExpectedShares = (
 export const calculateExpectedAssets = (
   redeemShares: bigint,
   totalAssets: bigint,
-  totalShares: bigint,
+  totalShares: bigint
 ): bigint => {
   if (totalShares === 0n) {
     return 0n;
   }
-  
+
   return (redeemShares * totalAssets) / totalShares;
 };
 
@@ -197,7 +197,7 @@ export const calculateSlippage = (expected: bigint, actual: bigint): number => {
   if (expected === 0n) {
     return 0;
   }
-  
+
   const diff = expected > actual ? expected - actual : actual - expected;
   return Number((diff * 10000n) / expected) / 100;
 };
@@ -209,18 +209,22 @@ export const formatPercentage = (value: number | undefined, fallback: string = "
   if (value === undefined || Number.isNaN(value)) {
     return fallback;
   }
-  
+
   return `${value.toFixed(2)}%`;
 };
 
 /**
  * Truncate address for display
  */
-export const truncateAddress = (address: string, startChars: number = 6, endChars: number = 4): string => {
+export const truncateAddress = (
+  address: string,
+  startChars: number = 6,
+  endChars: number = 4
+): string => {
   if (address.length <= startChars + endChars) {
     return address;
   }
-  
+
   return `${address.slice(0, startChars)}...${address.slice(-endChars)}`;
 };
 
@@ -230,13 +234,12 @@ export const truncateAddress = (address: string, startChars: number = 6, endChar
 export const willIncurLoss = (
   expectedAssets: bigint,
   actualAssets: bigint,
-  maxLossBps: number,
+  maxLossBps: number
 ): boolean => {
   if (expectedAssets === 0n) {
     return false;
   }
-  
+
   const lossBps = ((expectedAssets - actualAssets) * 10000n) / expectedAssets;
   return lossBps > BigInt(maxLossBps);
 };
-

@@ -103,7 +103,9 @@ export function useNexusCoverQuote({
               ? sdk.CoverAsset.cbBTC
               : sdk.CoverAsset.DAI;
 
-      const commissionDestination = process.env.NEXT_PUBLIC_NEXUS_MUTUAL_DESTINATION_ADDRESS as Address | undefined;
+      const commissionDestination = process.env.NEXT_PUBLIC_NEXUS_MUTUAL_DESTINATION_ADDRESS as
+        | Address
+        | undefined;
       const commissionRatio = 0.2; // 20%
 
       const response = await nexusSdk.quote.getQuoteAndBuyCoverInputs({
@@ -135,14 +137,7 @@ export function useNexusCoverQuote({
     } finally {
       setLoading(false);
     }
-  }, [
-    enabled,
-    buyerAddress,
-    amountWei,
-    periodDays,
-    coverAsset,
-    productId,
-  ]);
+  }, [enabled, buyerAddress, amountWei, periodDays, coverAsset, productId]);
 
   useEffect(() => {
     fetchQuote();

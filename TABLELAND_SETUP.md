@@ -3,6 +3,7 @@
 ## Overview
 
 Transaction history is now persisted in Tableland, a decentralized SQL database. This provides:
+
 - ✅ Fast cached reads from on-chain storage
 - ✅ Automatic background sync with Coinbase API
 - ✅ Decentralized, transparent transaction history
@@ -50,13 +51,14 @@ TABLELAND_TABLE_NAME=<returned_table_name>
 ### 3. Verify Setup
 
 After initialization:
+
 1. The table will be created on Tableland
 2. Transaction fetching will automatically cache results
 3. Background sync keeps data fresh
 
 ## How It Works
 
-1. **First Request**: 
+1. **First Request**:
    - Checks Tableland for cached transactions
    - If found, returns immediately (fast!)
    - Triggers background sync with Coinbase API
@@ -73,6 +75,7 @@ After initialization:
 ## Table Schema
 
 The transactions table includes:
+
 - `user_id` - Crossmint user ID
 - `transaction_id` - Unique Coinbase transaction ID
 - `status` - Transaction status
@@ -86,19 +89,23 @@ The transactions table includes:
 ## Troubleshooting
 
 ### "No Tableland signer available"
+
 - Make sure `TABLELAND_PRIVATE_KEY` is set in `.env.local`
 - The private key should start with `0x`
 
 ### Table creation fails
+
 - Ensure the wallet has ETH on Base for gas fees
 - Check that Project ID and Environment ID are correct in `lib/tableland.ts`
 
 ### Transactions not caching
+
 - Verify `TABLELAND_TABLE_NAME` matches the created table name
 - Check server logs for Tableland errors
 - The system will fallback to Coinbase API if Tableland fails
 
 ### Background sync not working
+
 - This is non-blocking - errors are logged but don't affect user experience
 - Check server logs for sync errors
 - Manual sync happens on next `getTransactions` call
@@ -117,4 +124,3 @@ The transactions table includes:
 2. Initialize the table via `/api/init-tableland`
 3. Update `TABLELAND_TABLE_NAME` with the returned table name
 4. Test transaction fetching - it should now cache automatically!
-

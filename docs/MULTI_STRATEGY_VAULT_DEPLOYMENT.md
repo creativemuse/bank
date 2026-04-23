@@ -68,6 +68,7 @@ forge script script/DeployStrategies.s.sol:DeployStrategies \
 ```
 
 This will:
+
 - Deploy Aave V3 Strategy
 - Deploy Compound V3 Strategy
 - Deploy Curve Strategy
@@ -88,6 +89,7 @@ forge script script/DeployVault.s.sol:DeployVault \
 ```
 
 This will:
+
 - Deploy RoleManager via RoleManagerFactory
 - Deploy Accountant
 - Deploy DebtAllocator
@@ -107,6 +109,7 @@ forge script script/AddStrategies.s.sol:AddStrategies \
 ```
 
 This will:
+
 - Add all 4 strategies to the vault
 - Set max debt limits for each strategy
 
@@ -163,6 +166,7 @@ After deployment, you'll need to allocate initial capital to strategies. This ca
 ### Protocol Addresses
 
 See `contracts/config/BaseAddresses.sol` for:
+
 - Aave V3 Pool
 - Compound V3 Comet
 - Curve 3pool
@@ -185,6 +189,7 @@ Make sure `GOVERNANCE_ADDRESS` and `MANAGEMENT_ADDRESS` are different addresses 
 ### "Strategy deployment failed"
 
 Check:
+
 - Sufficient ETH for gas
 - Correct RPC URL
 - Base network connectivity
@@ -192,6 +197,7 @@ Check:
 ### "Cannot add strategy to vault"
 
 Ensure:
+
 - You're using the management address
 - Strategy is deployed and verified
 - Vault deployment completed successfully

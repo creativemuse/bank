@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 
 type AllowedChain = "mainnet" | "base" | "base-sepolia";
 
-const ALLOWED_CHAINS: ReadonlySet<AllowedChain> = new Set([
-  "mainnet",
-  "base",
-  "base-sepolia",
-]);
+const ALLOWED_CHAINS: ReadonlySet<AllowedChain> = new Set(["mainnet", "base", "base-sepolia"]);
 
 /** Return an ordered list of upstream RPC URLs to try (first = highest priority). */
 const getOrderedRpcUrls = (chain: AllowedChain): string[] => {
@@ -150,4 +146,3 @@ export async function GET() {
     { status: 405, headers: { Allow: "POST", "Cache-Control": "no-store" } }
   );
 }
-

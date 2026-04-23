@@ -56,7 +56,7 @@ export function VaultActivityModal({
           orderBy: { date: OrderDirection.Desc },
           pageSize: PageSize.Fifty,
         }
-      : ({} as Parameters<typeof useVaultUserTransactionHistory>[0]),
+      : ({} as Parameters<typeof useVaultUserTransactionHistory>[0])
   );
 
   const { data: activityData, loading: activityLoading } = useVaultUserActivity(
@@ -67,14 +67,15 @@ export function VaultActivityModal({
           user: evmAddress(userAddress),
           window: VaultUserActivityTimeWindow.LastWeek,
         }
-      : ({} as Parameters<typeof useVaultUserActivity>[0]),
+      : ({} as Parameters<typeof useVaultUserActivity>[0])
   );
 
   const items = (historyData?.items ?? []) as HistoryItem[];
   const breakdown = activityData?.breakdown ?? [];
 
   const currentPositionFormatted = useMemo(() => {
-    if (currentAssetValueWei == null || currentAssetValueWei === 0n || assetDecimals == null) return null;
+    if (currentAssetValueWei == null || currentAssetValueWei === 0n || assetDecimals == null)
+      return null;
     return parseFloat(formatUnits(currentAssetValueWei, assetDecimals));
   }, [currentAssetValueWei, assetDecimals]);
 
@@ -93,14 +94,11 @@ export function VaultActivityModal({
     const range = maxVal - minVal;
     const safeRange = range === 0 ? 1 : range;
 
-    const toX = (i: number) =>
-      padding + (i / (vals.length - 1)) * (chartWidth - padding * 2);
+    const toX = (i: number) => padding + (i / (vals.length - 1)) * (chartWidth - padding * 2);
     const toY = (v: number) =>
       padding + (1 - (v - minVal) / safeRange) * (chartHeight - padding * 2);
 
-    const linePoints = vals
-      .map((v, i) => `${toX(i).toFixed(2)},${toY(v).toFixed(2)}`)
-      .join(" ");
+    const linePoints = vals.map((v, i) => `${toX(i).toFixed(2)},${toY(v).toFixed(2)}`).join(" ");
 
     // Closed polygon for the gradient fill area
     const firstX = toX(0).toFixed(2);
@@ -126,9 +124,7 @@ export function VaultActivityModal({
           <>
             {currentPositionFormatted != null && (
               <section className="flex flex-col gap-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                <h4 className="text-base font-semibold text-slate-900">
-                  Your position
-                </h4>
+                <h4 className="text-base font-semibold text-slate-900">Your position</h4>
                 <p className="text-lg font-semibold text-slate-900">
                   {currentPositionFormatted.toLocaleString("en-US", {
                     minimumFractionDigits: 2,
@@ -137,16 +133,15 @@ export function VaultActivityModal({
                   {assetSymbol}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Your vault balance is earning interest. Detailed earnings data will appear once activity is indexed.
+                  Your vault balance is earning interest. Detailed earnings data will appear once
+                  activity is indexed.
                 </p>
               </section>
             )}
 
             {positionChart && (
               <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <h4 className="text-base font-semibold text-slate-900">
-                  Position over time
-                </h4>
+                <h4 className="text-base font-semibold text-slate-900">Position over time</h4>
                 <svg
                   width="100%"
                   viewBox={`0 0 ${positionChart.chartWidth} ${positionChart.chartHeight}`}
@@ -160,10 +155,7 @@ export function VaultActivityModal({
                       <stop offset="100%" stopColor="#0f766e" stopOpacity="0.02" />
                     </linearGradient>
                   </defs>
-                  <polygon
-                    fill="url(#positionFill)"
-                    points={positionChart.fillPoints}
-                  />
+                  <polygon fill="url(#positionFill)" points={positionChart.fillPoints} />
                   <polyline
                     fill="none"
                     stroke="#0f766e"
@@ -185,9 +177,7 @@ export function VaultActivityModal({
 
             {breakdown.length > 0 && (
               <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <h4 className="text-base font-semibold text-slate-900">
-                  Activity breakdown
-                </h4>
+                <h4 className="text-base font-semibold text-slate-900">Activity breakdown</h4>
                 <div className="max-h-[min(12rem,40vh)] overflow-y-auto">
                   <ul className="space-y-2">
                     {breakdown.map((row, i) => (
@@ -195,9 +185,7 @@ export function VaultActivityModal({
                         key={String(row.date ?? i)}
                         className="flex justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
                       >
-                        <span className="text-slate-600">
-                          {String(row.date ?? "—")}
-                        </span>
+                        <span className="text-slate-600">{String(row.date ?? "—")}</span>
                         <span className="text-slate-900">
                           Balance: {row.balance?.amount?.value ?? "0"} · Earned:{" "}
                           {row.earned?.amount?.value ?? "0"}
@@ -210,9 +198,7 @@ export function VaultActivityModal({
             )}
 
             <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h4 className="text-base font-semibold text-slate-900">
-                Recent transactions
-              </h4>
+              <h4 className="text-base font-semibold text-slate-900">Recent transactions</h4>
               {historyLoading ? (
                 <p className="text-sm text-slate-500">Loading…</p>
               ) : items.length === 0 ? (
@@ -226,15 +212,12 @@ export function VaultActivityModal({
                         className="flex flex-col gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
                       >
                         <span className="font-medium text-slate-700">
-                          {item.__typename === "VaultUserDepositItem"
-                            ? "Deposit"
-                            : "Withdraw"}
+                          {item.__typename === "VaultUserDepositItem" ? "Deposit" : "Withdraw"}
                         </span>
                         {item.asset?.amount?.value != null && (
                           <span className="text-slate-600">
                             {item.asset.amount.value} {assetSymbol}
-                            {item.asset.usd != null &&
-                              ` ($${item.asset.usd})`}
+                            {item.asset.usd != null && ` ($${item.asset.usd})`}
                           </span>
                         )}
                         {item.txHash && (

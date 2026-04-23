@@ -13,6 +13,7 @@ You need to be on: **base (mainnet)** ✅
 ## Option 1: Switch to Base Mainnet in Your Wallet
 
 ### Using MetaMask:
+
 1. Open MetaMask
 2. Click the network dropdown at the top
 3. Select "Base Mainnet"
@@ -24,6 +25,7 @@ You need to be on: **base (mainnet)** ✅
    - Block Explorer: `https://basescan.org`
 
 ### Using Coinbase Wallet:
+
 1. Open Coinbase Wallet
 2. Tap Settings
 3. Tap Active Network
@@ -40,16 +42,19 @@ Check your Crossmint configuration in your code and ensure it's set to `base` (n
 To test withdrawals on mainnet, you'll need real USDC on Base:
 
 ### Method 1: Bridge from Ethereum
+
 1. Go to [bridge.base.org](https://bridge.base.org/)
 2. Connect your wallet
 3. Bridge ETH or USDC from Ethereum to Base
 
 ### Method 2: Buy with Coinbase Onramp
+
 1. Use your app's deposit functionality
 2. Buy USDC directly on Base using Coinbase Onramp
 3. This gives you real USDC that can be withdrawn
 
 ### Method 3: Use a DEX
+
 1. Get some ETH on Base (via bridge or on-ramp)
 2. Use a DEX like [Uniswap](https://app.uniswap.org/) to swap ETH for USDC
 
@@ -72,6 +77,7 @@ Once you're on Base mainnet with real USDC:
 ### Mainnet = Real Money
 
 When you switch to mainnet:
+
 - 💰 All tokens have real monetary value
 - 🔐 Use strong wallet security (hardware wallet recommended for large amounts)
 - ⚠️ Double-check all addresses before sending transactions
@@ -80,6 +86,7 @@ When you switch to mainnet:
 ### Start Small
 
 For testing:
+
 1. Start with a small amount (e.g., $10-20)
 2. Verify the withdrawal works correctly
 3. Then process larger amounts
@@ -88,13 +95,13 @@ For testing:
 
 Coinbase Offramp supports these mainnet chains:
 
-| Chain | Chain ID | Native Token | USDC Supported |
-|-------|----------|--------------|----------------|
-| Base | 8453 | ETH | ✅ Yes |
-| Ethereum | 1 | ETH | ✅ Yes |
-| Polygon | 137 | MATIC | ✅ Yes |
-| Arbitrum | 42161 | ETH | ✅ Yes |
-| Optimism | 10 | ETH | ✅ Yes |
+| Chain    | Chain ID | Native Token | USDC Supported |
+| -------- | -------- | ------------ | -------------- |
+| Base     | 8453     | ETH          | ✅ Yes         |
+| Ethereum | 1        | ETH          | ✅ Yes         |
+| Polygon  | 137      | MATIC        | ✅ Yes         |
+| Arbitrum | 42161    | ETH          | ✅ Yes         |
+| Optimism | 10       | ETH          | ✅ Yes         |
 
 **Base is recommended** as it has the lowest gas fees among Ethereum L2s.
 
@@ -107,6 +114,7 @@ This means your wallet is still on a testnet. Follow the steps above to switch t
 ### Transaction fails after switching to mainnet
 
 Make sure you have:
+
 1. Sufficient USDC balance (minimum $10)
 2. Enough ETH for gas fees (~$0.01-0.05 on Base)
 3. Your Coinbase API keys properly configured
@@ -126,7 +134,7 @@ After testing withdrawals, you can switch back to testnet for continued developm
 ---
 
 **Need help?** Check out:
+
 - [Base Documentation](https://docs.base.org/)
 - [Coinbase Offramp Docs](https://docs.cdp.coinbase.com/onramp/docs/offramp)
 - Project's `WITHDRAWAL_TROUBLESHOOTING.md` for more details
-

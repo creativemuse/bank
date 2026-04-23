@@ -54,7 +54,12 @@ export function NexusCoverModal({
 
   const coverAssetId = getNexusCoverAssetId(assetSymbol);
 
-  const { result: quote, error: quoteError, loading: quoteLoading, refetch } = useNexusCoverQuote({
+  const {
+    result: quote,
+    error: quoteError,
+    loading: quoteLoading,
+    refetch,
+  } = useNexusCoverQuote({
     productId,
     amountWei,
     periodDays,
@@ -130,9 +135,10 @@ export function NexusCoverModal({
   const premiumFormatted = quote?.displayInfo.premiumInAsset
     ? formatUnits(BigInt(quote.displayInfo.premiumInAsset), assetDecimals)
     : null;
-  const yearlyPerc = quote?.displayInfo.yearlyCostPerc != null
-    ? `${(quote.displayInfo.yearlyCostPerc * 100).toFixed(2)}%`
-    : null;
+  const yearlyPerc =
+    quote?.displayInfo.yearlyCostPerc != null
+      ? `${(quote.displayInfo.yearlyCostPerc * 100).toFixed(2)}%`
+      : null;
 
   return (
     <Modal
@@ -158,7 +164,7 @@ export function NexusCoverModal({
               placeholder="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-1 focus:ring-slate-500 focus:outline-none"
               aria-label="Cover amount"
             />
             {suggestedFormatted && (
@@ -177,13 +183,11 @@ export function NexusCoverModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Cover period (days)
-          </label>
+          <label className="block text-sm font-medium text-slate-700">Cover period (days)</label>
           <select
             value={periodDays}
             onChange={(e) => setPeriodDays(Number(e.target.value))}
-            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-slate-900 focus:border-slate-500 focus:ring-1 focus:ring-slate-500 focus:outline-none"
             aria-label="Cover period in days"
           >
             {[28, 90, 180, 365].map((d) => (
@@ -200,9 +204,7 @@ export function NexusCoverModal({
         {quoteLoading && BigInt(amountWei) > 0n && (
           <p className="text-sm text-slate-500">Loading quote…</p>
         )}
-        {quoteError && (
-          <p className="text-sm text-red-600">{quoteError.message}</p>
-        )}
+        {quoteError && <p className="text-sm text-red-600">{quoteError.message}</p>}
         {quote && !quoteError && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-medium text-slate-900">Quote</p>
@@ -262,9 +264,7 @@ export function NexusCoverModal({
           </label>
         </div>
 
-        {buyError && (
-          <p className="text-sm text-red-600">{buyError.message}</p>
-        )}
+        {buyError && <p className="text-sm text-red-600">{buyError.message}</p>}
 
         <div className="flex flex-col gap-2">
           {!isCorrectChain && (

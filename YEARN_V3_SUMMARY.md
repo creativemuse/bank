@@ -136,12 +136,14 @@ Your Creative Bank DeFi application now has a **production-ready Yearn V3 vault 
 ## 🎯 Integration Features
 
 ### ✅ ERC-4626 Compliance
+
 - Standard `deposit()` and `redeem()` functions
 - Price conversion: `convertToShares` / `convertToAssets`
 - Limit queries: `maxDeposit` / `maxRedeem`
 - Balance tracking: `balanceOf`
 
 ### ✅ Deposit Flow
+
 ```typescript
 1. Check allowance
 2. Request approval (if needed)
@@ -151,6 +153,7 @@ Your Creative Bank DeFi application now has a **production-ready Yearn V3 vault 
 ```
 
 ### ✅ Withdrawal Flow (Redeem)
+
 ```typescript
 1. Preview expected assets
 2. Set maxLoss protection (default 1%)
@@ -160,12 +163,14 @@ Your Creative Bank DeFi application now has a **production-ready Yearn V3 vault 
 ```
 
 ### ✅ Max Loss Protection
+
 - Configurable in basis points
 - Default: 100 (1% max loss)
 - Transaction reverts if loss exceeds threshold
 - User-friendly UI for configuration
 
 ### ✅ User Experience
+
 - Real-time balance updates
 - Preview calculations before transactions
 - "MAX" button for full balance
@@ -179,16 +184,19 @@ Your Creative Bank DeFi application now has a **production-ready Yearn V3 vault 
 ## 🚀 How to Activate (3 Steps)
 
 ### Step 1: Install Dependencies
+
 ```bash
 pnpm install
 ```
 
 ### Step 2: Query for Vaults
+
 ```bash
 pnpm yearn:query
 ```
 
 Expected output:
+
 ```
 🔍 Querying Yearn V3 Registry on Base...
 
@@ -282,54 +290,64 @@ Before going live:
 ## 🎓 Key Learnings & Best Practices
 
 ### 1. Use `redeem()` over `withdraw()`
+
 Yearn recommends the redeem function for withdrawals.
 
 ### 2. Always include `maxLoss`
+
 Essential for protecting users during withdrawals:
+
 ```typescript
-vault.redeem(shares, receiver, owner, 100) // 1% max loss
+vault.redeem(shares, receiver, owner, 100); // 1% max loss
 ```
 
 ### 3. Use ERC-4626 functions for pricing
+
 - ✅ Use: `convertToShares()` / `convertToAssets()`
 - ❌ Avoid: `pricePerShare()` (precision loss)
 
 ### 4. Check limits before transactions
+
 ```typescript
 const maxDeposit = await vault.maxDeposit(user);
 const maxRedeem = await vault.maxRedeem(user);
 ```
 
 ### 5. Handle BigInt carefully
+
 Use `BigInt()` constructor instead of `0n` literals for compatibility.
 
 ---
 
 ## 🔗 Important Addresses (Base Mainnet)
 
-| Contract | Address |
-|----------|---------|
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
 | Protocol Address Provider | `0x775F09d6f3c8D2182DFA8bce8628acf51105653c` |
-| V3 Registry | `0xd40ecF29e001c76Dcc4cC0D9cd50520CE845B038` |
-| USDC | `0x833589fcd6edb6e08f4c7c32d4f71b54bda02913` |
+| V3 Registry               | `0xd40ecF29e001c76Dcc4cC0D9cd50520CE845B038` |
+| USDC                      | `0x833589fcd6edb6e08f4c7c32d4f71b54bda02913` |
 
 ---
 
 ## 🆘 Common Issues & Solutions
 
 ### "No vaults found"
+
 **Cause:** Yearn V3 not yet deployed on Base  
 **Solution:** Wait for deployment, monitor Yearn Discord/Twitter
 
 ### "Transaction reverts"
+
 **Cause:** MaxLoss too restrictive  
 **Solution:** Increase maxLoss to 100 bps (1%) or higher
 
 ### "Approval fails"
+
 **Cause:** Insufficient USDC or gas  
 **Solution:** Verify balances, ensure ETH for gas
 
 ### "Share calculation incorrect"
+
 **Cause:** Wrong decimals (6 for USDC, 18 for shares)  
 **Solution:** Verify `assetDecimals` prop
 
@@ -347,7 +365,7 @@ Use `BigInt()` constructor instead of `0n` literals for compatibility.
 
 ## 🎉 You're Ready!
 
-Your Yearn V3 integration is **100% complete and production-ready**. 
+Your Yearn V3 integration is **100% complete and production-ready**.
 
 Once Yearn V3 vaults launch on Base:
 
@@ -376,4 +394,3 @@ Consider adding:
 **Questions?** Check the documentation or reach out for support!
 
 **Happy Yielding!** 💰
-

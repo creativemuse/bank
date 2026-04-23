@@ -33,7 +33,8 @@ GOVERNANCE_ADDRESS=0x... # Your governance address (multi-sig recommended)
 MANAGEMENT_ADDRESS=0x... # Your management address (can be EOA, must be different from governance)
 ```
 
-**Important**: 
+**Important**:
+
 - Governance and management addresses **MUST be different**
 - Governance typically controls vault parameters and upgrades
 - Management handles daily operations like adding strategies
@@ -54,8 +55,9 @@ forge script script/DeployVault.s.sol:DeployVault \
 ## 📋 Next Steps After Vault Deployment
 
 1. **Add Strategies to Vault**
-   
+
    Update your `.env` with the strategy addresses:
+
    ```bash
    AAVE_STRATEGY=0x6263d3e82447eecda3b57b9e0557357a2e768b14
    COMPOUND_STRATEGY=0x0d7ea22bffc06d3104a4e998088e8d4a92730d24
@@ -65,6 +67,7 @@ forge script script/DeployVault.s.sol:DeployVault \
    ```
 
    Then run:
+
    ```bash
    forge script script/AddStrategies.s.sol:AddStrategies \
      --rpc-url base \
@@ -73,11 +76,11 @@ forge script script/DeployVault.s.sol:DeployVault \
    ```
 
 2. **Update Frontend Configuration**
-   
+
    Update `lib/config/multiStrategyVault.ts` with deployed addresses.
 
 3. **Verify Contracts**
-   
+
    Contracts can be verified manually on Basescan if automatic verification failed.
 
 ## 🔍 Verification Status

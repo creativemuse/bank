@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { PremiumGuard } from "@/components/access/PremiumGuard";
@@ -12,11 +13,17 @@ import { MyDeployedVaults } from "@/components/vaults/MyDeployedVaults";
 import { ATokenBalance } from "@/components/vaults/ATokenBalance";
 import { useUserVaultPositions } from "@/hooks/useUserVaultPositions";
 import { YearnVaultCard } from "@/components/yearn/YearnVaultCard";
+import { SymbioticVaultCard } from "@/components/symbiotic/SymbioticVaultCard";
+import { SYMBIOTIC_VAULTS } from "@/lib/config/symbiotic";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { useKalaniApr } from "@/hooks/useKalaniApr";
 import { useBalance } from "@/hooks/useBalance";
 import { formatPercent, formatUsd } from "@/lib/formatters";
-import { KALANI_VAULT_ADDRESSES, CREATIVE_BANK_VAULT, CREATIVE_BANK_BOUNCER_ADDRESS } from "@/lib/config/kalani";
+import {
+  KALANI_VAULT_ADDRESSES,
+  CREATIVE_BANK_VAULT,
+  CREATIVE_BANK_BOUNCER_ADDRESS,
+} from "@/lib/config/kalani";
 import { useMembership } from "@/context/MembershipContext";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { parseUnits, type Address } from "viem";
@@ -35,14 +42,13 @@ function StrategiesContent({
   kalani: ReturnType<typeof useKalaniApr>;
   userUsdcBalance: bigint;
 }) {
-  const { vaults: userPositionVaults, loading: userPositionsLoading } =
-    useUserVaultPositions(walletAddress ?? undefined);
+  const { vaults: userPositionVaults, loading: userPositionsLoading } = useUserVaultPositions(
+    walletAddress ?? undefined
+  );
 
   const otherPositionVaults = useMemo(() => {
     if (!walletAddress) return [];
-    return userPositionVaults.filter(
-      (v) => v.owner?.toLowerCase() !== walletAddress.toLowerCase(),
-    );
+    return userPositionVaults.filter((v) => v.owner?.toLowerCase() !== walletAddress.toLowerCase());
   }, [userPositionVaults, walletAddress]);
 
   const baseApr = baseReserve.loading
@@ -99,7 +105,7 @@ function StrategiesContent({
         </ul>
       </div>
     ),
-    [],
+    []
   );
 
   return (
@@ -113,11 +119,11 @@ function StrategiesContent({
           description="Create an on-chain USDC vault with automated fee routing, transparent reporting, and direct integration to the Aave Base money market."
           actions={[
             {
-            id: "deploy-vault",
-            label: "Deploy Vault",
-            ariaLabel: "Deploy Aave USDC vault",
-            onClick: onDeployClick,
-          },
+              id: "deploy-vault",
+              label: "Deploy Vault",
+              ariaLabel: "Deploy Aave USDC vault",
+              onClick: onDeployClick,
+            },
             {
               id: "view-reserve",
               label: "View Reserve",
@@ -126,7 +132,7 @@ function StrategiesContent({
                 window.open(
                   "https://app.aave.com/reserve-overview/?underlyingAsset=0x833589fcd6edb6e08f4c7c32d4f71b54bda02913&marketName=proto_base_v3",
                   "_blank",
-                  "noopener,noreferrer",
+                  "noopener,noreferrer"
                 ),
             },
           ]}
@@ -146,13 +152,7 @@ function StrategiesContent({
             assetDecimals={6}
             name={CREATIVE_BANK_VAULT.name}
             description="Premium Yearn V3 multi-strategy vault exclusively for Creative Bank members. Features automated yield optimization, bespoke role management, and professional treasury automation powered by Kalani."
-            estimatedApr={
-              kalani.loading
-                ? undefined
-                : kalani.error
-                  ? undefined
-                  : kalani.apr
-            }
+            estimatedApr={kalani.loading ? undefined : kalani.error ? undefined : kalani.apr}
             userAssetBalance={userUsdcBalance}
             bouncerAddress={CREATIVE_BANK_BOUNCER_ADDRESS}
           />
@@ -164,6 +164,24 @@ function StrategiesContent({
         <ATokenBalance />
       </section>
 
+      {/* Symbiotic Restaking — Investor+ tier */}
+      <section className="mt-10">
+        <PremiumGuard requiredTier="Creative Investor">
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-xl font-semibold text-slate-900">Restaking Vaults</h2>
+            <p className="text-sm text-slate-600">
+              Stake assets into Symbiotic to earn restaking rewards from securing cross-chain
+              infrastructure. Operates on Ethereum Mainnet.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {SYMBIOTIC_VAULTS.map((vault) => (
+              <SymbioticVaultCard key={vault.address} vault={vault} />
+            ))}
+          </div>
+        </PremiumGuard>
+      </section>
+
       {/* My Deployed Vaults Section */}
       <section className="mt-10">
         <MyDeployedVaults />
@@ -173,9 +191,7 @@ function StrategiesContent({
       {otherPositionVaults.length > 0 && (
         <section className="mt-10">
           <div className="mb-4 flex flex-col gap-1">
-            <h2 className="text-xl font-semibold text-slate-900">
-              Your positions in other vaults
-            </h2>
+            <h2 className="text-xl font-semibold text-slate-900">Your positions in other vaults</h2>
             <p className="text-sm text-slate-600">
               Vaults you have deposited into (not owned by you).
             </p>
@@ -305,7 +321,7 @@ export default function StrategiesPage() {
           </button>
         </div>
         <div className="flex flex-col gap-3 rounded-3xl border border-white/40 bg-white/80 p-6 shadow-lg shadow-slate-900/10 backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+          <p className="text-xs font-semibold tracking-wide text-slate-600 uppercase">
             Creative Bank DeFi Suite
           </p>
           <h1 className="text-center text-3xl font-semibold text-slate-900 md:text-4xl">
@@ -333,7 +349,7 @@ export default function StrategiesPage() {
             )}
           </span>
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-            Membership Tier: {membership.isLoading ? "Checking..." : membership.tier ?? "None"}
+            Membership Tier: {membership.isLoading ? "Checking..." : (membership.tier ?? "None")}
           </span>
         </div>
       </header>
@@ -369,4 +385,3 @@ export default function StrategiesPage() {
     </main>
   );
 }
-

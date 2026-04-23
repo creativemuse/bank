@@ -45,9 +45,7 @@ export function useAaveWalletClient(): WalletClient | undefined {
               if (method === "eth_chainId") {
                 return `0x${chain.id.toString(16)}`;
               }
-              throw new Error(
-                `Method ${method} not yet supported with Crossmint wallet adapter`,
-              );
+              throw new Error(`Method ${method} not yet supported with Crossmint wallet adapter`);
             },
           }),
         });

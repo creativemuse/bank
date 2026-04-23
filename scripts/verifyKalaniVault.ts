@@ -1,15 +1,15 @@
 /**
  * Script to verify the Kalani (Creative Bank) Yearn V3 vault on Base
- * 
+ *
  * This script verifies:
  * - Vault is a valid ERC-4626 contract
  * - Vault uses USDC as the underlying asset
  * - Vault is connected to Kalani infrastructure
  * - Vault is registered in the Kalani registry
  * - Basic vault state and functionality
- * 
+ *
  * Run with: npx tsx scripts/verifyKalaniVault.ts
- * 
+ *
  * Requirements:
  * - Install tsx: pnpm add -D tsx
  */
@@ -106,7 +106,9 @@ function addResult(check: string, status: "✅" | "❌" | "⚠️", message: str
 async function verifyVaultAddress() {
   console.log("🔍 Verifying vault address...\n");
   console.log(`Vault Address: ${CREATIVE_BANK_VAULT.address}`);
-  console.log(`Expected Asset: ${CREATIVE_BANK_VAULT.asset} (${CREATIVE_BANK_VAULT.assetSymbol})\n`);
+  console.log(
+    `Expected Asset: ${CREATIVE_BANK_VAULT.asset} (${CREATIVE_BANK_VAULT.assetSymbol})\n`
+  );
   console.log("─".repeat(60) + "\n");
 }
 
@@ -161,11 +163,7 @@ async function verifyERC4626Compliance() {
         functionName: "convertToShares",
         args: [testAmount],
       });
-      addResult(
-        "Convert To Shares",
-        "✅",
-        `1 USDC = ${formatUnits(shares, 18)} shares`
-      );
+      addResult("Convert To Shares", "✅", `1 USDC = ${formatUnits(shares, 18)} shares`);
     } catch (error) {
       addResult("Convert To Shares", "⚠️", "Could not test convertToShares", String(error));
     }
@@ -217,7 +215,11 @@ async function verifyAssetToken() {
     if (symbol === CREATIVE_BANK_VAULT.assetSymbol) {
       addResult("Asset Symbol", "✅", `Token symbol: ${symbol}`);
     } else {
-      addResult("Asset Symbol", "❌", `Symbol mismatch! Got: ${symbol}, Expected: ${CREATIVE_BANK_VAULT.assetSymbol}`);
+      addResult(
+        "Asset Symbol",
+        "❌",
+        `Symbol mismatch! Got: ${symbol}, Expected: ${CREATIVE_BANK_VAULT.assetSymbol}`
+      );
     }
 
     addResult("Asset Name", "✅", `Token name: ${name}`);
@@ -261,7 +263,11 @@ async function verifyKalaniRegistry() {
         functionName: "getVaultInfo",
         args: [CREATIVE_BANK_VAULT.address],
       });
-      addResult("Registry Info", "✅", `Registry name: ${vaultInfo.name}, Symbol: ${vaultInfo.symbol}`);
+      addResult(
+        "Registry Info",
+        "✅",
+        `Registry name: ${vaultInfo.name}, Symbol: ${vaultInfo.symbol}`
+      );
     } catch (error) {
       // This might fail if the registry doesn't have this function
       addResult("Registry Info", "⚠️", "Could not fetch vault info from registry", String(error));
@@ -330,7 +336,11 @@ async function verifyVaultToken() {
     if (name.includes(CREATIVE_BANK_VAULT.name) || name.includes("Creative Bank")) {
       addResult("Vault Name", "✅", `Share token name: ${name}`);
     } else {
-      addResult("Vault Name", "⚠️", `Name mismatch! Got: ${name}, Expected: ${CREATIVE_BANK_VAULT.name}`);
+      addResult(
+        "Vault Name",
+        "⚠️",
+        `Name mismatch! Got: ${name}, Expected: ${CREATIVE_BANK_VAULT.name}`
+      );
     }
   } catch (error) {
     addResult("Vault Token", "⚠️", "Could not verify vault share token", String(error));
@@ -345,7 +355,7 @@ async function verifyContractCode() {
 
     if (code && code !== "0x") {
       addResult("Contract Code", "✅", "Contract has bytecode (is deployed)");
-      
+
       // Check if contract is verified on Basescan
       addResult(
         "Contract Verification",
@@ -391,7 +401,9 @@ function printResults() {
   console.log("💡 Useful Links:");
   console.log(`   Basescan: https://basescan.org/address/${CREATIVE_BANK_VAULT.address}`);
   console.log(`   Vault Asset: https://basescan.org/address/${CREATIVE_BANK_VAULT.asset}`);
-  console.log(`   Role Manager: https://basescan.org/address/${KALANI_VAULT_ADDRESSES.roleManager}`);
+  console.log(
+    `   Role Manager: https://basescan.org/address/${KALANI_VAULT_ADDRESSES.roleManager}`
+  );
   console.log(`   Registry: https://basescan.org/address/${KALANI_VAULT_ADDRESSES.registry}\n`);
 }
 

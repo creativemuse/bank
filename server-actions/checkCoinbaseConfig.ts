@@ -26,6 +26,3 @@ export async function checkCoinbaseConfig() {
     throw new Error("Failed to check Coinbase configuration");
   }
 }
-
-// Also export as default for backward compatibility
-export default checkCoinbaseConfig;

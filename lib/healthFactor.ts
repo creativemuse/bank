@@ -23,11 +23,12 @@ export const DISABLE_COLLATERAL_MIN_HEALTH_FACTOR = 1.05;
  */
 export function canSafelyDisableCollateral(
   healthFactor: number | string | null | undefined,
-  hasBorrows: boolean,
+  hasBorrows: boolean
 ): boolean {
   if (!hasBorrows) return true;
   if (healthFactor == null || healthFactor === "") return false;
-  const value = typeof healthFactor === "string" ? Number.parseFloat(healthFactor) : Number(healthFactor);
+  const value =
+    typeof healthFactor === "string" ? Number.parseFloat(healthFactor) : Number(healthFactor);
   if (Number.isNaN(value)) return false;
   return value >= DISABLE_COLLATERAL_MIN_HEALTH_FACTOR;
 }
@@ -38,12 +39,13 @@ export function canSafelyDisableCollateral(
  */
 export function getHealthFactorStatus(
   healthFactor: number | string | null | undefined,
-  hasBorrows?: boolean,
+  hasBorrows?: boolean
 ): HealthFactorStatus {
   if (healthFactor == null || healthFactor === "" || healthFactor === Infinity) {
     return hasBorrows ? "safe" : null; // No borrows: no meter needed (caller may show "Safe" for supply-only).
   }
-  const value = typeof healthFactor === "string" ? Number.parseFloat(healthFactor) : Number(healthFactor);
+  const value =
+    typeof healthFactor === "string" ? Number.parseFloat(healthFactor) : Number(healthFactor);
   if (Number.isNaN(value)) return null;
   if (value < DANGER_THRESHOLD) return "danger";
   if (value < WARNING_THRESHOLD) return "warning";
@@ -55,14 +57,20 @@ export function getHealthFactorStatus(
  */
 export function getHealthFactorStatusLabel(
   healthFactor: number | string | null | undefined,
-  hasBorrows?: boolean,
+  hasBorrows?: boolean
 ): HealthFactorStatusLabel | null {
   const status = getHealthFactorStatus(healthFactor, hasBorrows);
   if (status === null) return null;
   const labels: Record<Exclude<HealthFactorStatus, null>, { label: string; ariaLabel: string }> = {
     safe: { label: "Safe", ariaLabel: "Your loan is healthy" },
-    warning: { label: "Warning – consider repaying", ariaLabel: "Health factor is in warning range; consider repaying to reduce liquidation risk" },
-    danger: { label: "Danger – at risk of liquidation", ariaLabel: "Health factor is below 1; you are at risk of liquidation" },
+    warning: {
+      label: "Warning – consider repaying",
+      ariaLabel: "Health factor is in warning range; consider repaying to reduce liquidation risk",
+    },
+    danger: {
+      label: "Danger – at risk of liquidation",
+      ariaLabel: "Health factor is below 1; you are at risk of liquidation",
+    },
   };
   const { label, ariaLabel } = labels[status];
   return { status, label, ariaLabel };
@@ -74,12 +82,13 @@ export function getHealthFactorStatusLabel(
  */
 export function formatHealthFactorDisplay(
   healthFactor: number | string | null | undefined,
-  hasBorrows?: boolean,
+  hasBorrows?: boolean
 ): string {
   if (healthFactor == null || healthFactor === "") {
     return hasBorrows ? "—" : "No borrows (N/A)";
   }
-  const value = typeof healthFactor === "string" ? Number.parseFloat(healthFactor) : Number(healthFactor);
+  const value =
+    typeof healthFactor === "string" ? Number.parseFloat(healthFactor) : Number(healthFactor);
   if (Number.isNaN(value)) return hasBorrows ? "—" : "No borrows (N/A)";
   if (value === Infinity || value >= 1e10) return "∞";
   return value.toFixed(2);

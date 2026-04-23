@@ -26,13 +26,12 @@ interface SessionTokenResponse {
  * @returns Promise of signed JWT token
  */
 export async function generateJWT(
-  keyName: string, 
+  keyName: string,
   keySecret: string,
   requestMethod: string = "POST",
-  requestPath: string = "/onramp/v1/token"
+  requestPath: string = "/onramp/v1/token",
+  requestHost: string = "api.developer.coinbase.com"
 ): Promise<string> {
-  const requestHost = "api.developer.coinbase.com";
-
   try {
     console.log("Generating JWT with CDP SDK...", {
       hasKeyName: !!keyName,

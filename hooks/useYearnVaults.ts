@@ -40,9 +40,7 @@ type UseYearnVaultsReturn = {
  * Hook to fetch all endorsed Yearn V3 vaults for a specific asset
  * Uses the Yearn Registry to get vault addresses and info
  */
-export const useYearnVaults = (
-  assetAddress: Address = USDC_ADDRESS_BASE,
-): UseYearnVaultsReturn => {
+export const useYearnVaults = (assetAddress: Address = USDC_ADDRESS_BASE): UseYearnVaultsReturn => {
   const [vaults, setVaults] = useState<VaultData[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -96,7 +94,7 @@ export const useYearnVaults = (
         // Note: In a real implementation, you would use useReadContracts here
         // For now, we'll create placeholder data structure
         const vaultData: VaultData[] = [];
-        
+
         setVaults(vaultData);
       } catch (err) {
         setError(err as Error);
@@ -179,7 +177,7 @@ export const useYearnVault = (vaultAddress: Address | undefined) => {
  */
 export const useYearnVaultBalance = (
   vaultAddress: Address | undefined,
-  userAddress: Address | undefined,
+  userAddress: Address | undefined
 ) => {
   const { data: shareBalance, refetch: refetchShares } = useReadContract({
     address: vaultAddress,
@@ -241,7 +239,7 @@ export const useYearnVaultBalance = (
  */
 export const useMaxDeposit = (
   vaultAddress: Address | undefined,
-  userAddress: Address | undefined,
+  userAddress: Address | undefined
 ) => {
   const { data: maxDeposit, refetch } = useReadContract({
     address: vaultAddress,
@@ -265,7 +263,7 @@ export const useMaxDeposit = (
  */
 export const usePreviewDeposit = (
   vaultAddress: Address | undefined,
-  assets: bigint | undefined,
+  assets: bigint | undefined
 ) => {
   const { data: expectedShares, refetch } = useReadContract({
     address: vaultAddress,
@@ -287,10 +285,7 @@ export const usePreviewDeposit = (
 /**
  * Hook to preview withdrawal (get expected assets)
  */
-export const usePreviewRedeem = (
-  vaultAddress: Address | undefined,
-  shares: bigint | undefined,
-) => {
+export const usePreviewRedeem = (vaultAddress: Address | undefined, shares: bigint | undefined) => {
   const { data: expectedAssets, refetch } = useReadContract({
     address: vaultAddress,
     abi: ERC4626_ABI,
@@ -307,4 +302,3 @@ export const usePreviewRedeem = (
     refetch,
   };
 };
-

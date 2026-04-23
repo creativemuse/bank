@@ -122,6 +122,7 @@ pnpm yearn:query
 ```
 
 **Features:**
+
 - ✅ **ERC-4626 Compliant**: Standardized deposit/withdrawal functions
 - ✅ **MaxLoss Protection**: Configurable slippage protection (default 1%)
 - ✅ **Real-time Pricing**: Transparent on-chain share conversion
@@ -129,12 +130,14 @@ pnpm yearn:query
 - ✅ **Transaction Management**: Full state tracking with Basescan links
 
 **Quick Start:**
+
 1. Run `pnpm yearn:query` to find available vaults
 2. Copy vault address from output
 3. Update `app/strategies/page.tsx` with vault address
 4. Users can now deposit/withdraw directly from the UI
 
 **Documentation:**
+
 - [Quick Start Guide](./docs/QUICKSTART.md) - Get started in 3 steps
 - [Integration Guide](./docs/YEARN_V3_INTEGRATION.md) - Complete technical reference
 - [Deployment Checklist](./DEPLOYMENT_CHECKLIST.md) - Production activation guide
@@ -187,7 +190,8 @@ NEXT_PUBLIC_USDC_MINT=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 NEXT_PUBLIC_USDC_MINT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 ```
 
-**Note**: 
+**Note**:
+
 - In **production** (`NODE_ENV=production`), the app will **always use Base mainnet** regardless of the `NEXT_PUBLIC_CHAIN_ID` setting. This ensures mainnet-only operations in production.
 - In **development**, if `NEXT_PUBLIC_CHAIN_ID` is not set or contains an invalid value, the app will default to `base-sepolia` for safety.
 

@@ -10,10 +10,10 @@ const GOLD_SKY_ENDPOINT =
   "https://api.goldsky.com/api/public/project_cmh0iv6s500dbw2p22vsxcfo6/subgraphs/usdc-finance-yearn-v3/1.0.0/gn";
 
 const ERC4626_DEPOSIT_EVENT = parseAbiItem(
-  "event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares)",
+  "event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares)"
 );
 const ERC4626_WITHDRAW_EVENT = parseAbiItem(
-  "event Withdraw(address indexed sender, address indexed owner, address indexed receiver, uint256 assets, uint256 shares)",
+  "event Withdraw(address indexed sender, address indexed owner, address indexed receiver, uint256 assets, uint256 shares)"
 );
 
 /** Stay under typical provider eth_getLogs window limits (e.g. 8k blocks). */
@@ -48,10 +48,7 @@ type GoldskyWithdraw = {
   shares: string | number;
 };
 
-function getNetDepositsWeiAtBlock(
-  points: YearnVaultCashflowPoint[],
-  blockNumber: bigint,
-): bigint {
+function getNetDepositsWeiAtBlock(points: YearnVaultCashflowPoint[], blockNumber: bigint): bigint {
   if (points.length === 0) return 0n;
 
   // Upper bound: last index where points[i].blockNumber <= blockNumber
@@ -275,7 +272,8 @@ async function fetchCashflowsFromRpc(params: {
 
   let cursor = fromBlock;
   while (cursor <= toBlock) {
-    const chunkEnd = cursor + RPC_LOG_CHUNK_BLOCKS > toBlock ? toBlock : cursor + RPC_LOG_CHUNK_BLOCKS;
+    const chunkEnd =
+      cursor + RPC_LOG_CHUNK_BLOCKS > toBlock ? toBlock : cursor + RPC_LOG_CHUNK_BLOCKS;
 
     const [depositLogs, withdrawLogs] = await Promise.all([
       publicClient.getLogs({
@@ -327,7 +325,7 @@ async function fetchCashflowsFromRpc(params: {
 }
 
 function deltasToPoints(
-  deltas: Array<{ blockNumber: bigint; deltaWei: bigint }>,
+  deltas: Array<{ blockNumber: bigint; deltaWei: bigint }>
 ): YearnVaultCashflowPoint[] {
   let cumulative = 0n;
   const computedPoints: YearnVaultCashflowPoint[] = [];
@@ -344,7 +342,7 @@ function deltasToPoints(
 export function useYearnVaultCashflows(
   vaultAddress: Address | undefined,
   userAddress: Address | undefined,
-  fromBlock: bigint | undefined,
+  fromBlock: bigint | undefined
 ) {
   const publicClient = usePublicClient({ chainId: YEARN_CHAIN_ID });
 
@@ -399,7 +397,7 @@ export function useYearnVaultCashflows(
         setIsLoading(false);
       }
     },
-    [vaultAddress, userAddress, publicClient, fromBlockNum],
+    [vaultAddress, userAddress, publicClient, fromBlockNum]
   );
 
   useEffect(() => {
@@ -414,12 +412,12 @@ export function useYearnVaultCashflows(
     async (toBlock?: bigint) => {
       await fetchAndBuild(toBlock);
     },
-    [fetchAndBuild],
+    [fetchAndBuild]
   );
 
   const getNetDepositsWeiAtBlockCached = useCallback(
     (blockNumber: bigint) => getNetDepositsWeiAtBlock(points, blockNumber),
-    [points],
+    [points]
   );
 
   return {

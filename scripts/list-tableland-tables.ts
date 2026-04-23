@@ -22,22 +22,22 @@ async function main() {
 
     const { Wallet, getDefaultProvider } = await import("ethers");
     const baseRpcUrl = "https://mainnet.base.org";
-    
+
     const wallet = new Wallet(process.env.TABLELAND_PRIVATE_KEY);
     const provider = getDefaultProvider(baseRpcUrl);
     const signer = wallet.connect(provider);
-    
+
     const registry = new Registry({ signer });
-    
+
     // Get wallet address
     const address = await signer.getAddress();
     console.log(`📋 Wallet Address: ${address}`);
     console.log("");
-    
+
     // List all tables owned by this wallet
     console.log("📝 Fetching tables...");
     const tables = await registry.listTables();
-    
+
     console.log("");
     if (tables.length === 0) {
       console.log("⚠️  No tables found for this wallet address.");
@@ -56,9 +56,11 @@ async function main() {
         console.log("");
       });
     }
-    
+
     console.log("💡 Note: Tables created via SDK are on-chain and accessible,");
-    console.log("   but may not appear in Studio until they're created through Studio's interface.");
+    console.log(
+      "   but may not appear in Studio until they're created through Studio's interface."
+    );
     console.log("");
   } catch (error) {
     console.error("");
@@ -74,4 +76,3 @@ async function main() {
 }
 
 main();
-

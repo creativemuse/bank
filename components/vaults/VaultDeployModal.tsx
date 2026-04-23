@@ -11,7 +11,8 @@ import {
 } from "@aave/react";
 import { useWalletClient, useAccount, usePublicClient } from "wagmi";
 import { useSendTransaction } from "@aave/react/viem";
-import { useWallet, useAuth, EVMWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet, EVMWallet } from "@crossmint/client-sdk-react-ui";
 import { createWalletClient, custom, type WalletClient } from "viem";
 import { base, baseSepolia } from "viem/chains";
 
@@ -22,6 +23,12 @@ import { USDC_DECIMALS } from "@/lib/config/aave";
 import { formatPercent } from "@/lib/formatters";
 import { useMembership } from "@/context/MembershipContext";
 import { shortenAddress } from "@/utils/shortenAddress";
+import {
+  CREATIVE_TREASURY_ADDRESS,
+  YEARN_ACCOUNTANT_ADDRESS,
+  FEE_RECEIVER_TIERS,
+} from "@/lib/config/memberships";
+import { FeeBreakdown } from "./FeeBreakdown";
 
 type VaultDeployModalProps = {
   open: boolean;
@@ -51,7 +58,13 @@ function isTransientError(message: string): boolean {
 
 const CREATIVE_ADDRESS = "0xf46F1BA19A9280F752a451d0973b047D81c63D70";
 
-export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: VaultDeployModalProps) {
+export function VaultDeployModal({
+  open,
+  onClose,
+  onSuccess,
+  market,
+  reserve,
+}: VaultDeployModalProps) {
   const { address: wagmiAddress } = useAccount();
   const { data: wagmiWalletClient } = useWalletClient();
   const targetChainId = process.env.NODE_ENV === "production" ? base.id : baseSepolia.id;
@@ -63,6 +76,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
 
   // Check if user has any membership (only after loading is complete)
   const hasMembership = !membershipLoading && tier !== null;
+  const canSetFeeReceiver = hasMembership && tier !== null && FEE_RECEIVER_TIERS.includes(tier);
 
   // Determine active address (Crossmint takes priority, fallback to wagmi)
   const activeAddress = useMemo(() => {
@@ -79,7 +93,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
       try {
         const evmWallet = EVMWallet.from(crossmintWallet);
         const chain = process.env.NODE_ENV === "production" ? base : baseSepolia;
-        
+
         // Create a custom wallet client that uses Crossmint's EVMWallet for transactions
         return createWalletClient({
           chain,
@@ -96,40 +110,40 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
                   maxFeePerGas?: string;
                   maxPriorityFeePerGas?: string;
                 };
-                
+
                 // Validate required fields
                 if (!tx.to) {
                   throw new Error("Transaction 'to' address is required");
                 }
-                
+
                 // Convert viem transaction format to Crossmint format
                 // Convert hex string value to bigint as required by EVMTransactionInput
                 const valueHex = tx.value || "0x0";
                 const valueBigInt = BigInt(valueHex);
-                
+
                 const transaction = {
                   to: tx.to as `0x${string}`,
                   value: valueBigInt,
                   data: (tx.data || "0x") as `0x${string}`,
                 };
-                
+
                 // Send transaction using Crossmint's EVMWallet
                 const result = await evmWallet.sendTransaction(transaction);
-                
+
                 // Return the transaction hash in the format viem expects
                 return result.hash;
               }
-              
+
               // Handle account requests
               if (method === "eth_accounts" || method === "eth_requestAccounts") {
                 return [crossmintWallet.address];
               }
-              
+
               // Handle chain ID requests
               if (method === "eth_chainId") {
                 return `0x${chain.id.toString(16)}`;
               }
-              
+
               // Proxy read-only RPC calls (eth_call, eth_estimateGas, eth_getBalance, etc.)
               // through the public client so Aave SDK can prepare transactions
               if (publicClient) {
@@ -144,7 +158,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
         console.error("Failed to create wallet client from Crossmint wallet:", error);
       }
     }
-    
+
     // Fallback to wagmi wallet client
     return wagmiWalletClient ?? undefined;
   }, [crossmintWallet, wagmiWalletClient, publicClient]);
@@ -153,9 +167,13 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
 
   const [shareName, setShareName] = useState("Aave USDC Vault Shares");
   const [shareSymbol, setShareSymbol] = useState("avUSDC");
-  const [performanceFee, setPerformanceFee] = useState(12);
+  // Non-member: locked at 20%. Member: default 10% (minimum allowed)
+  const [performanceFee, setPerformanceFee] = useState(hasMembership ? 10 : 20);
+  const [feeReceiverAddress, setFeeReceiverAddress] = useState("");
+  // 0.01 USDC permanent lock required by Aave to initialize the vault
   const [initialDeposit, setInitialDeposit] = useState(0.01);
-  
+
+
   // Initialize recipient input based on membership status
   // If no membership or still loading: pre-fill with Creative address and 5%
   // If has membership: start empty and editable
@@ -166,7 +184,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
     }
     return { partnerAddress: "", partnerPercent: 0 };
   }, [hasMembership, membershipLoading]);
-  
+
   const [recipientInput, setRecipientInput] = useState<RecipientInput>(getInitialRecipientInput);
   const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle" });
 
@@ -180,12 +198,23 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
 
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Reset fee when membership status changes
+  useEffect(() => {
+    if (!membershipLoading) {
+      setPerformanceFee(hasMembership ? 10 : 20);
+      setFeeReceiverAddress("");
+    }
+  }, [hasMembership, membershipLoading]);
+
   const resetForm = useCallback(() => {
     setSubmitState({ status: "idle" });
-    setPerformanceFee(12);
+    setPerformanceFee(hasMembership ? 10 : 20);
+    setFeeReceiverAddress("");
     setInitialDeposit(0.01);
     setRecipientInput(getInitialRecipientInput());
-    setShareName(reserve ? `Aave ${reserve.underlyingToken.symbol} Vault Shares` : "Aave USDC Vault Shares");
+    setShareName(
+      reserve ? `Aave ${reserve.underlyingToken.symbol} Vault Shares` : "Aave USDC Vault Shares"
+    );
     setShareSymbol(reserve ? `av${reserve.underlyingToken.symbol}` : "avUSDC");
   }, [getInitialRecipientInput, reserve]);
 
@@ -225,9 +254,12 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
       return "Reserve data is still loading. Please try again in a moment.";
     }
 
-    if (Number.isNaN(performanceFee) || performanceFee < 10 || performanceFee > 50) {
-      return "Performance fee must be between 10% and 50%.";
+    if (hasMembership) {
+      if (Number.isNaN(performanceFee) || performanceFee < 10 || performanceFee > 50) {
+        return "Performance fee must be between 10% and 50%.";
+      }
     }
+    // Non-member fee is locked at 20% — no validation needed
 
     if (Number.isNaN(initialDeposit) || initialDeposit < 0) {
       return "Initial deposit must be zero or a positive number.";
@@ -242,31 +274,47 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
     }
 
     return null;
-  }, [activeAddress, authStatus, walletStatus, initialDeposit, market, performanceFee, recipientInput.partnerPercent, reserve]);
+  }, [
+    activeAddress,
+    authStatus,
+    walletStatus,
+    initialDeposit,
+    market,
+    performanceFee,
+    recipientInput.partnerPercent,
+    reserve,
+  ]);
 
   const recipients = useMemo(() => {
     const entries: VaultDeployRequest["recipients"] = [];
 
-    const partnerAddress = recipientInput.partnerAddress?.trim();
-    const trimmed = partnerAddress && partnerAddress.length > 0 ? partnerAddress : null;
+    // Yearn V3 Accountant always gets 10% of manager's half
+    entries.push({
+      address: evmAddress(YEARN_ACCOUNTANT_ADDRESS),
+      percent: bigDecimal(10),
+    });
 
-    if (trimmed && recipientInput.partnerPercent > 0) {
+    if (hasMembership) {
+      // Member: Fee Receiver (Brand/Creator) or deployer wallet (Investor)
+      const receiver =
+        canSetFeeReceiver && feeReceiverAddress.trim()
+          ? feeReceiverAddress.trim()
+          : (activeAddress ?? "0x0000000000000000000000000000000000000000");
+
       entries.push({
-        address: evmAddress(trimmed),
-        percent: bigDecimal(recipientInput.partnerPercent),
+        address: evmAddress(receiver),
+        percent: bigDecimal(90),
+      });
+    } else {
+      // Non-member: 90% goes to Creative Bank Treasury
+      entries.push({
+        address: evmAddress(CREATIVE_TREASURY_ADDRESS),
+        percent: bigDecimal(90),
       });
     }
 
-    const ownerSplit = 100 - recipientInput.partnerPercent;
-    if (ownerSplit > 0) {
-      entries.push({
-        address: evmAddress(activeAddress ?? "0x0000000000000000000000000000000000000000"),
-        percent: bigDecimal(ownerSplit),
-      });
-    }
-
-    return entries.length ? entries : undefined;
-  }, [activeAddress, recipientInput.partnerAddress, recipientInput.partnerPercent]);
+    return entries;
+  }, [activeAddress, hasMembership, canSetFeeReceiver, feeReceiverAddress]);
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -365,35 +413,39 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
       setSubmitState({
         status: "deploying",
         txHash,
-        message: "Waiting for transaction confirmation..."
+        message: "Waiting for transaction confirmation...",
       });
 
       try {
         // Wait for the transaction to be mined using public client
         if (publicClient) {
-          const receipt = await publicClient.waitForTransactionReceipt({ 
+          const receipt = await publicClient.waitForTransactionReceipt({
             hash: txHash as `0x${string}`,
             timeout: 120_000, // 2 minute timeout
           });
-          
+
           // Try to extract vault address from transaction receipt
           // Aave vaults are deployed via factory, so the address is in event logs
           let vaultAddress: string | undefined;
-          
+
           if (receipt.contractAddress) {
             vaultAddress = receipt.contractAddress;
           } else if (receipt.logs && receipt.logs.length > 0) {
             // Look for VaultDeployed event: VaultDeployed(address indexed vault, address indexed implementation, address indexed underlying, ...)
             // Event signature: 0xa225f10988fd8a4e80df4ed9fe9ddce048ffc02e51061eb4ceb5beb0c2ec4f2a
-            const VAULT_DEPLOYED_EVENT_SIGNATURE = "0xa225f10988fd8a4e80df4ed9fe9ddce048ffc02e51061eb4ceb5beb0c2ec4f2a";
-            
+            const VAULT_DEPLOYED_EVENT_SIGNATURE =
+              "0xa225f10988fd8a4e80df4ed9fe9ddce048ffc02e51061eb4ceb5beb0c2ec4f2a";
+
             for (const log of receipt.logs) {
               // Check if this is a VaultDeployed event
-              if (log.topics[0]?.toLowerCase() === VAULT_DEPLOYED_EVENT_SIGNATURE.toLowerCase() && log.topics.length >= 4) {
+              if (
+                log.topics[0]?.toLowerCase() === VAULT_DEPLOYED_EVENT_SIGNATURE.toLowerCase() &&
+                log.topics.length >= 4
+              ) {
                 // Second topic (index 1) is the vault address
                 const topic1 = log.topics[1];
                 const topic3 = log.topics[3];
-                
+
                 if (topic1 && topic3 && reserve) {
                   const vaultAddr = `0x${topic1.slice(-40)}`;
                   const underlying = `0x${topic3.slice(-40)}`;
@@ -411,9 +463,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
             status: "success",
             txHash,
             vaultAddress,
-            message: vaultAddress 
-              ? `Vault deployed successfully!`
-              : "Vault deployment confirmed!",
+            message: vaultAddress ? `Vault deployed successfully!` : "Vault deployment confirmed!",
           });
 
           // If vault address found, save it to localStorage
@@ -421,12 +471,12 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
             try {
               const stored = localStorage.getItem("deployedVaults");
               const existingVaults = stored ? JSON.parse(stored) : [];
-              
+
               // Check if vault already exists
               const exists = existingVaults.some(
                 (v: { address: string }) => v.address.toLowerCase() === vaultAddress.toLowerCase()
               );
-              
+
               if (!exists) {
                 const newVault = {
                   address: vaultAddress.toLowerCase(),
@@ -434,7 +484,10 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
                   transactionHash: txHash,
                   performanceFee: performanceFee, // Store performance fee for net APR calculation
                 };
-                localStorage.setItem("deployedVaults", JSON.stringify([...existingVaults, newVault]));
+                localStorage.setItem(
+                  "deployedVaults",
+                  JSON.stringify([...existingVaults, newVault])
+                );
               }
             } catch (error) {
               console.warn("Could not save vault to localStorage:", error);
@@ -457,7 +510,8 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
           setSubmitState({
             status: "success",
             txHash,
-            message: "Vault deployment transaction submitted. Check Basescan to find the vault address in the transaction logs.",
+            message:
+              "Vault deployment transaction submitted. Check Basescan to find the vault address in the transaction logs.",
           });
           toast.success("Vault deployed", {
             description: "Transaction confirmed. View on Basescan for vault address.",
@@ -475,7 +529,8 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
         setSubmitState({
           status: "success",
           txHash,
-          message: "Vault deployment transaction submitted. Check Basescan to find the vault address.",
+          message:
+            "Vault deployment transaction submitted. Check Basescan to find the vault address.",
         });
         toast.success("Vault deployed", {
           description: "Transaction submitted. View on Basescan to find the vault address.",
@@ -514,42 +569,39 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
       shareSymbol,
       validate,
       walletClient,
-    ],
+    ]
   );
 
   // Add helper function to handle number input with better mobile UX
-  const handleNumberInputChange = useCallback((
-    value: string,
-    setter: (val: number) => void,
-    allowDecimal = false
-  ) => {
-    // If empty, set to 0
-    if (value === "" || value === "-") {
-      setter(0);
-      return;
-    }
-    
-    // Remove any non-numeric characters (except decimal point if allowed)
-    const cleaned = allowDecimal 
-      ? value.replace(/[^\d.]/g, '')
-      : value.replace(/[^\d]/g, '');
-    
-    // Parse the number
-    const num = allowDecimal ? parseFloat(cleaned) : parseInt(cleaned, 10);
-    
-    if (!isNaN(num)) {
-      setter(num);
-    }
-  }, []);
+  const handleNumberInputChange = useCallback(
+    (value: string, setter: (val: number) => void, allowDecimal = false) => {
+      // If empty, set to 0
+      if (value === "" || value === "-") {
+        setter(0);
+        return;
+      }
+
+      // Remove any non-numeric characters (except decimal point if allowed)
+      const cleaned = allowDecimal ? value.replace(/[^\d.]/g, "") : value.replace(/[^\d]/g, "");
+
+      // Parse the number
+      const num = allowDecimal ? parseFloat(cleaned) : parseInt(cleaned, 10);
+
+      if (!isNaN(num)) {
+        setter(num);
+      }
+    },
+    []
+  );
 
   // Handle share symbol with preserved cursor position
   const handleShareSymbolChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
     const cursorPosition = input.selectionStart || 0;
     const newValue = event.target.value.toUpperCase();
-    
+
     setShareSymbol(newValue);
-    
+
     // Restore cursor position after state update
     setTimeout(() => {
       input.setSelectionRange(cursorPosition, cursorPosition);
@@ -562,29 +614,32 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
   }, []);
 
   // Handle partner percent with smart replacement when value is 0
-  const handlePartnerPercentChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    const currentValue = recipientInput.partnerPercent;
-    
-    // If current value is 0 and user types a digit, replace instead of append
-    if (currentValue === 0 && value.length === 2 && value.startsWith('0')) {
-      const newValue = parseInt(value.slice(1), 10);
-      if (!isNaN(newValue)) {
+  const handlePartnerPercentChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
+      const currentValue = recipientInput.partnerPercent;
+
+      // If current value is 0 and user types a digit, replace instead of append
+      if (currentValue === 0 && value.length === 2 && value.startsWith("0")) {
+        const newValue = parseInt(value.slice(1), 10);
+        if (!isNaN(newValue)) {
+          setRecipientInput((previous) => ({
+            ...previous,
+            partnerPercent: newValue,
+          }));
+          return;
+        }
+      }
+
+      handleNumberInputChange(value, (num) => {
         setRecipientInput((previous) => ({
           ...previous,
-          partnerPercent: newValue,
+          partnerPercent: num,
         }));
-        return;
-      }
-    }
-    
-    handleNumberInputChange(value, (num) => {
-      setRecipientInput((previous) => ({
-        ...previous,
-        partnerPercent: num,
-      }));
-    });
-  }, [recipientInput.partnerPercent, handleNumberInputChange]);
+      });
+    },
+    [recipientInput.partnerPercent, handleNumberInputChange]
+  );
 
   if (!open) {
     return null;
@@ -605,7 +660,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
         <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <h4 className="text-base font-semibold text-slate-900">Vault Configuration</h4>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase text-slate-500">Share Name</span>
+            <span className="text-xs font-medium text-slate-500 uppercase">Share Name</span>
             <input
               value={shareName}
               onChange={(event) => setShareName(event.target.value)}
@@ -616,7 +671,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase text-slate-500">Share Symbol</span>
+            <span className="text-xs font-medium text-slate-500 uppercase">Share Symbol</span>
             <input
               value={shareSymbol}
               onChange={handleShareSymbolChange}
@@ -628,21 +683,31 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
           </label>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium uppercase text-slate-500">Performance Fee</span>
+              <span className="text-xs font-medium text-slate-500 uppercase">Performance Fee</span>
               <input
                 type="tel"
                 inputMode="decimal"
                 step="0.1"
-                min={10}
-                max={50}
+                min={hasMembership ? 10 : 20}
+                max={hasMembership ? 50 : 20}
                 value={performanceFee}
-                onChange={(event) => handleNumberInputChange(event.target.value, setPerformanceFee, true)}
+                onChange={(event) => {
+                  if (!hasMembership) return; // Non-member: read-only
+                  const val = Number(event.target.value);
+                  if (!Number.isNaN(val) && val >= 10) {
+                    handleNumberInputChange(event.target.value, setPerformanceFee, true);
+                  }
+                }}
                 onFocus={handleNumberFocus}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                disabled={!hasMembership}
+                readOnly={!hasMembership}
                 required
               />
               <span className="text-xs text-slate-500">
-                Minimum 10%. Aave Labs automatically receives 50% of this fee.
+                {hasMembership
+                  ? "Minimum 10%. Aave Labs automatically receives 50% of this fee."
+                  : "Membership required to customize fees. Default: 20%."}
               </span>
             </label>
             <label className="flex flex-col gap-1">
@@ -662,79 +727,67 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
           </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <div>
-            <h4 className="text-base font-semibold text-slate-900">Revenue Share</h4>
-            <p className="text-xs text-slate-500">
-              Optionally split your share of the performance fees with a partner.
+        {/* Fee Breakdown */}
+        <FeeBreakdown performanceFee={performanceFee} hasMembership={hasMembership} />
+
+        {/* Fee Receiver — only for Brand/Creator members */}
+        {canSetFeeReceiver && (
+          <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div>
+              <h4 className="text-base font-semibold text-slate-900">Fee Receiver</h4>
+              <p className="text-xs text-slate-500">
+                As a {tier} member, you can route your net performance fees to a custom address.
+              </p>
+            </div>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-slate-500 uppercase">
+                Fee Receiver Address
+              </span>
+              <input
+                value={feeReceiverAddress}
+                onChange={(event) => setFeeReceiverAddress(event.target.value)}
+                onFocus={handleNumberFocus}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                placeholder={
+                  activeAddress ? shortenAddress(activeAddress) + " (your wallet)" : "0x..."
+                }
+              />
+              <span className="text-xs text-slate-500">
+                Leave blank to receive fees at your connected wallet.
+              </span>
+            </label>
+          </section>
+        )}
+
+        {/* Non-member treasury notice */}
+        {!hasMembership && !membershipLoading && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="font-medium">Standard fee tier (20%)</p>
+            <p className="mt-1 text-xs">
+              Performance fees are routed to the Creative Bank Treasury. Unlock a membership to
+              reduce fees to 10% and receive yield directly.
             </p>
           </div>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase text-slate-500">Partner Address</span>
-            <input
-              value={recipientInput.partnerAddress || ""}
-              onChange={(event) =>
-                setRecipientInput((previous) => ({
-                  ...previous,
-                  partnerAddress: event.target.value,
-                }))
-              }
-              onFocus={handleNumberFocus}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-              placeholder="0x..."
-              disabled={membershipLoading || !hasMembership}
-              readOnly={membershipLoading || !hasMembership}
-            />
-            {(membershipLoading || !hasMembership) && (
-              <span className="text-xs text-slate-500">
-                {membershipLoading 
-                  ? "Checking membership..." 
-                  : "Membership required to edit partner address. Default: Creative Bank (creative.eth)"}
-              </span>
-            )}
-          </label>
-          <label className="flex flex-col gap-1 md:w-1/2">
-            <span className="text-xs font-medium uppercase text-slate-500">
-              Partner Share (% of your portion)
-            </span>
-            <input
-              type="tel"
-              inputMode="numeric"
-              min={0}
-              max={100}
-              step={1}
-              value={recipientInput.partnerPercent}
-              onChange={handlePartnerPercentChange}
-              onFocus={handleNumberFocus}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-              disabled={membershipLoading || !hasMembership}
-              readOnly={membershipLoading || !hasMembership}
-            />
-            <span className="text-xs text-slate-500">
-              Remaining split automatically allocated to your wallet.
-              {(membershipLoading || !hasMembership) && " Default: 5% for Creative Bank."}
-            </span>
-          </label>
-        </section>
+        )}
 
         {reserve ? (
           <section className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
             <h4 className="text-base font-semibold">Underlying Reserve</h4>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <div className="flex flex-col">
-                <span className="text-xs uppercase text-emerald-700">Market</span>
+                <span className="text-xs text-emerald-700 uppercase">Market</span>
                 <span className="font-medium">{reserve.market.name}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs uppercase text-emerald-700">Supply APR</span>
+                <span className="text-xs text-emerald-700 uppercase">Supply APR</span>
                 <span className="font-medium">{reserveApy}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs uppercase text-emerald-700">Underlying Token</span>
+                <span className="text-xs text-emerald-700 uppercase">Underlying Token</span>
                 <span className="font-medium">{reserve.underlyingToken.symbol}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs uppercase text-emerald-700">aToken</span>
+                <span className="text-xs text-emerald-700 uppercase">aToken</span>
                 <span className="font-medium">{reserve.aToken.symbol}</span>
               </div>
             </div>
@@ -780,7 +833,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
                     href={`https://basescan.org/address/${submitState.vaultAddress}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline break-all"
+                    className="break-all underline"
                   >
                     {submitState.vaultAddress}
                   </a>
@@ -792,7 +845,7 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
             ) : (
               <div className="mt-2 space-y-2 text-xs text-emerald-700">
                 <p className="font-medium">To find your vault address:</p>
-                <ol className="list-decimal list-inside space-y-1 ml-2">
+                <ol className="ml-2 list-inside list-decimal space-y-1">
                   <li>
                     Click{" "}
                     <a
@@ -809,13 +862,13 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
                   <li>The vault address will be in the event parameters</li>
                 </ol>
                 <p className="mt-2 text-emerald-600">
-                  <strong>Note:</strong> The vault address is the contract that was created by this transaction. 
-                  It will appear as a new contract creation in the transaction logs.
+                  <strong>Note:</strong> The vault address is the contract that was created by this
+                  transaction. It will appear as a new contract creation in the transaction logs.
                 </p>
               </div>
             )}
             {submitState.txHash ? (
-              <div className="mt-3 pt-3 border-t border-emerald-300">
+              <div className="mt-3 border-t border-emerald-300 pt-3">
                 <a
                   href={`https://basescan.org/tx/${submitState.txHash}`}
                   target="_blank"
@@ -856,4 +909,3 @@ export function VaultDeployModal({ open, onClose, onSuccess, market, reserve }: 
     </Modal>
   );
 }
-

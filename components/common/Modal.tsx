@@ -43,7 +43,7 @@ export function Modal({
       overflow: document.body.style.overflow,
       touchAction: document.body.style.touchAction,
     };
-    
+
     // Lock body scroll - works better on mobile with touch-action
     document.body.style.overflow = "hidden";
     // Prevent touch scrolling on mobile devices
@@ -60,7 +60,7 @@ export function Modal({
         } else {
           document.body.style.overflow = "";
         }
-        
+
         // Restore original touch-action or remove the style
         if (original.touchAction) {
           document.body.style.touchAction = original.touchAction;
@@ -74,11 +74,11 @@ export function Modal({
       }
     };
   }, [open]);
-  
+
   if (!open) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex justify-center overflow-y-auto bg-black/30 py-6 md:items-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
@@ -106,7 +106,7 @@ export function Modal({
             </button>
           )}
           {title && (
-            <div className="transform-[translateX(-50%)] absolute left-1/2 w-max text-lg font-semibold">
+            <div className="absolute left-1/2 w-max transform-[translateX(-50%)] text-lg font-semibold">
               {title}
             </div>
           )}

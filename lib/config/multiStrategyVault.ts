@@ -2,7 +2,7 @@ import { Address } from "viem";
 
 /**
  * Creative Bank Multi-Strategy Vault Configuration
- * 
+ *
  * This vault allocates USDC across 4 Tokenized Strategies:
  * - Aave V3: Lending on Aave Protocol
  * - Compound V3: Lending on Compound Protocol
@@ -13,7 +13,7 @@ import { Address } from "viem";
 export const MULTI_STRATEGY_VAULT = {
   // Vault address (will be set after deployment)
   vaultAddress: "0x0000000000000000000000000000000000000000" as Address,
-  
+
   // Strategy addresses (will be set after deployment)
   strategies: {
     aave: "0x0000000000000000000000000000000000000000" as Address,
@@ -21,7 +21,7 @@ export const MULTI_STRATEGY_VAULT = {
     curve: "0x0000000000000000000000000000000000000000" as Address,
     spark: "0x0000000000000000000000000000000000000000" as Address,
   },
-  
+
   // Vault metadata
   name: "Creative Bank Multi-Strategy USDC",
   symbol: "cbUSDC-v2",
@@ -29,7 +29,7 @@ export const MULTI_STRATEGY_VAULT = {
   assetName: "USD Coin",
   assetSymbol: "USDC",
   assetDecimals: 6,
-  
+
   // Strategy allocation (can be adjusted via vault management)
   allocation: {
     aave: 25, // 25% allocation
@@ -37,7 +37,7 @@ export const MULTI_STRATEGY_VAULT = {
     curve: 25,
     spark: 25,
   },
-  
+
   // Network
   chainId: 8453, // Base
 } as const;

@@ -3,6 +3,7 @@
 ## ✅ Completed
 
 ### Tableland Integration
+
 - ✅ Table created: `transactions_8453_26`
 - ✅ Table visible in Studio
 - ✅ Schema matches requirements
@@ -12,6 +13,7 @@
 - ✅ Table name properly quoted in SQL queries
 
 ### Code Quality
+
 - ✅ Graceful error handling
 - ✅ Fallback to Coinbase API if Tableland fails
 - ✅ Non-blocking background sync
@@ -35,6 +37,7 @@ COINBASE_API_KEY_SECRET=...
 ```
 
 **Action Items:**
+
 - [ ] Add `TABLELAND_PRIVATE_KEY` to production environment
 - [ ] Verify wallet has sufficient ETH on Base for gas fees
 - [ ] Confirm `TABLELAND_TABLE_NAME` is set correctly
@@ -43,10 +46,12 @@ COINBASE_API_KEY_SECRET=...
 ### 2. Gas Costs & Wallet Funding
 
 **Current Setup:**
+
 - Using Base mainnet (low gas costs)
 - Each write operation costs minimal gas (~$0.001-0.01 per transaction)
 
 **Action Items:**
+
 - [ ] Fund the `TABLELAND_PRIVATE_KEY` wallet with ETH on Base
 - [ ] Monitor gas costs (consider setting up alerts)
 - [ ] Estimate monthly costs based on transaction volume
@@ -55,11 +60,13 @@ COINBASE_API_KEY_SECRET=...
 ### 3. Error Monitoring
 
 **Current Implementation:**
+
 - Errors are logged to console
 - Graceful fallback to Coinbase API
 - Background sync errors don't block user requests
 
 **Action Items:**
+
 - [ ] Set up error monitoring (e.g., Sentry, LogRocket)
 - [ ] Add alerts for Tableland failures
 - [ ] Monitor API fallback frequency
@@ -68,11 +75,13 @@ COINBASE_API_KEY_SECRET=...
 ### 4. Performance & Scaling
 
 **Current Implementation:**
+
 - Batch operations for multiple transactions
 - Cached reads from Tableland
 - Background sync doesn't block requests
 
 **Action Items:**
+
 - [ ] Monitor query performance
 - [ ] Test with high transaction volumes
 - [ ] Consider adding indexes if needed (Tableland supports indexes)
@@ -81,11 +90,13 @@ COINBASE_API_KEY_SECRET=...
 ### 5. Data Validation
 
 **Current Implementation:**
+
 - Basic input validation (userId required)
 - JSON parsing with error handling
 - Transaction ID uniqueness enforced
 
 **Action Items:**
+
 - [ ] Add validation for transaction data structure
 - [ ] Validate user_id format
 - [ ] Add data sanitization if needed
@@ -94,11 +105,13 @@ COINBASE_API_KEY_SECRET=...
 ### 6. Security
 
 **Current Implementation:**
+
 - Private key stored in environment variables
 - Server-side only operations
 - No client-side exposure
 
 **Action Items:**
+
 - [ ] Verify private key is never logged
 - [ ] Use secure secret management (e.g., AWS Secrets Manager, Vercel Env)
 - [ ] Rotate private key periodically
@@ -108,6 +121,7 @@ COINBASE_API_KEY_SECRET=...
 ### 7. Testing
 
 **Action Items:**
+
 - [ ] Test transaction fetching in staging
 - [ ] Test Tableland write operations
 - [ ] Test API fallback when Tableland is unavailable
@@ -117,6 +131,7 @@ COINBASE_API_KEY_SECRET=...
 ### 8. Monitoring & Observability
 
 **Action Items:**
+
 - [ ] Add metrics for:
   - Tableland query success rate
   - API fallback frequency
@@ -128,6 +143,7 @@ COINBASE_API_KEY_SECRET=...
 ### 9. Documentation
 
 **Action Items:**
+
 - [ ] Document production deployment steps
 - [ ] Create runbook for common issues
 - [ ] Document rollback procedures
@@ -136,11 +152,13 @@ COINBASE_API_KEY_SECRET=...
 ### 10. Backup & Recovery
 
 **Current Implementation:**
+
 - Data stored on-chain (immutable)
 - Coinbase API as source of truth
 - Background sync keeps data fresh
 
 **Action Items:**
+
 - [ ] Document recovery procedures
 - [ ] Test data recovery from Coinbase API
 - [ ] Consider periodic data validation
@@ -148,6 +166,7 @@ COINBASE_API_KEY_SECRET=...
 ## 🚀 Deployment Steps
 
 1. **Pre-Deployment:**
+
    ```bash
    # Verify environment variables
    echo $TABLELAND_PRIVATE_KEY
@@ -169,6 +188,7 @@ COINBASE_API_KEY_SECRET=...
 ## 📊 Success Metrics
 
 Track these metrics post-deployment:
+
 - Tableland query success rate (target: >99%)
 - Average query latency (target: <500ms)
 - API fallback frequency (target: <1%)
@@ -178,6 +198,7 @@ Track these metrics post-deployment:
 ## 🔧 Rollback Plan
 
 If issues occur:
+
 1. Tableland failures automatically fallback to Coinbase API
 2. No user-facing impact (graceful degradation)
 3. Can disable Tableland by removing `TABLELAND_TABLE_NAME`
@@ -186,9 +207,9 @@ If issues occur:
 ## ⚡ Quick Wins
 
 Before going to production, consider:
+
 1. Add retry logic for Tableland writes
 2. Add request timeout handling
 3. Implement rate limiting for writes
 4. Add health check endpoint
 5. Set up basic monitoring/alerts
-

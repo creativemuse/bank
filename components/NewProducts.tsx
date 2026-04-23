@@ -78,7 +78,7 @@ const NewProduct = ({ title, description, image, ctaLabel, ctaHref }: NewProduct
         {ctaHref ? (
           <button
             type="button"
-            className="bg-primary text-primary-foreground rounded-full px-4 py-2 text-xs font-semibold transition hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary rounded-full px-4 py-2 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             tabIndex={0}
             aria-label={`Navigate to ${title}`}
             onClick={handleNavigate}

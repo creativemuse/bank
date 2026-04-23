@@ -2,11 +2,7 @@ import { Web3Service } from "@unlock-protocol/unlock-js";
 import { Address } from "viem";
 
 import { MEMBERSHIP_LOCKS, MembershipTier } from "@/lib/config/memberships";
-import {
-  unlockAddress,
-  unlockChainId,
-  unlockProviderUrl,
-} from "@/lib/config/unlock";
+import { unlockAddress, unlockChainId, unlockProviderUrl } from "@/lib/config/unlock";
 
 type UnlockNetworkConfig = Record<
   number,
@@ -49,13 +45,13 @@ const getWeb3Service = () => {
 const validateNetworkConfig = () => {
   const BASE_MAINNET_CHAIN_ID = 8453;
   const isBaseMainnet = unlockChainId === BASE_MAINNET_CHAIN_ID;
-  
+
   console.log("[unlockMemberships] Network Configuration Check:", {
     unlockChainId,
     expectedChainId: BASE_MAINNET_CHAIN_ID,
     isBaseMainnet,
     membershipLocksNetwork: "Base Mainnet (8453)",
-    warning: !isBaseMainnet 
+    warning: !isBaseMainnet
       ? "⚠️ WARNING: Unlock chain ID does not match Base Mainnet! Memberships may not be detected."
       : "✓ Network configuration correct",
   });
@@ -81,17 +77,24 @@ const parseMembershipState = (key: unknown): UnlockMembershipState => {
     typeof expirationValue === "string"
       ? Number(expirationValue)
       : typeof expirationValue === "number"
-      ? expirationValue
-      : typeof expirationValue === "bigint"
-      ? Number(expirationValue)
-      : null;
+        ? expirationValue
+        : typeof expirationValue === "bigint"
+          ? Number(expirationValue)
+          : null;
 
   const expiresAtMs =
     typeof expirationInSeconds === "number" && Number.isFinite(expirationInSeconds)
       ? expirationInSeconds * 1000
       : null;
 
-  console.log("[unlockMemberships] expiresAtMs:", expiresAtMs, "now:", Date.now(), "isValid:", expiresAtMs && expiresAtMs > Date.now());
+  console.log(
+    "[unlockMemberships] expiresAtMs:",
+    expiresAtMs,
+    "now:",
+    Date.now(),
+    "isValid:",
+    expiresAtMs && expiresAtMs > Date.now()
+  );
 
   if (typeof validValue === "boolean") {
     console.log("[unlockMemberships] Using explicit validValue:", validValue);
@@ -116,7 +119,7 @@ const createEmptyState = () =>
       };
       return accumulator;
     },
-    {} as Record<MembershipTier, UnlockMembershipState>,
+    {} as Record<MembershipTier, UnlockMembershipState>
   );
 
 export const fetchUnlockMembershipStates = async (walletAddress: Address) => {
@@ -128,11 +131,12 @@ export const fetchUnlockMembershipStates = async (walletAddress: Address) => {
 
   // Validate network configuration
   const isCorrectNetwork = validateNetworkConfig();
-  
+
   if (!isCorrectNetwork) {
     console.error(
       "[unlockMemberships] ❌ CRITICAL: Network mismatch detected!",
-      "\nUnlock Protocol is configured for chain:", unlockChainId,
+      "\nUnlock Protocol is configured for chain:",
+      unlockChainId,
       "\nMembership locks are deployed on Base Mainnet (8453)",
       "\n\nTo fix: Set NEXT_PUBLIC_UNLOCK_CHAIN_ID=8453 or NEXT_PUBLIC_CHAIN_ID=base in your environment variables"
     );
@@ -146,13 +150,9 @@ export const fetchUnlockMembershipStates = async (walletAddress: Address) => {
       console.log(`[unlockMemberships] Checking ${lock.tier} membership`);
       console.log(`[unlockMemberships] Lock address: ${lock.address}`);
       console.log(`[unlockMemberships] Chain ID: ${unlockChainId}`);
-      
+
       try {
-        const key = await service.getKeyByLockForOwner(
-          lock.address,
-          walletAddress,
-          unlockChainId,
-        );
+        const key = await service.getKeyByLockForOwner(lock.address, walletAddress, unlockChainId);
 
         console.log(`[unlockMemberships] ✓ Key data received for ${lock.tier}:`, {
           keyExists: !!key,
@@ -177,18 +177,17 @@ export const fetchUnlockMembershipStates = async (walletAddress: Address) => {
           error: error instanceof Error ? error.message : String(error),
           errorStack: error instanceof Error ? error.stack : undefined,
         });
-        
+
         return {
           lock,
           state: {
             hasValidKey: false,
             expiresAtMs: null,
-            error:
-              error instanceof Error ? error.message : "Failed to fetch membership",
+            error: error instanceof Error ? error.message : "Failed to fetch membership",
           } satisfies UnlockMembershipState,
         };
       }
-    }),
+    })
   );
 
   const finalState = results.reduce<Record<MembershipTier, UnlockMembershipState>>(
@@ -196,7 +195,7 @@ export const fetchUnlockMembershipStates = async (walletAddress: Address) => {
       accumulator[result.lock.tier] = result.state;
       return accumulator;
     },
-    createEmptyState(),
+    createEmptyState()
   );
 
   console.log("[unlockMemberships] ========================================");
@@ -212,4 +211,3 @@ export const fetchUnlockMembershipStates = async (walletAddress: Address) => {
 
   return finalState;
 };
-

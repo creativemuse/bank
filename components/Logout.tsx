@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
 
 export function LogoutButton() {
   const { logout } = useAuth();

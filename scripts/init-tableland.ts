@@ -20,7 +20,7 @@ async function main() {
     if (!process.env.TABLELAND_PRIVATE_KEY) {
       throw new Error(
         "❌ TABLELAND_PRIVATE_KEY not found in .env.local\n" +
-        "Please add your private key to .env.local"
+          "Please add your private key to .env.local"
       );
     }
 
@@ -54,4 +54,3 @@ async function main() {
 }
 
 main();
-

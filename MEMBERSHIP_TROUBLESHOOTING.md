@@ -7,6 +7,7 @@ You have a Creative Creator membership in your wallet, but the app isn't recogni
 ## Most Common Cause: Network Mismatch ⚠️
 
 **The Problem:**
+
 - Your membership NFT is on **Base Mainnet (Chain ID: 8453)**
 - Your app might be querying **Base Sepolia** (or another network)
 - Result: NFT can't be found on the wrong network
@@ -21,6 +22,7 @@ NEXT_PUBLIC_UNLOCK_CHAIN_ID=8453
 ```
 
 Then restart your development server:
+
 ```bash
 pnpm dev
 ```
@@ -28,6 +30,7 @@ pnpm dev
 ## How to Verify It's Working
 
 ### 1. Check the Debug Panel
+
 - Go to `/strategies` page
 - Look at bottom-right corner
 - You should see a debug panel showing:
@@ -36,6 +39,7 @@ pnpm dev
   - Membership status
 
 ### 2. Check Browser Console
+
 Open DevTools Console and look for:
 
 ```
@@ -48,7 +52,9 @@ Open DevTools Console and look for:
 If you see this, the network is correct ✓
 
 ### 3. Look for Your Membership
+
 Console should show:
+
 ```
 [unlockMemberships] ✓ Creative Creator status:
   hasValidKey: true
@@ -57,19 +63,24 @@ Console should show:
 ## Other Possible Causes
 
 ### Wrong Wallet Address
+
 **Check:** Is the address shown in the debug panel the same one that holds your membership?
 
-**Fix:** 
+**Fix:**
+
 - Make sure you're logged in to the correct Crossmint account
 - Or connect the correct browser wallet
 
 ### Expired Membership
+
 **Check:** Look at the expiration date in the debug panel
 
 **Fix:** Renew your membership on Unlock Protocol
 
 ### Wrong Network on BaseScan
+
 **Check:** Verify your membership NFT exists on Base Mainnet:
+
 - Go to: https://basescan.org/token/0xf7c4cd399395d80f9d61fde833849106775269c6
 - Enter your wallet address
 - You should see your Creative Creator key
@@ -79,6 +90,7 @@ Console should show:
 ## Step-by-Step Debugging
 
 1. **Set Environment Variables**
+
    ```bash
    # In .env.local
    NEXT_PUBLIC_CHAIN_ID=base
@@ -86,6 +98,7 @@ Console should show:
    ```
 
 2. **Restart Server**
+
    ```bash
    pnpm dev
    ```
@@ -133,10 +146,10 @@ Console should show:
 ## Still Not Working?
 
 Check console logs and share:
+
 1. The network configuration check output
 2. The active address being used
 3. The membership check results
 4. Screenshot of the debug panel
 
 This will help identify the exact issue.
-

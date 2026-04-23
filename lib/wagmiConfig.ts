@@ -10,9 +10,7 @@ const DEFAULT_BASE_SEPOLIA_RPC_URL = "https://sepolia.base.org";
 
 // Base Builder Code — appended to all transactions for onchain attribution
 const BUILDER_CODE = process.env.NEXT_PUBLIC_BUILDER_CODE;
-const DATA_SUFFIX = BUILDER_CODE
-  ? Attribution.toDataSuffix({ codes: [BUILDER_CODE] })
-  : undefined;
+const DATA_SUFFIX = BUILDER_CODE ? Attribution.toDataSuffix({ codes: [BUILDER_CODE] }) : undefined;
 
 const configuredChain = process.env.NEXT_PUBLIC_CHAIN_ID;
 
@@ -31,7 +29,7 @@ const isValidAlchemyKey = (key: string | undefined): boolean => {
   // Alchemy keys are typically alphanumeric with hyphens, at least 20 chars
   // Exclude keys that look like placeholder values
   const trimmed = key.trim();
-  return trimmed.length >= 20 && !trimmed.includes('xxx') && !trimmed.includes('your_');
+  return trimmed.length >= 20 && !trimmed.includes("xxx") && !trimmed.includes("your_");
 };
 
 // Build Base Mainnet RPC endpoints with fallbacks
@@ -95,7 +93,8 @@ const buildBaseSepoliaRpcEndpoints = () => {
   }
 
   // Custom or default Sepolia RPC
-  const sepoliaRpcUrl = process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL ?? DEFAULT_BASE_SEPOLIA_RPC_URL;
+  const sepoliaRpcUrl =
+    process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL ?? DEFAULT_BASE_SEPOLIA_RPC_URL;
   endpoints.push(
     http(sepoliaRpcUrl, {
       batch: { wait: 50 },
@@ -130,7 +129,7 @@ const transports = {
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
 // Only initialize WalletConnect in the browser to avoid SSR issues with indexedDB
-const isBrowser = typeof window !== 'undefined';
+const isBrowser = typeof window !== "undefined";
 
 const connectors = [
   injected({
@@ -168,4 +167,3 @@ export const wagmiConfig = createConfig({
 });
 
 export const isBaseMainnet = appChain.id === base.id;
-

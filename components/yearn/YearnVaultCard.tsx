@@ -10,6 +10,7 @@ import { YearnVaultModal } from "./YearnVaultModal";
 import { NexusCoverModal } from "@/components/nexus/NexusCoverModal";
 import { StrategyCard } from "@/components/strategies/StrategyCard";
 import { NEXUS_YEARN_V3_PRODUCT_ID } from "@/lib/config/nexus-mutual";
+import { useNexusCoverStatus } from "@/hooks/useNexusCoverStatus";
 import { useYearnVault, useYearnVaultBalance } from "@/hooks/useYearnVaults";
 import { useKalaniDepositEligibility } from "@/hooks/useKalaniDepositEligibility";
 import { formatPercentage, formatVaultShares } from "@/lib/yearnUtils";
@@ -51,6 +52,9 @@ export const YearnVaultCard = ({
   const [coverModalOpen, setCoverModalOpen] = useState(false);
   const [interestModalOpen, setInterestModalOpen] = useState(false);
 
+  // Check if user has active Nexus Mutual cover for this vault
+  const coverStatus = useNexusCoverStatus(NEXUS_YEARN_V3_PRODUCT_ID, userAddress);
+
   const { isEligible: canDepositByBouncer, isLoading: bouncerLoading } =
     useKalaniDepositEligibility(bouncerAddress);
 
@@ -78,12 +82,11 @@ export const YearnVaultCard = ({
   // Get user's position
   const { shareBalance, assetValue } = useYearnVaultBalance(vaultAddress, userAddress);
 
-  const depositDisabled = Boolean(
-    bouncerAddress && (bouncerLoading || !canDepositByBouncer),
-  );
-  const depositTitle = bouncerAddress && !canDepositByBouncer && !bouncerLoading
-    ? "Kalani Vault is for members only. Get a Creative Brand, Investor, or Creator NFT to deposit."
-    : undefined;
+  const depositDisabled = Boolean(bouncerAddress && (bouncerLoading || !canDepositByBouncer));
+  const depositTitle =
+    bouncerAddress && !canDepositByBouncer && !bouncerLoading
+      ? "Kalani Vault is for members only. Get a Creative Brand, Investor, or Creator NFT to deposit."
+      : undefined;
 
   const handleOpenDeposit = useCallback(() => {
     if (depositDisabled) return;
@@ -108,15 +111,13 @@ export const YearnVaultCard = ({
   const aprDisplay = formatPercentage(estimatedApr);
 
   const hasPosition = shareBalance && shareBalance > 0n;
-  const positionValue = hasPosition && assetValue
-    ? formatUnits(assetValue, assetDecimals)
-    : "0";
+  const positionValue = hasPosition && assetValue ? formatUnits(assetValue, assetDecimals) : "0";
 
   return (
     <>
       <StrategyCard
         title={name}
-        subtitle={`ERC-4626 Yearn V3 Vault • ${assetSymbol}`}
+        subtitle={`ERC-4626 Yearn V3 Vault • ${assetSymbol}${coverStatus.hasCover ? " • 🛡️ Covered" : ""}`}
         apr={aprDisplay}
         tvl={tvlDisplay}
         description={description}
@@ -137,7 +138,7 @@ export const YearnVaultCard = ({
               window.open(
                 `${BASE_BLOCK_EXPLORER_ADDRESS_URL}/${vaultAddress}`,
                 "_blank",
-                "noopener,noreferrer",
+                "noopener,noreferrer"
               ),
           },
           ...(hasPosition
@@ -227,4 +228,3 @@ export const YearnVaultCard = ({
     </>
   );
 };
-

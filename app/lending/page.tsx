@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import {
   bigDecimal,
   evmAddress,
@@ -24,17 +25,28 @@ import { CopyWrapper } from "@/components/common/CopyWrapper";
 import { PremiumGuard } from "@/components/access/PremiumGuard";
 import { LendingMeritRewards } from "@/components/lending/LendingMeritRewards";
 import { LendingTransactionHistory } from "@/components/lending/LendingTransactionHistory";
+import { EModeSelector } from "@/components/lending/EModeSelector";
+import { IsolationModeWarning } from "@/components/lending/IsolationModeWarning";
 import { useBaseUsdcReserve } from "@/hooks/useBaseUsdcReserve";
 import { useBalance } from "@/hooks/useBalance";
 import { useAaveWalletClient } from "@/hooks/useAaveWalletClient";
 import { useMembership } from "@/context/MembershipContext";
 import { formatPercent, formatUsd } from "@/lib/formatters";
-import { canSafelyDisableCollateral, formatHealthFactorDisplay, getHealthFactorStatusLabel } from "@/lib/healthFactor";
+import {
+  canSafelyDisableCollateral,
+  formatHealthFactorDisplay,
+  getHealthFactorStatusLabel,
+} from "@/lib/healthFactor";
 import { shortenAddress } from "@/utils/shortenAddress";
 import { AAVE_TARGET_CHAIN_ID } from "@/lib/config/aave";
 import { isAddress, type WalletClient } from "viem";
 import { toast } from "sonner";
-import type { Market, Reserve, MarketUserReserveSupplyPosition, MarketUserReserveBorrowPosition } from "@aave/react";
+import type {
+  Market,
+  Reserve,
+  MarketUserReserveSupplyPosition,
+  MarketUserReserveBorrowPosition,
+} from "@aave/react";
 
 const AAVE_USDC_RESERVE_URL =
   "https://app.aave.com/reserve-overview/?underlyingAsset=0x833589fcd6edb6e08f4c7c32d4f71b54bda02913&marketName=proto_base_v3";
@@ -71,8 +83,11 @@ function LendingContent({
   }, [baseReserve.market?.address]);
 
   const userEvm = useMemo(
-    () => (walletAddress ? evmAddress(walletAddress) : evmAddress("0x0000000000000000000000000000000000000000")),
-    [walletAddress],
+    () =>
+      walletAddress
+        ? evmAddress(walletAddress)
+        : evmAddress("0x0000000000000000000000000000000000000000"),
+    [walletAddress]
   );
 
   const { data: supplies = [], loading: suppliesLoading } = useUserSupplies({
@@ -86,8 +101,11 @@ function LendingContent({
   });
 
   const marketAddressEvm = useMemo(
-    () => (baseReserve.market?.address ? evmAddress(baseReserve.market.address) : evmAddress("0x0000000000000000000000000000000000000000")),
-    [baseReserve.market?.address],
+    () =>
+      baseReserve.market?.address
+        ? evmAddress(baseReserve.market.address)
+        : evmAddress("0x0000000000000000000000000000000000000000"),
+    [baseReserve.market?.address]
   );
 
   const { data: userMarketState, loading: marketStateLoading } = useUserMarketState({
@@ -98,30 +116,22 @@ function LendingContent({
 
   const usdcSupplyPosition = useMemo(
     () => supplies.find((s) => s.currency?.symbol?.toUpperCase() === "USDC"),
-    [supplies],
+    [supplies]
   );
 
   const hasUsdcSupply = useMemo(
-    () =>
-      Boolean(
-        usdcSupplyPosition &&
-          Number(usdcSupplyPosition.balance?.amount?.value ?? 0) > 0,
-      ),
-    [usdcSupplyPosition],
+    () => Boolean(usdcSupplyPosition && Number(usdcSupplyPosition.balance?.amount?.value ?? 0) > 0),
+    [usdcSupplyPosition]
   );
 
   const usdcBorrowPosition = useMemo(
     () => borrows.find((b) => b.currency?.symbol?.toUpperCase() === "USDC"),
-    [borrows],
+    [borrows]
   );
 
   const hasUsdcBorrow = useMemo(
-    () =>
-      Boolean(
-        usdcBorrowPosition &&
-          Number(usdcBorrowPosition.debt?.amount?.value ?? 0) > 0,
-      ),
-    [usdcBorrowPosition],
+    () => Boolean(usdcBorrowPosition && Number(usdcBorrowPosition.debt?.amount?.value ?? 0) > 0),
+    [usdcBorrowPosition]
   );
 
   const canToggleCollateral =
@@ -173,7 +183,7 @@ function LendingContent({
               href={AAVE_USDC_RESERVE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-primary hover:underline"
+              className="text-primary text-sm font-medium hover:underline"
             >
               View on Aave →
             </a>
@@ -182,213 +192,253 @@ function LendingContent({
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">Your positions</h2>
-            {!walletAddress ? (
-              <p className="text-sm text-slate-500">Connect a wallet to view your positions and health factor.</p>
-            ) : marketStateLoading || suppliesLoading || borrowsLoading ? (
-              <p className="text-sm text-slate-500">Loading positions…</p>
-            ) : (
-                <div className="flex flex-col gap-4">
-                  {hasUsdcSupply && userMarketState?.healthFactor != null && (() => {
-                    const statusInfo = getHealthFactorStatusLabel(
-                      userMarketState.healthFactor,
-                      hasUsdcBorrow,
-                    );
-                    const display = statusInfo ?? (hasUsdcSupply ? { status: "safe" as const, label: "Safe", ariaLabel: "Your loan is healthy" } : null);
-                    return (
-                      <div className="flex flex-col gap-2">
-                        <p className="text-xs text-slate-500">Health factor</p>
-                        <p className="text-lg font-semibold text-slate-900">
-                          {Number(userMarketState.healthFactor).toFixed(2)}
-                        </p>
-                        {display != null && (
-                          <span
-                            role="status"
-                            aria-label={display.ariaLabel}
-                            className={[
-                              "inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium",
-                              display.status === "safe" && "bg-emerald-100 text-emerald-800",
-                              display.status === "warning" && "bg-amber-100 text-amber-800",
-                              display.status === "danger" && "bg-red-100 text-red-800",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                          >
-                            {display.label}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })()}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <p className="text-xs text-slate-500">Supplied (USDC)</p>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {usdcSupplyPosition?.balance?.amount?.value ?? "0"}
-                      </p>
-                      {usdcSupplyPosition?.balance?.usd != null && (
-                        <p className="text-xs text-slate-500">
-                          {formatUsd(usdcSupplyPosition.balance.usd)}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Borrowed (USDC)</p>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {usdcBorrowPosition?.debt?.amount?.value ?? "0"}
-                      </p>
-                      {usdcBorrowPosition?.debt?.usd != null && (
-                        <p className="text-xs text-slate-500">
-                          {formatUsd(usdcBorrowPosition.debt.usd)}
-                        </p>
-                      )}
-                    </div>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Your positions</h2>
+        {!walletAddress ? (
+          <p className="text-sm text-slate-500">
+            Connect a wallet to view your positions and health factor.
+          </p>
+        ) : marketStateLoading || suppliesLoading || borrowsLoading ? (
+          <p className="text-sm text-slate-500">Loading positions…</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {hasUsdcSupply &&
+              userMarketState?.healthFactor != null &&
+              (() => {
+                const statusInfo = getHealthFactorStatusLabel(
+                  userMarketState.healthFactor,
+                  hasUsdcBorrow
+                );
+                const display =
+                  statusInfo ??
+                  (hasUsdcSupply
+                    ? { status: "safe" as const, label: "Safe", ariaLabel: "Your loan is healthy" }
+                    : null);
+                return (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs text-slate-500">Health factor</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {Number(userMarketState.healthFactor).toFixed(2)}
+                    </p>
+                    {display != null && (
+                      <span
+                        role="status"
+                        aria-label={display.ariaLabel}
+                        className={[
+                          "inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium",
+                          display.status === "safe" && "bg-emerald-100 text-emerald-800",
+                          display.status === "warning" && "bg-amber-100 text-amber-800",
+                          display.status === "danger" && "bg-red-100 text-red-800",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        {display.label}
+                      </span>
+                    )}
                   </div>
-                  {canToggleCollateral && baseReserve.market && (
-                    <CollateralToggle
-                      market={baseReserve.market}
-                      position={usdcSupplyPosition!}
-                      userEvm={userEvm!}
-                      walletClient={walletClient}
-                      disableCollateralBlocked={disableCollateralBlocked}
-                      onSuccess={() => {}}
-                    />
-                  )}
-                </div>
-              )}
-          </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">Actions</h2>
-            {!walletClient ? (
-              <p className="text-sm text-slate-500">Connect a wallet to supply, withdraw, borrow, or repay.</p>
-            ) : (
-              <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-                <button
-                  type="button"
-                  onClick={() => setActionModal("supply")}
-                  className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:flex-shrink-0"
-                  aria-label="Supply USDC"
-                >
-                  Supply USDC
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActionModal("withdraw")}
-                  disabled={!hasUsdcSupply}
-                  title={!hasUsdcSupply ? "Supply USDC first to withdraw" : undefined}
-                  aria-disabled={!hasUsdcSupply}
-                  aria-label="Withdraw USDC"
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-shrink-0"
-                >
-                  Withdraw
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActionModal("borrow")}
-                  disabled={!hasUsdcSupply}
-                  title={!hasUsdcSupply ? "Supply USDC first to borrow" : undefined}
-                  aria-disabled={!hasUsdcSupply}
-                  aria-label="Borrow USDC"
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-shrink-0"
-                >
-                  Borrow USDC
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActionModal("repay")}
-                  disabled={!hasUsdcBorrow}
-                  title={!hasUsdcBorrow ? "Borrow USDC first to repay" : undefined}
-                  aria-disabled={!hasUsdcBorrow}
-                  aria-label="Repay USDC"
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-shrink-0"
-                >
-                  Repay
-                </button>
+                );
+              })()}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-slate-500">Supplied (USDC)</p>
+                <p className="text-lg font-semibold text-slate-900">
+                  {usdcSupplyPosition?.balance?.amount?.value ?? "0"}
+                </p>
+                {usdcSupplyPosition?.balance?.usd != null && (
+                  <p className="text-xs text-slate-500">
+                    {formatUsd(usdcSupplyPosition.balance.usd)}
+                  </p>
+                )}
               </div>
+              <div>
+                <p className="text-xs text-slate-500">Borrowed (USDC)</p>
+                <p className="text-lg font-semibold text-slate-900">
+                  {usdcBorrowPosition?.debt?.amount?.value ?? "0"}
+                </p>
+                {usdcBorrowPosition?.debt?.usd != null && (
+                  <p className="text-xs text-slate-500">{formatUsd(usdcBorrowPosition.debt.usd)}</p>
+                )}
+              </div>
+            </div>
+            {canToggleCollateral && baseReserve.market && (
+              <CollateralToggle
+                market={baseReserve.market}
+                position={usdcSupplyPosition!}
+                userEvm={userEvm!}
+                walletClient={walletClient}
+                disableCollateralBlocked={disableCollateralBlocked}
+                onSuccess={() => {}}
+              />
             )}
-            {walletClient && hasUsdcSupply && availableBorrowUsd != null && (
-              <p className="mt-3 text-center text-sm text-slate-600" role="status">
-                Available to borrow:{" "}
-                <span className="font-medium text-slate-900">
-                  {formatUsd(availableBorrowUsd)} USDC
-                </span>
-                {" "}(based on your collateral and health factor)
-              </p>
-            )}
-          </section>
+          </div>
+        )}
+      </section>
 
-          <LendingTransactionHistory
-            marketAddressEvm={marketAddressEvm}
-            userEvm={userEvm}
-            walletAddress={walletAddress}
+      <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Actions</h2>
+        {!walletClient ? (
+          <p className="text-sm text-slate-500">
+            Connect a wallet to supply, withdraw, borrow, or repay.
+          </p>
+        ) : (
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+            <button
+              type="button"
+              onClick={() => setActionModal("supply")}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-primary rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 sm:flex-shrink-0"
+              aria-label="Supply USDC"
+            >
+              Supply USDC
+            </button>
+            <button
+              type="button"
+              onClick={() => setActionModal("withdraw")}
+              disabled={!hasUsdcSupply}
+              title={!hasUsdcSupply ? "Supply USDC first to withdraw" : undefined}
+              aria-disabled={!hasUsdcSupply}
+              aria-label="Withdraw USDC"
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-shrink-0"
+            >
+              Withdraw
+            </button>
+            <button
+              type="button"
+              onClick={() => setActionModal("borrow")}
+              disabled={!hasUsdcSupply}
+              title={!hasUsdcSupply ? "Supply USDC first to borrow" : undefined}
+              aria-disabled={!hasUsdcSupply}
+              aria-label="Borrow USDC"
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-shrink-0"
+            >
+              Borrow USDC
+            </button>
+            <button
+              type="button"
+              onClick={() => setActionModal("repay")}
+              disabled={!hasUsdcBorrow}
+              title={!hasUsdcBorrow ? "Borrow USDC first to repay" : undefined}
+              aria-disabled={!hasUsdcBorrow}
+              aria-label="Repay USDC"
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-shrink-0"
+            >
+              Repay
+            </button>
+          </div>
+        )}
+        {walletClient && hasUsdcSupply && availableBorrowUsd != null && (
+          <p className="mt-3 text-center text-sm text-slate-600" role="status">
+            Available to borrow:{" "}
+            <span className="font-medium text-slate-900">{formatUsd(availableBorrowUsd)} USDC</span>{" "}
+            (based on your collateral and health factor)
+          </p>
+        )}
+      </section>
+
+      <LendingTransactionHistory
+        marketAddressEvm={marketAddressEvm}
+        userEvm={userEvm}
+        walletAddress={walletAddress}
+      />
+
+      <LendingMeritRewards
+        userEvm={userEvm}
+        walletClient={walletClient}
+        walletAddress={walletAddress}
+      />
+
+      {/* Isolation Mode Warning */}
+      <IsolationModeWarning
+        isInIsolationMode={userMarketState?.isInIsolationMode ?? false}
+        isolatedReserve={baseReserve.reserve ?? undefined}
+      />
+
+      {/* E-Mode Selector — Investor+ tier */}
+      <PremiumGuard requiredTier="Creative Investor">
+        {baseReserve.market && walletAddress && (
+          <EModeSelector
+            market={baseReserve.market}
+            userAddress={walletAddress}
+            currentEModeEnabled={userMarketState?.eModeEnabled ?? false}
+            currentEModeCategoryId={(userMarketState as any)?.eModeCategoryId}
           />
+        )}
+      </PremiumGuard>
 
-          <LendingMeritRewards
-            userEvm={userEvm}
-            walletClient={walletClient}
-            walletAddress={walletAddress}
+      <PremiumGuard requiredTier="Creative Creator">
+        <LendingAdvancedSection
+          marketAddressEvm={marketAddressEvm}
+          userEvm={userEvm}
+          walletAddress={walletAddress}
+          walletClient={walletClient}
+          reserve={baseReserve.reserve ?? undefined}
+          hasUsdcSupply={hasUsdcSupply}
+          currentHealthFactor={userMarketState?.healthFactor ?? null}
+          supplyBalance={usdcSupplyPosition?.balance?.amount?.value ?? null}
+          hasBorrows={hasUsdcBorrow}
+        />
+      </PremiumGuard>
+
+      {actionModal === "supply" &&
+        baseReserve.reserve &&
+        baseReserve.market &&
+        walletAddress &&
+        walletClient && (
+          <SupplyModal
+            market={baseReserve.market}
+            reserve={baseReserve.reserve}
+            sender={evmAddress(walletAddress)}
+            walletClient={walletClient ?? undefined}
+            walletUsdcBalance={walletUsdcBalance}
+            isBalanceLoading={isBalanceLoading}
+            onClose={() => setActionModal(null)}
+            onSuccess={() => setActionModal(null)}
           />
-
-          <PremiumGuard requiredTier="Creative Creator">
-            <LendingAdvancedSection
-              marketAddressEvm={marketAddressEvm}
-              userEvm={userEvm}
-              walletAddress={walletAddress}
-              walletClient={walletClient}
-              reserve={baseReserve.reserve ?? undefined}
-              hasUsdcSupply={hasUsdcSupply}
-              currentHealthFactor={userMarketState?.healthFactor ?? null}
-              supplyBalance={usdcSupplyPosition?.balance?.amount?.value ?? null}
-              hasBorrows={hasUsdcBorrow}
-            />
-          </PremiumGuard>
-
-      {actionModal === "supply" && baseReserve.reserve && baseReserve.market && walletAddress && walletClient && (
-        <SupplyModal
-          market={baseReserve.market}
-          reserve={baseReserve.reserve}
-          sender={evmAddress(walletAddress)}
-          walletClient={walletClient ?? undefined}
-          walletUsdcBalance={walletUsdcBalance}
-          isBalanceLoading={isBalanceLoading}
-          onClose={() => setActionModal(null)}
-          onSuccess={() => setActionModal(null)}
-        />
-      )}
-      {actionModal === "withdraw" && baseReserve.reserve && baseReserve.market && walletAddress && walletClient && (
-        <WithdrawModal
-          market={baseReserve.market}
-          reserve={baseReserve.reserve}
-          supplyPosition={usdcSupplyPosition ?? undefined}
-          sender={evmAddress(walletAddress)}
-          walletClient={walletClient ?? undefined}
-          onClose={() => setActionModal(null)}
-          onSuccess={() => setActionModal(null)}
-        />
-      )}
-      {actionModal === "borrow" && baseReserve.reserve && baseReserve.market && walletAddress && walletClient && (
-        <BorrowModal
-          market={baseReserve.market}
-          reserve={baseReserve.reserve}
-          sender={evmAddress(walletAddress)}
-          walletClient={walletClient ?? undefined}
-          availableBorrowUsd={availableBorrowUsd}
-          onClose={() => setActionModal(null)}
-          onSuccess={() => setActionModal(null)}
-        />
-      )}
-      {actionModal === "repay" && baseReserve.reserve && baseReserve.market && walletAddress && walletClient && (
-        <RepayModal
-          market={baseReserve.market}
-          reserve={baseReserve.reserve}
-          borrowPosition={usdcBorrowPosition ?? undefined}
-          sender={evmAddress(walletAddress)}
-          walletClient={walletClient ?? undefined}
-          onClose={() => setActionModal(null)}
-          onSuccess={() => setActionModal(null)}
-        />
-      )}
+        )}
+      {actionModal === "withdraw" &&
+        baseReserve.reserve &&
+        baseReserve.market &&
+        walletAddress &&
+        walletClient && (
+          <WithdrawModal
+            market={baseReserve.market}
+            reserve={baseReserve.reserve}
+            supplyPosition={usdcSupplyPosition ?? undefined}
+            sender={evmAddress(walletAddress)}
+            walletClient={walletClient ?? undefined}
+            onClose={() => setActionModal(null)}
+            onSuccess={() => setActionModal(null)}
+          />
+        )}
+      {actionModal === "borrow" &&
+        baseReserve.reserve &&
+        baseReserve.market &&
+        walletAddress &&
+        walletClient && (
+          <BorrowModal
+            market={baseReserve.market}
+            reserve={baseReserve.reserve}
+            sender={evmAddress(walletAddress)}
+            walletClient={walletClient ?? undefined}
+            availableBorrowUsd={availableBorrowUsd}
+            onClose={() => setActionModal(null)}
+            onSuccess={() => setActionModal(null)}
+          />
+        )}
+      {actionModal === "repay" &&
+        baseReserve.reserve &&
+        baseReserve.market &&
+        walletAddress &&
+        walletClient && (
+          <RepayModal
+            market={baseReserve.market}
+            reserve={baseReserve.reserve}
+            borrowPosition={usdcBorrowPosition ?? undefined}
+            sender={evmAddress(walletAddress)}
+            walletClient={walletClient ?? undefined}
+            onClose={() => setActionModal(null)}
+            onSuccess={() => setActionModal(null)}
+          />
+        )}
     </Fragment>
   );
 }
@@ -441,15 +491,15 @@ export default function LendingPage() {
           </button>
         </div>
         <div className="flex flex-col gap-3 rounded-3xl border border-white/40 bg-white/80 p-6 shadow-lg shadow-slate-900/10 backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+          <p className="text-xs font-semibold tracking-wide text-slate-600 uppercase">
             Aave Markets
           </p>
           <h1 className="text-center text-3xl font-semibold text-slate-900 md:text-4xl">
             Lend & Borrow
           </h1>
           <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-slate-600">
-            Supply USDC to earn interest and borrow against your collateral on Aave V3 (Base). Manage
-            your positions and health factor in one place.
+            Supply USDC to earn interest and borrow against your collateral on Aave V3 (Base).
+            Manage your positions and health factor in one place.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
@@ -468,7 +518,7 @@ export default function LendingPage() {
             )}
           </span>
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-            Membership Tier: {membership.isLoading ? "Checking..." : membership.tier ?? "None"}
+            Membership Tier: {membership.isLoading ? "Checking..." : (membership.tier ?? "None")}
           </span>
         </div>
       </header>
@@ -524,7 +574,10 @@ function LendingAdvancedSection({
 }: LendingAdvancedSectionProps) {
   const [previewAmount, setPreviewAmount] = useState("");
   const [healthPreview, healthPreviewRunning] = useAaveHealthFactorPreview();
-  const [healthPreviewResult, setHealthPreviewResult] = useState<{ before: string | null; after: string | null } | null>(null);
+  const [healthPreviewResult, setHealthPreviewResult] = useState<{
+    before: string | null;
+    after: string | null;
+  } | null>(null);
 
   const currentHealthLabel = formatHealthFactorDisplay(currentHealthFactor, hasBorrows);
   const canUseMax = hasUsdcSupply && supplyBalance != null && Number(supplyBalance) > 0;
@@ -578,17 +631,22 @@ function LendingAdvancedSection({
             >
               <h3 className="mb-1 text-sm font-medium text-slate-700">Health factor preview</h3>
               <p className="mb-3 text-xs text-slate-500">
-                See how your health factor would change if you supplied more USDC. This is most useful when you have an open borrow.
+                See how your health factor would change if you supplied more USDC. This is most
+                useful when you have an open borrow.
               </p>
 
               <div className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 <span className="font-medium">Current health factor: </span>
-                <span aria-label={`Current health factor is ${currentHealthLabel}`}>{currentHealthLabel}</span>
+                <span aria-label={`Current health factor is ${currentHealthLabel}`}>
+                  {currentHealthLabel}
+                </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <label className="flex flex-col gap-1">
-                  <span className="text-xs font-medium text-slate-500">Additional USDC to supply (preview)</span>
+                  <span className="text-xs font-medium text-slate-500">
+                    Additional USDC to supply (preview)
+                  </span>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
@@ -608,7 +666,7 @@ function LendingAdvancedSection({
                           e.stopPropagation();
                           handleUseMax();
                         }}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center py-2 text-xs font-medium text-primary hover:underline disabled:opacity-50 cursor-pointer touch-manipulation"
+                        className="text-primary flex min-h-[44px] min-w-[44px] cursor-pointer touch-manipulation items-center justify-center py-2 text-xs font-medium hover:underline disabled:opacity-50"
                         aria-label="Use maximum supplied USDC balance"
                       >
                         Use max
@@ -632,9 +690,15 @@ function LendingAdvancedSection({
                 <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
                   <p className="font-medium text-slate-800">Preview result</p>
                   <p className="mt-1 text-slate-600">
-                    Before: <strong>{formatHealthFactorDisplay(healthPreviewResult.before, hasBorrows)}</strong>
+                    Before:{" "}
+                    <strong>
+                      {formatHealthFactorDisplay(healthPreviewResult.before, hasBorrows)}
+                    </strong>
                     {" → "}
-                    After: <strong>{formatHealthFactorDisplay(healthPreviewResult.after, hasBorrows)}</strong>
+                    After:{" "}
+                    <strong>
+                      {formatHealthFactorDisplay(healthPreviewResult.after, hasBorrows)}
+                    </strong>
                   </p>
                 </div>
               )}
@@ -674,7 +738,8 @@ function CollateralToggle({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isToggling, setIsToggling] = useState(false);
   const isDisableAction = position.isCollateral;
-  const buttonDisabled = isToggling || !walletClient || (isDisableAction && disableCollateralBlocked);
+  const buttonDisabled =
+    isToggling || !walletClient || (isDisableAction && disableCollateralBlocked);
 
   const sendAndWait = useCallback(
     async (tx: { to: string; data: string; value?: string }) => {
@@ -693,7 +758,7 @@ function CollateralToggle({
       });
       return hash;
     },
-    [walletClient, publicClient, userEvm],
+    [walletClient, publicClient, userEvm]
   );
 
   const handleToggle = useCallback(async () => {
@@ -744,15 +809,15 @@ function CollateralToggle({
       <p className="text-xs text-slate-500">
         Collateral: {position.isCollateral ? "Enabled" : "Disabled"}
       </p>
-      <p className="text-xs text-slate-500">
-        {COLLATERAL_TOOLTIP}
-      </p>
+      <p className="text-xs text-slate-500">{COLLATERAL_TOOLTIP}</p>
       <details className="text-xs text-slate-500">
-        <summary className="cursor-pointer font-medium text-slate-600 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-slate-500 rounded">
+        <summary className="cursor-pointer rounded font-medium text-slate-600 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-slate-500">
           Learn more
         </summary>
         <p className="mt-1 text-slate-600">
-          When enabled, this asset increases your Borrowing Power but is subject to liquidation if your Health Factor drops. When disabled, it acts as a pure savings account—earning interest while remaining untouchable by the protocol&apos;s liquidation engine.
+          When enabled, this asset increases your Borrowing Power but is subject to liquidation if
+          your Health Factor drops. When disabled, it acts as a pure savings account—earning
+          interest while remaining untouchable by the protocol&apos;s liquidation engine.
         </p>
       </details>
       <button
@@ -760,10 +825,14 @@ function CollateralToggle({
         onClick={handleToggle}
         disabled={buttonDisabled}
         title={isDisableAction ? COLLATERAL_TOOLTIP : undefined}
-        className="w-fit rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-fit rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label={position.isCollateral ? "Disable collateral" : "Enable collateral"}
       >
-        {isToggling ? "Processing…" : position.isCollateral ? "Disable collateral" : "Enable collateral"}
+        {isToggling
+          ? "Processing…"
+          : position.isCollateral
+            ? "Disable collateral"
+            : "Enable collateral"}
       </button>
       {disableCollateralBlocked && isDisableAction && (
         <p className="text-sm text-amber-800" role="alert">
@@ -827,7 +896,7 @@ function SupplyModal({
       });
       return hash;
     },
-    [walletClient, publicClient, sender],
+    [walletClient, publicClient, sender]
   );
 
   const handleSubmit = useCallback(
@@ -891,13 +960,19 @@ function SupplyModal({
       sender,
       onSuccess,
       onClose,
-    ],
+    ]
   );
 
-  const balanceDisplay = isBalanceLoading ? "Loading…" : (parseFloat(walletUsdcBalance).toFixed(2));
+  const balanceDisplay = isBalanceLoading ? "Loading…" : parseFloat(walletUsdcBalance).toFixed(2);
 
   return (
-    <Modal open title="Supply USDC" onClose={onClose} showCloseButton className="max-w-lg bg-white text-slate-900">
+    <Modal
+      open
+      title="Supply USDC"
+      onClose={onClose}
+      showCloseButton
+      className="max-w-lg bg-white text-slate-900"
+    >
       <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
@@ -916,14 +991,15 @@ function SupplyModal({
             type="button"
             onClick={handleMaxClick}
             disabled={isBalanceLoading || !walletUsdcBalance || parseFloat(walletUsdcBalance) <= 0}
-            className="w-fit text-xs font-medium text-primary hover:underline disabled:opacity-50"
+            className="text-primary w-fit text-xs font-medium hover:underline disabled:opacity-50"
           >
             Use max
           </button>
         </label>
         {permitSupported && (
           <p className="text-xs text-slate-500">
-            This reserve supports Permit (EIP-2612). Members can sign a message to skip the approval transaction in a future update.
+            This reserve supports Permit (EIP-2612). Members can sign a message to skip the approval
+            transaction in a future update.
           </p>
         )}
         {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
@@ -931,11 +1007,15 @@ function SupplyModal({
           <button
             type="submit"
             disabled={isSubmitting || parsed == null}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            className="bg-primary text-primary-foreground rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50"
           >
             {isSubmitting ? "Processing…" : "Supply"}
           </button>
-          <button type="button" onClick={onClose} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900"
+          >
             Cancel
           </button>
         </div>
@@ -991,7 +1071,7 @@ function WithdrawModal({
       });
       return hash;
     },
-    [walletClient, publicClient, sender],
+    [walletClient, publicClient, sender]
   );
 
   const handleSubmit = useCallback(
@@ -1032,7 +1112,9 @@ function WithdrawModal({
           await sendAndWait(plan.approval);
           await sendAndWait(plan.originalTransaction);
         }
-        const amountLabel = useMax ? (supplyPosition?.balance?.amount?.value ?? "max") : String(parsed);
+        const amountLabel = useMax
+          ? (supplyPosition?.balance?.amount?.value ?? "max")
+          : String(parsed);
         toast.success("Withdraw complete", {
           description: `${formatUsd(amountLabel)} USDC withdrawn successfully.`,
         });
@@ -1058,7 +1140,7 @@ function WithdrawModal({
       sender,
       onSuccess,
       onClose,
-    ],
+    ]
   );
 
   const balance = supplyPosition?.balance?.amount?.value ?? "0";
@@ -1069,7 +1151,13 @@ function WithdrawModal({
   }, []);
 
   return (
-    <Modal open title="Withdraw USDC" onClose={onClose} showCloseButton className="max-w-lg bg-white text-slate-900">
+    <Modal
+      open
+      title="Withdraw USDC"
+      onClose={onClose}
+      showCloseButton
+      className="max-w-lg bg-white text-slate-900"
+    >
       <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-2">
           <label htmlFor={withdrawInputId} className="text-xs font-medium text-slate-500">
@@ -1093,7 +1181,7 @@ function WithdrawModal({
           <button
             type="button"
             onClick={handleUseMax}
-            className="min-h-[44px] w-fit self-start py-2 pr-3 pl-0 text-left text-xs font-medium text-primary hover:underline cursor-pointer touch-manipulation active:opacity-80"
+            className="text-primary min-h-[44px] w-fit cursor-pointer touch-manipulation self-start py-2 pr-3 pl-0 text-left text-xs font-medium hover:underline active:opacity-80"
             aria-label="Use maximum USDC balance"
           >
             Use max
@@ -1104,11 +1192,15 @@ function WithdrawModal({
           <button
             type="submit"
             disabled={isSubmitting || (!useMax && parsed == null)}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            className="bg-primary text-primary-foreground rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50"
           >
             {isSubmitting ? "Processing…" : "Withdraw"}
           </button>
-          <button type="button" onClick={onClose} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900"
+          >
             Cancel
           </button>
         </div>
@@ -1168,7 +1260,7 @@ function BorrowModal({
       });
       return hash;
     },
-    [walletClient, publicClient, sender],
+    [walletClient, publicClient, sender]
   );
 
   const handleSubmit = useCallback(
@@ -1231,11 +1323,17 @@ function BorrowModal({
       sender,
       onSuccess,
       onClose,
-    ],
+    ]
   );
 
   return (
-    <Modal open title="Borrow USDC" onClose={onClose} showCloseButton className="max-w-lg bg-white text-slate-900">
+    <Modal
+      open
+      title="Borrow USDC"
+      onClose={onClose}
+      showCloseButton
+      className="max-w-lg bg-white text-slate-900"
+    >
       <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
         {availableBorrowUsd != null && availableBorrowUsd > 0 && (
           <p className="text-sm text-slate-600" role="status">
@@ -1247,9 +1345,7 @@ function BorrowModal({
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500">Amount (USDC)</span>
             {availableBorrowUsd != null && availableBorrowUsd > 0 && (
-              <span className="text-xs text-slate-500">
-                Max: {formatUsd(availableBorrowUsd)}
-              </span>
+              <span className="text-xs text-slate-500">Max: {formatUsd(availableBorrowUsd)}</span>
             )}
           </div>
           <input
@@ -1269,7 +1365,7 @@ function BorrowModal({
                 e.stopPropagation();
                 handleMaxClick();
               }}
-              className="min-h-[44px] w-fit -mb-1 self-start py-2 pr-2 text-left text-xs font-medium text-primary hover:underline cursor-pointer touch-manipulation"
+              className="text-primary -mb-1 min-h-[44px] w-fit cursor-pointer touch-manipulation self-start py-2 pr-2 text-left text-xs font-medium hover:underline"
               aria-label="Use maximum available to borrow"
             >
               Use max
@@ -1281,11 +1377,15 @@ function BorrowModal({
           <button
             type="submit"
             disabled={isSubmitting || parsed == null}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            className="bg-primary text-primary-foreground rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50"
           >
             {isSubmitting ? "Processing…" : "Borrow"}
           </button>
-          <button type="button" onClick={onClose} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900"
+          >
             Cancel
           </button>
         </div>
@@ -1323,13 +1423,18 @@ function RepayModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const otherBorrowerEvm = useMemo(() => {
-    if (repayForMode !== "other" || !otherBorrowerAddress.trim() || !isAddress(otherBorrowerAddress.trim())) return null;
+    if (
+      repayForMode !== "other" ||
+      !otherBorrowerAddress.trim() ||
+      !isAddress(otherBorrowerAddress.trim())
+    )
+      return null;
     return evmAddress(otherBorrowerAddress.trim());
   }, [repayForMode, otherBorrowerAddress]);
 
   const marketsInput = useMemo(
     () => [{ address: market.address, chainId: AAVE_TARGET_CHAIN_ID }],
-    [market.address],
+    [market.address]
   );
 
   const { data: otherBorrows = [] } = useUserBorrows({
@@ -1339,7 +1444,7 @@ function RepayModal({
 
   const otherUsdcBorrowPosition = useMemo(
     () => otherBorrows.find((b) => b.currency?.symbol?.toUpperCase() === "USDC"),
-    [otherBorrows],
+    [otherBorrows]
   );
 
   const positionToRepay = repayForMode === "self" ? borrowPosition : otherUsdcBorrowPosition;
@@ -1369,7 +1474,7 @@ function RepayModal({
       });
       return hash;
     },
-    [walletClient, publicClient, sender],
+    [walletClient, publicClient, sender]
   );
 
   const handleSubmit = useCallback(
@@ -1445,16 +1550,20 @@ function RepayModal({
       sender,
       onSuccess,
       onClose,
-    ],
+    ]
   );
 
   const submitDisabled =
-    isSubmitting ||
-    (!useMax && parsed == null) ||
-    (repayForMode === "other" && !canRepayOther);
+    isSubmitting || (!useMax && parsed == null) || (repayForMode === "other" && !canRepayOther);
 
   return (
-    <Modal open title="Repay USDC" onClose={onClose} showCloseButton className="max-w-lg bg-white text-slate-900">
+    <Modal
+      open
+      title="Repay USDC"
+      onClose={onClose}
+      showCloseButton
+      className="max-w-lg bg-white text-slate-900"
+    >
       <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-2">
           <p className="text-xs font-medium text-slate-700">Repay from</p>
@@ -1464,8 +1573,11 @@ function RepayModal({
                 type="radio"
                 name="repayForMode"
                 checked={repayForMode === "self"}
-                onChange={() => { setRepayForMode("self"); setErrorMessage(null); }}
-                className="h-4 w-4 border-slate-300 text-primary focus:ring-primary"
+                onChange={() => {
+                  setRepayForMode("self");
+                  setErrorMessage(null);
+                }}
+                className="text-primary focus:ring-primary h-4 w-4 border-slate-300"
                 aria-label="Repay my own debt"
               />
               <span className="text-sm text-slate-900">My wallet (this debt)</span>
@@ -1475,8 +1587,11 @@ function RepayModal({
                 type="radio"
                 name="repayForMode"
                 checked={repayForMode === "other"}
-                onChange={() => { setRepayForMode("other"); setErrorMessage(null); }}
-                className="h-4 w-4 border-slate-300 text-primary focus:ring-primary"
+                onChange={() => {
+                  setRepayForMode("other");
+                  setErrorMessage(null);
+                }}
+                className="text-primary focus:ring-primary h-4 w-4 border-slate-300"
                 aria-label="Repay for another address"
               />
               <span className="text-sm text-slate-900">Another wallet</span>
@@ -1486,7 +1601,9 @@ function RepayModal({
 
         {repayForMode === "other" && (
           <label className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-slate-500">Borrower address (whose debt to repay)</span>
+            <span className="text-xs font-medium text-slate-500">
+              Borrower address (whose debt to repay)
+            </span>
             <input
               type="text"
               value={otherBorrowerAddress}
@@ -1510,7 +1627,10 @@ function RepayModal({
             type="text"
             inputMode="decimal"
             value={amount}
-            onChange={(e) => { setAmount(e.target.value); setUseMax(false); }}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setUseMax(false);
+            }}
             placeholder="0"
             disabled={useMax}
             className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900 disabled:bg-slate-100"
@@ -1523,7 +1643,7 @@ function RepayModal({
               setUseMax(true);
             }}
             disabled={repayForMode === "other" && !canRepayOther}
-            className="min-h-[44px] w-fit -mb-1 self-start py-2 pr-2 text-left text-xs font-medium text-primary hover:underline disabled:opacity-50 cursor-pointer touch-manipulation"
+            className="text-primary -mb-1 min-h-[44px] w-fit cursor-pointer touch-manipulation self-start py-2 pr-2 text-left text-xs font-medium hover:underline disabled:opacity-50"
             aria-label="Repay maximum USDC debt"
           >
             Repay max
@@ -1534,11 +1654,15 @@ function RepayModal({
           <button
             type="submit"
             disabled={submitDisabled}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            className="bg-primary text-primary-foreground rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50"
           >
             {isSubmitting ? "Processing…" : "Repay"}
           </button>
-          <button type="button" onClick={onClose} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900"
+          >
             Cancel
           </button>
         </div>
