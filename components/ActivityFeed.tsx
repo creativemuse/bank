@@ -10,7 +10,7 @@ interface ActivityFeedProps {
 }
 
 export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
-  const { data, isLoading, error } = useActivityFeed();
+  const { data, isLoading } = useActivityFeed();
   const { wallet } = useWallet();
   return (
     <Container className="flex max-h-[70vh] min-h-[280px] w-full max-w-5xl flex-grow flex-col overflow-hidden sm:max-h-[600px] sm:min-h-[350px]">
@@ -18,7 +18,7 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
       <div
         className={`flex w-full flex-1 flex-col items-center overflow-hidden ${isLoading || !data?.events?.length ? "justify-center" : "justify-start"}`}
       >
-        {!isLoading && (error || !data?.events?.length) && (
+        {!isLoading && !data?.events?.length && (
           <>
             <div className="mb-2 text-center text-base font-semibold text-slate-900">
               Your activity feed
@@ -39,7 +39,7 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
           {isLoading && (
             <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
           )}
-          {!isLoading && !error && data?.events?.length && data?.events?.length > 0 ? (
+          {!isLoading && data?.events?.length && data?.events?.length > 0 ? (
             <ul
               className="max-h-48 w-full overflow-y-auto pt-2 pr-2 pb-2 sm:max-h-56 md:max-h-72"
               aria-label="Last activity transaction history"
