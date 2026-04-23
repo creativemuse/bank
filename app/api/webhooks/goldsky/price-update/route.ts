@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { getPool } from "@/lib/cockroachdb";
 import { batchGetUserAccountData } from "@/lib/aavePool";
-import { getHealthFactorStatus } from "@/lib/healthFactor";
+import { processHealthCheck } from "@/lib/healthMonitor";
 
 /**
  * POST /api/webhooks/goldsky/price-update
@@ -61,73 +61,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, atRisk: 0 });
     }
 
-    // Batch check health factors on-chain
     const addresses = atRiskUsers.map((r: any) => r.wallet_address);
     const accountData = await batchGetUserAccountData(addresses);
 
-    let alertsCreated = 0;
-
-    for (const data of accountData) {
-      if (!data.hasBorrows) continue;
-
-      // Store snapshot
-      await pool.query(
-        `INSERT INTO health_factor_snapshots
-         (wallet_address, health_factor, status, total_collateral_base, total_debt_base)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [
-          data.walletAddress.toLowerCase(),
-          data.healthFactor,
-          data.status,
-          data.totalCollateralBase.toString(),
-          data.totalDebtBase.toString(),
-        ]
-      );
-
-      // Update user's cached health factor
-      await pool.query(
-        `UPDATE users SET last_health_factor = $1, updated_at = now()
-         WHERE wallet_address = $2`,
-        [data.healthFactor, data.walletAddress.toLowerCase()]
-      );
-
-      // Check for threshold breach — get previous status
-      const { rows: prevSnapshots } = await pool.query(
-        `SELECT status FROM health_factor_snapshots
-         WHERE wallet_address = $1
-         ORDER BY created_at DESC LIMIT 1 OFFSET 1`,
-        [data.walletAddress.toLowerCase()]
-      );
-
-      const prevStatus = prevSnapshots[0]?.status || "safe";
-
-      // Create alert if status worsened
-      if (
-        (prevStatus === "safe" && (data.status === "warning" || data.status === "danger")) ||
-        (prevStatus === "warning" && data.status === "danger")
-      ) {
-        const message =
-          data.status === "danger"
-            ? `Your health factor dropped to ${data.healthFactor.toFixed(2)}. You are at risk of liquidation. Top up collateral immediately.`
-            : `Your health factor dropped to ${data.healthFactor.toFixed(2)}. Consider repaying debt to reduce liquidation risk.`;
-
-        await pool.query(
-          `INSERT INTO health_alerts
-           (wallet_address, alert_type, previous_status, current_status, health_factor, message, email_queued)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            data.walletAddress.toLowerCase(),
-            data.status,
-            prevStatus,
-            data.status,
-            data.healthFactor,
-            message,
-            data.status === "danger",
-          ]
-        );
-        alertsCreated++;
-      }
-    }
+    const { alertsCreated } = await processHealthCheck(pool, accountData, "price-update");
 
     return NextResponse.json({
       received: true,
