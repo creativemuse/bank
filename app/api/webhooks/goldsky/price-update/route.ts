@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
   try {
     const payload = JSON.parse(body);
     const asset = payload.asset || payload.symbol || payload.token;
-    const price = payload.price || payload.value;
 
     if (!process.env.COCKROACHDB_URL) {
       return NextResponse.json({ received: true, skipped: "no database" });
@@ -47,14 +46,15 @@ export async function POST(request: NextRequest) {
       [eventId, JSON.stringify(payload)]
     );
 
-    // Find at-risk users: those with health factor < 1.5 and holding this asset
+    // Find at-risk users with recent HF < 1.5. We intentionally re-check ALL
+    // at-risk users on every price update rather than filtering by asset —
+    // populating a per-user asset list would require an extra RPC pass, and
+    // at the 50-user LIMIT the broader check is still fast.
     const { rows: atRiskUsers } = await pool.query(
       `SELECT wallet_address FROM users
        WHERE last_health_factor IS NOT NULL
          AND last_health_factor < 1.5
-         ${asset ? "AND collateral_assets @> $1" : ""}
-       LIMIT 50`,
-      asset ? [JSON.stringify([asset])] : []
+       LIMIT 50`
     );
 
     if (atRiskUsers.length === 0) {
