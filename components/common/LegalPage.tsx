@@ -11,12 +11,12 @@ export function LegalPage({
 }) {
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-10 sm:px-6 sm:py-16">
-      <article className="rounded-xl bg-white/95 p-6 text-slate-900 shadow-xl backdrop-blur sm:p-10">
+      <article className="flex-1 rounded-xl bg-white/95 p-6 text-slate-900 shadow-xl backdrop-blur sm:p-10">
         <header className="mb-6 border-b border-slate-200 pb-4">
           <h1 className="text-2xl font-semibold sm:text-3xl">{title}</h1>
           <p className="mt-2 text-sm text-slate-600">Effective Date: {effectiveDate}</p>
         </header>
-        <div className="prose-legal">{children}</div>
+        <div>{children}</div>
       </article>
       <SiteFooter variant="page" />
     </div>
