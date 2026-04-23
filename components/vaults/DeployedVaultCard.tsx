@@ -33,6 +33,13 @@ const ERC4626_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 type DeployedVaultCardProps = {
@@ -44,6 +51,7 @@ type DeployedVaultCardProps = {
   name?: string;
   transactionHash?: string;
   performanceFee?: number; // Performance fee in percentage (e.g., 12 for 12%)
+  isApiOwned?: boolean; // True when the Aave API returned this vault in the ownedBy query
 };
 
 export const DeployedVaultCard = ({
@@ -55,6 +63,7 @@ export const DeployedVaultCard = ({
   name,
   transactionHash,
   performanceFee,
+  isApiOwned = false,
 }: DeployedVaultCardProps) => {
   const { address: wagmiAddress } = useAccount();
   const { wallet: crossmintWallet } = useWallet();
@@ -168,6 +177,29 @@ export const DeployedVaultCard = ({
   });
 
   const shareDecimals = shareDecimalsRaw != null ? Number(shareDecimalsRaw) : undefined;
+
+  // Read on-chain owner for fallback ownership check (when API data is unavailable)
+  const { data: onChainOwner } = useReadContract({
+    address: vaultAddress,
+    abi: ERC4626_ABI,
+    functionName: "owner",
+    chainId: 8453,
+  });
+
+  // When deployed via Crossmint (account abstraction), the vault's on-chain owner is the
+  // Crossmint smart wallet contract, not the user's address. Check if that intermediate
+  // contract's owner() resolves to the user (i.e. user → smart wallet → vault).
+  const { data: smartWalletOwner } = useReadContract({
+    address: onChainOwner as Address | undefined,
+    abi: ERC4626_ABI,
+    functionName: "owner",
+    chainId: 8453,
+    query: {
+      enabled: !!onChainOwner && !!userAddress &&
+        typeof onChainOwner === "string" &&
+        onChainOwner.toLowerCase() !== userAddress.toLowerCase(),
+    },
+  });
 
   // If onchain `balanceOf(user)` is temporarily stale/0 after deposits, use Aave's API-provided
   // `userShares` as a fallback so the UI can still enable withdrawals.
@@ -368,9 +400,11 @@ export const DeployedVaultCard = ({
   const displayName = name || `My Aave Vault`;
 
   const isOwner =
-    !!vaultFromApi &&
     !!userAddress &&
-    vaultFromApi.owner?.toLowerCase() === userAddress.toLowerCase();
+    (isApiOwned ||
+      vaultFromApi?.owner?.toLowerCase() === userAddress.toLowerCase() ||
+      (typeof onChainOwner === "string" && onChainOwner.toLowerCase() === userAddress.toLowerCase()) ||
+      (typeof smartWalletOwner === "string" && smartWalletOwner.toLowerCase() === userAddress.toLowerCase()));
 
   const cardActions = useMemo(() => {
     const actions: Array<{
@@ -522,6 +556,7 @@ export const DeployedVaultCard = ({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         vaultAddress={vaultAddress}
+        assetAddress={actualAssetAddress}
         assetSymbol={assetSymbol}
         assetDecimals={assetDecimals}
         shareDecimals={shareDecimals}
@@ -533,11 +568,16 @@ export const DeployedVaultCard = ({
         onSuccess={handleVaultSuccess}
       />
 
-      {vaultFromApi && (
+      {isOwner && (
         <VaultManagementModal
           open={managementModalOpen}
           onClose={() => setManagementModalOpen(false)}
-          vault={vaultFromApi}
+          vault={vaultFromApi ?? { address: vaultAddress, chainId: 8453 } as unknown as Vault}
+          feeManagerAddress={
+            typeof onChainOwner === "string" && onChainOwner.toLowerCase() !== userAddress?.toLowerCase()
+              ? (onChainOwner as Address)
+              : undefined
+          }
         />
       )}
 

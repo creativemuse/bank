@@ -3,9 +3,10 @@ import React, { useRef } from "react";
 interface AmountInputProps {
   amount: string;
   onChange: (value: string) => void;
+  onMax?: () => void;
 }
 
-export function AmountInput({ amount, onChange }: AmountInputProps) {
+export function AmountInput({ amount, onChange, onMax }: AmountInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,6 +36,18 @@ export function AmountInput({ amount, onChange }: AmountInputProps) {
       />
       {!amount && (
         <p className="animate-pulse text-sm font-medium text-gray-900">Tap above to enter amount</p>
+      )}
+      {onMax && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMax();
+          }}
+          className="text-xs font-medium text-slate-500 underline hover:text-slate-700"
+        >
+          Max
+        </button>
       )}
     </div>
   );

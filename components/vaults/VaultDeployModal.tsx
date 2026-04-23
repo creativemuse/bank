@@ -48,7 +48,13 @@ type SubmitState = {
   message?: string;
   txHash?: string;
   vaultAddress?: string;
+  retryable?: boolean;
 };
+
+function isTransientError(message: string): boolean {
+  const patterns = ["panicked", "service unavailable", "502", "503", "504", "fetch failed", "network"];
+  return patterns.some((p) => message.toLowerCase().includes(p));
+}
 
 const CREATIVE_ADDRESS = "0xf46F1BA19A9280F752a451d0973b047D81c63D70";
 
@@ -61,7 +67,8 @@ export function VaultDeployModal({
 }: VaultDeployModalProps) {
   const { address: wagmiAddress } = useAccount();
   const { data: wagmiWalletClient } = useWalletClient();
-  const publicClient = usePublicClient();
+  const targetChainId = process.env.NODE_ENV === "production" ? base.id : baseSepolia.id;
+  const publicClient = usePublicClient({ chainId: targetChainId });
   const { wallet: crossmintWallet, status: walletStatus } = useWallet();
   const { status: authStatus } = useAuth();
   const { tier, isLoading: membershipLoading } = useMembership();
@@ -137,9 +144,13 @@ export function VaultDeployModal({
                 return `0x${chain.id.toString(16)}`;
               }
 
-              // For other methods, you might need to implement them or throw
-              // The Aave SDK primarily needs eth_sendTransaction
-              throw new Error(`Method ${method} not yet supported with Crossmint wallet adapter`);
+              // Proxy read-only RPC calls (eth_call, eth_estimateGas, eth_getBalance, etc.)
+              // through the public client so Aave SDK can prepare transactions
+              if (publicClient) {
+                return publicClient.request({ method, params } as Parameters<typeof publicClient.request>[0]);
+              }
+
+              throw new Error(`Method ${method} not supported: no public client available`);
             },
           }),
         });
@@ -150,7 +161,7 @@ export function VaultDeployModal({
 
     // Fallback to wagmi wallet client
     return wagmiWalletClient ?? undefined;
-  }, [crossmintWallet, wagmiWalletClient]);
+  }, [crossmintWallet, wagmiWalletClient, publicClient]);
 
   const [sendTransaction, sendTransactionState] = useSendTransaction(walletClient);
 
@@ -159,7 +170,9 @@ export function VaultDeployModal({
   // Non-member: locked at 20%. Member: default 10% (minimum allowed)
   const [performanceFee, setPerformanceFee] = useState(hasMembership ? 10 : 20);
   const [feeReceiverAddress, setFeeReceiverAddress] = useState("");
-  const [initialDeposit, setInitialDeposit] = useState(1000);
+  // 0.01 USDC permanent lock required by Aave to initialize the vault
+  const [initialDeposit, setInitialDeposit] = useState(0.01);
+
 
   // Initialize recipient input based on membership status
   // If no membership or still loading: pre-fill with Creative address and 5%
@@ -197,7 +210,7 @@ export function VaultDeployModal({
     setSubmitState({ status: "idle" });
     setPerformanceFee(hasMembership ? 10 : 20);
     setFeeReceiverAddress("");
-    setInitialDeposit(1000);
+    setInitialDeposit(0.01);
     setRecipientInput(getInitialRecipientInput());
     setShareName(
       reserve ? `Aave ${reserve.underlyingToken.symbol} Vault Shares` : "Aave USDC Vault Shares"
@@ -331,6 +344,7 @@ export function VaultDeployModal({
 
       setSubmitState({ status: "deploying" });
 
+      try {
       const request: VaultDeployRequest = {
         market: evmAddress(market.address),
         chainId: market.chain.chainId,
@@ -345,7 +359,8 @@ export function VaultDeployModal({
 
       const planResult = await deployVault(request);
       if (planResult.isErr()) {
-        setSubmitState({ status: "error", message: planResult.error.message });
+        const msg = planResult.error.message;
+        setSubmitState({ status: "error", message: msg, retryable: isTransientError(msg) });
         return;
       }
 
@@ -527,6 +542,17 @@ export function VaultDeployModal({
           handleCloseRef.current();
         }, 2000);
       }
+      } catch (outerError) {
+        // Catch any unhandled errors from deployVault/sendTransaction that throw
+        // instead of returning an error result (e.g. Crossmint wallet adapter errors)
+        const message = outerError instanceof Error ? outerError.message : String(outerError);
+        console.error("Vault deployment failed:", outerError);
+        setSubmitState({
+          status: "error",
+          message: `Deployment failed: ${message}`,
+          retryable: isTransientError(message),
+        });
+      }
     },
     [
       activeAddress,
@@ -685,22 +711,18 @@ export function VaultDeployModal({
               </span>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-slate-500 uppercase">
-                Initial Deposit ({assetSymbol})
+              <span className="text-xs font-medium uppercase text-slate-500">
+                Initial Lock Deposit ({assetSymbol})
               </span>
               <input
-                type="tel"
-                inputMode="decimal"
-                min={0}
-                step={1 / 10 ** assetDecimals}
-                value={initialDeposit}
-                onChange={(event) =>
-                  handleNumberInputChange(event.target.value, setInitialDeposit, true)
-                }
-                onFocus={handleNumberFocus}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
-                required
+                type="text"
+                value={`0.01 ${assetSymbol}`}
+                disabled
+                className="rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-slate-500 cursor-not-allowed"
               />
+              <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
+                0.01 {assetSymbol} is permanently locked in the vault and cannot be withdrawn. This is required by the Aave protocol to initialize the vault.
+              </p>
             </label>
           </div>
         </section>
@@ -787,9 +809,17 @@ export function VaultDeployModal({
         ) : null}
 
         {submitState.status === "error" && submitState.message ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {submitState.message}
-          </p>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p>{submitState.message}</p>
+            {submitState.retryable && (
+              <button
+                type="submit"
+                className="mt-2 rounded-md border border-red-300 bg-white px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50"
+              >
+                Retry
+              </button>
+            )}
+          </div>
         ) : null}
 
         {submitState.status === "success" && submitState.message ? (

@@ -119,7 +119,11 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
       {!showPreview ? (
         <>
           <div className="mb-6 flex w-full flex-col items-center justify-between">
-            <AmountInput amount={amount} onChange={setAmount} />
+            <AmountInput
+              amount={amount}
+              onChange={setAmount}
+              onMax={() => setAmount(displayableBalance)}
+            />
             <div
               className={
                 Number(amount) > Number(displayableBalance) ? "text-red-600" : "text-gray-400"
