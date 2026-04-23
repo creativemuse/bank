@@ -166,7 +166,7 @@ function StrategiesContent({
 
       {/* Symbiotic Restaking — Investor+ tier */}
       <section className="mt-10">
-        <PremiumGuard requiredTier="Creative Investor">
+        <PremiumGuard requiredTier="Creative Investor" silent>
           <div className="mb-4 flex flex-col gap-1">
             <h2 className="text-xl font-semibold text-slate-900">Restaking Vaults</h2>
             <p className="text-sm text-slate-600">
