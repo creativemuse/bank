@@ -364,7 +364,7 @@ function LendingContent({
         )}
       </PremiumGuard>
 
-      <PremiumGuard requiredTier="Creative Creator">
+      <PremiumGuard requiredTier="Creative Creator" silent>
         <LendingAdvancedSection
           marketAddressEvm={marketAddressEvm}
           userEvm={userEvm}
