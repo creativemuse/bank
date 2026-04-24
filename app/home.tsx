@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Login } from "@/components/Login";
 import { MainScreen } from "@/components/MainScreen";
+import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { useAuth } from "@/context/AuthContext";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { useProcessWithdrawal } from "@/hooks/useProcessWithdrawal";
@@ -14,7 +15,7 @@ const ONBOARDING_DISMISSED_KEY = "has_seen_membership_onboarding";
 
 export function HomeContent() {
   const { wallet, status: walletStatus } = useWallet();
-  const { status, status: authStatus, user } = useAuth();
+  const { status, status: authStatus, user, logout } = useAuth();
   const { tier, isLoading: membershipLoading, refresh: refreshMembership } = useMembership();
 
   const [hasDismissedOnboarding, setHasDismissedOnboarding] = useState(true); // default true to avoid flash
@@ -56,6 +57,18 @@ export function HomeContent() {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (authStatus === "logged-in" && walletStatus === "error") {
+    return (
+      <div className="mx-auto flex h-full w-full max-w-sm flex-col items-center justify-center px-6 text-center">
+        <h2 className="text-xl font-semibold">We couldn't set up your wallet</h2>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Something went wrong while provisioning your wallet. Sign out and try again.
+        </p>
+        <PrimaryButton onClick={logout}>Sign out</PrimaryButton>
       </div>
     );
   }
