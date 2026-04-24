@@ -21,7 +21,7 @@ export function WalletProvisioner({ chain }: { chain: SupportedChain }) {
   const inFlight = useRef(false);
 
   useEffect(() => {
-    if (status === "loaded" || status === "in-progress") return;
+    if (status === "loaded" || status === "in-progress" || status === "error") return;
     if (!user?.email || !crossmint.jwt) return;
     if (inFlight.current) return;
 
@@ -34,11 +34,15 @@ export function WalletProvisioner({ chain }: { chain: SupportedChain }) {
       } catch (err) {
         const code = (err as { code?: string } | null)?.code;
         if (code === WALLET_NOT_AVAILABLE_CODE) {
-          await createWallet({
-            chain,
-            signers: [{ type: "passkey" }],
-            recovery: { type: "email", email },
-          });
+          try {
+            await createWallet({
+              chain,
+              signers: [{ type: "passkey" }],
+              recovery: { type: "email", email },
+            });
+          } catch (createErr) {
+            console.error("[WalletProvisioner] Error creating wallet", createErr);
+          }
         } else {
           console.error("[WalletProvisioner] Unexpected error loading wallet", err);
         }
