@@ -12,6 +12,7 @@ import { wagmiConfig } from "@/lib/wagmiConfig";
 import { MembershipProvider } from "@/context/MembershipContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { JwtSync } from "@/components/auth/JwtSync";
+import { WalletProvisioner } from "@/components/auth/WalletProvisioner";
 import { getStytchHeadlessClient } from "@/lib/stytchClient";
 
 const aaveClient = AaveClient.create({
@@ -99,14 +100,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <StytchProvider stytch={stytchClient}>
             <AuthProvider>
               <CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}>
-                <CrossmintWalletProvider
-                  showPasskeyHelpers={true}
-                  createOnLogin={{
-                    chain,
-                    recovery: { type: "email" },
-                  }}
-                >
+                <CrossmintWalletProvider showPasskeyHelpers={true}>
                   <JwtSync />
+                  <WalletProvisioner chain={chain} />
                   <MembershipProvider>
                     {children}
                     <Toaster richColors position="top-center" closeButton />
