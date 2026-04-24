@@ -103,7 +103,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                   showPasskeyHelpers={true}
                   createOnLogin={{
                     chain,
-                    recovery: { type: "passkey" },
+                    recovery: { type: "email" },
                   }}
                 >
                   <JwtSync />
