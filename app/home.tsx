@@ -23,7 +23,9 @@ export function HomeContent() {
 
   const walletAddress = wallet?.address;
   const isLoggedIn = wallet != null && status === "logged-in";
-  const isLoading = walletStatus === "in-progress" || authStatus === "initializing";
+  const isLoading =
+    authStatus === "initializing" ||
+    (authStatus === "logged-in" && walletStatus !== "loaded" && walletStatus !== "error");
   const hasMembership = !membershipLoading && tier !== null;
 
   // Check localStorage for onboarding dismissal on mount
