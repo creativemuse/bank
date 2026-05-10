@@ -13,6 +13,7 @@ import { MembershipProvider } from "@/context/MembershipContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { JwtSync } from "@/components/auth/JwtSync";
 import { WalletProvisioner } from "@/components/auth/WalletProvisioner";
+import { WalletProvisioningProvider } from "@/context/WalletProvisioningContext";
 import { getStytchHeadlessClient } from "@/lib/stytchClient";
 
 const aaveClient = AaveClient.create({
@@ -101,12 +102,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <AuthProvider>
               <CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}>
                 <CrossmintWalletProvider showPasskeyHelpers={true}>
-                  <JwtSync />
-                  <WalletProvisioner chain={chain} />
-                  <MembershipProvider>
-                    {children}
-                    <Toaster richColors position="top-center" closeButton />
-                  </MembershipProvider>
+                  <WalletProvisioningProvider>
+                    <JwtSync />
+                    <WalletProvisioner chain={chain} />
+                    <MembershipProvider>
+                      {children}
+                      <Toaster richColors position="top-center" closeButton />
+                    </MembershipProvider>
+                  </WalletProvisioningProvider>
                 </CrossmintWalletProvider>
               </CrossmintProvider>
             </AuthProvider>
