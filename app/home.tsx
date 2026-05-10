@@ -100,43 +100,45 @@ export function HomeContent() {
     const triedFallback = provisioningStage === "email-fallback";
 
     return (
-      <div className="mx-auto flex h-full w-full max-w-sm flex-col items-center justify-center gap-4 px-6 text-center">
-        <h2 className="text-xl font-semibold text-white">We couldn&apos;t set up your wallet</h2>
-        <p className="text-sm text-gray-200">{friendlyError}</p>
+      <div className="mx-auto flex h-full w-full max-w-sm items-center justify-center px-6">
+        <div className="bg-card text-card-foreground flex w-full flex-col items-center gap-4 rounded-2xl p-6 text-center shadow-xl">
+          <h2 className="text-xl font-semibold">We couldn&apos;t set up your wallet</h2>
+          <p className="text-muted-foreground text-sm">{friendlyError}</p>
 
-        {inAppBrowser && (
-          <div
-            role="alert"
-            className="w-full rounded-lg border border-amber-300/40 bg-amber-50/95 p-3 text-left text-xs text-amber-900"
-          >
-            <p className="font-semibold">You&apos;re in an in-app browser.</p>
-            <p className="mt-1">
-              Wallet creation requires a full browser. Tap the menu (
-              <span aria-hidden="true">⋮</span>) at the top of this view and choose{" "}
-              <strong>Open in browser</strong> (Chrome on Android, Safari on iOS), then sign in
-              again.
-            </p>
+          {inAppBrowser && (
+            <div
+              role="alert"
+              className="w-full rounded-lg border border-amber-300/40 bg-amber-50/95 p-3 text-left text-xs text-amber-900"
+            >
+              <p className="font-semibold">You&apos;re in an in-app browser.</p>
+              <p className="mt-1">
+                Wallet creation requires a full browser. Tap the menu (
+                <span aria-hidden="true">⋮</span>) at the top of this view and choose{" "}
+                <strong>Open in browser</strong> (Chrome on Android, Safari on iOS), then sign in
+                again.
+              </p>
+              <button
+                type="button"
+                onClick={handleCopyUrl}
+                className="mt-2 inline-flex items-center justify-center rounded-md border border-amber-700/30 bg-white px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-50"
+              >
+                Copy page URL
+              </button>
+            </div>
+          )}
+
+          <div className="flex w-full flex-col gap-2">
+            <PrimaryButton onClick={requestRetry}>
+              {triedFallback ? "Try again" : "Try again with email signer"}
+            </PrimaryButton>
             <button
               type="button"
-              onClick={handleCopyUrl}
-              className="mt-2 inline-flex items-center justify-center rounded-md border border-amber-700/30 bg-white px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-50"
+              onClick={logout}
+              className="border-border w-full rounded-full border py-3 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10"
             >
-              Copy page URL
+              Sign out
             </button>
           </div>
-        )}
-
-        <div className="flex w-full flex-col gap-2">
-          <PrimaryButton onClick={requestRetry}>
-            {triedFallback ? "Try again" : "Try again with email signer"}
-          </PrimaryButton>
-          <button
-            type="button"
-            onClick={logout}
-            className="w-full rounded-full border border-gray-300 bg-white/90 py-3 text-sm font-medium text-gray-900 hover:bg-white"
-          >
-            Sign out
-          </button>
         </div>
       </div>
     );

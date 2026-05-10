@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useCrossmint, useWallet } from "@crossmint/client-sdk-react-ui";
 import { useAuth } from "@/context/AuthContext";
 import { useWalletProvisioning } from "@/context/WalletProvisioningContext";
-import { isInAppBrowser, isPasskeyCreationFailure, shouldSkipPasskey } from "@/lib/passkeySupport";
+import { isPasskeyCreationFailure, shouldSkipPasskey } from "@/lib/passkeySupport";
 
 const WALLET_NOT_AVAILABLE_CODE = "wallet:wallet-not-available";
 
@@ -101,9 +101,10 @@ export function WalletProvisioner({ chain }: { chain: SupportedChain }) {
     if (status === "loaded" || status === "in-progress") return;
     if (inFlight.current) return;
 
-    // For "error" status, only retry when the user explicitly bumps the token.
-    if (status === "error" && retryToken === lastAttemptToken.current) return;
-    if (status !== "error" && retryToken === lastAttemptToken.current && retryToken !== 0) return;
+    // Run exactly once per retryToken value. Initial token is 0; ref starts at
+    // -1 so the first effect runs, and subsequent runs only happen after the
+    // UI bumps the token via requestRetry().
+    if (retryToken === lastAttemptToken.current) return;
 
     lastAttemptToken.current = retryToken;
     void provision().catch((err) => {
@@ -111,11 +112,9 @@ export function WalletProvisioner({ chain }: { chain: SupportedChain }) {
         (err as { message?: string } | null)?.message ||
         "We couldn't set up your wallet. Please try again.";
       console.error("[WalletProvisioner] Provisioning failed", err);
-      setErrorMessage(
-        isInAppBrowser()
-          ? `${message} (You appear to be in an in-app browser, which can block wallet setup. Open this page in your browser instead.)`
-          : message
-      );
+      // The in-app browser hint is rendered once by the shell (home.tsx); keep
+      // this message focused on the technical failure to avoid duplication.
+      setErrorMessage(message);
     });
   }, [authStatus, status, user?.email, crossmint.jwt, retryToken, provision, setErrorMessage]);
 
