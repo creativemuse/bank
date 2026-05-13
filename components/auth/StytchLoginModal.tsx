@@ -21,6 +21,22 @@ const connectorLabel = (connector: Connector): string => {
   return name;
 };
 
+const sendEmailOtp = async (destination: string): Promise<string> => {
+  const response = await fetch("/api/auth/stytch/otp/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "email", destination }),
+  });
+  const data = (await response.json()) as { methodId?: string; error?: string };
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to send verification code");
+  }
+  if (!data.methodId) {
+    throw new Error("Failed to send verification code");
+  }
+  return data.methodId;
+};
+
 export function StytchLoginModal() {
   const stytch = useStytch();
   const { showLogin, setShowLogin, status } = useAuth();
@@ -81,8 +97,8 @@ export function StytchLoginModal() {
     setIsSendingEmail(true);
 
     try {
-      const response = await stytch.otps.email.loginOrCreate(email.trim());
-      setMethodId(response.method_id);
+      const id = await sendEmailOtp(email.trim());
+      setMethodId(id);
       setStep("email-otp");
     } catch (err: unknown) {
       const message =
@@ -95,19 +111,37 @@ export function StytchLoginModal() {
 
   const handleOTPVerify = useCallback(
     async (code: string) => {
-      // Throws are caught by OTPVerification and surfaced inline.
-      await stytch.otps.authenticate(code, methodId, {
-        session_duration_minutes: 10080, // 7 days
+      const response = await fetch("/api/auth/stytch/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ methodId, code, type: "email" }),
       });
+      const data = (await response.json()) as {
+        sessionToken?: string;
+        sessionJwt?: string;
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(data.error || "Invalid or expired code. Please try again.");
+      }
+      if (!data.sessionToken) {
+        throw new Error("Invalid or expired code. Please try again.");
+      }
+
+      stytch.session.updateSession({
+        session_token: data.sessionToken,
+        session_jwt: data.sessionJwt ?? null,
+      });
+      await stytch.session.authenticate();
     },
     [stytch, methodId]
   );
 
   const handleOTPResend = useCallback(async () => {
-    if (!email) throw new Error("Missing email");
-    const response = await stytch.otps.email.loginOrCreate(email.trim());
-    setMethodId(response.method_id);
-  }, [stytch, email]);
+    if (!email.trim()) throw new Error("Missing email");
+    const id = await sendEmailOtp(email.trim());
+    setMethodId(id);
+  }, [email]);
 
   // Attempt to authenticate the connected wallet against Stytch.
   const authenticateWalletWithStytch = useCallback(
