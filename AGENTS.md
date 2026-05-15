@@ -1,5 +1,9 @@
 # Agents
 
+## Paperclip roster (CRE-4)
+
+Machine-readable agent definitions for Paperclip runs live in [`paperclip/agents.json`](paperclip/agents.json). That file includes the **CTO** agent (technical architecture and engineering quality) alongside the **CEO** agent used for coordination.
+
 ## Cursor Cloud specific instructions
 
 ### Overview

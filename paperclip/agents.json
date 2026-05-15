@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "companyIdEnv": "PAPERCLIP_COMPANY_ID",
+  "agents": [
+    {
+      "slug": "ceo",
+      "displayName": "CEO",
+      "summary": "Executive coordination, product direction, and cross-functional handoffs.",
+      "defaultAdapter": "cursor_cloud",
+      "tags": ["leadership", "coordination"]
+    },
+    {
+      "slug": "cto",
+      "displayName": "CTO",
+      "summary": "Technical ownership: architecture, stack choices, security posture, and engineering quality for Creative Bank on Base.",
+      "defaultAdapter": "cursor_cloud",
+      "tags": ["architecture", "security", "nextjs", "defi"],
+      "scope": {
+        "primaryStack": [
+          "Next.js 16",
+          "TypeScript",
+          "Tailwind",
+          "Base",
+          "Stytch",
+          "Crossmint",
+          "Unlock Protocol"
+        ],
+        "reviewFocus": [
+          "Wallet and auth flows (Stytch, Crossmint BYOA)",
+          "Onchain integrations (Aave, vaults, bouncer)",
+          "Operational hardening (env, build, formatting)"
+        ]
+      },
+      "handoffFrom": ["ceo"],
+      "createdForIssue": "CRE-4"
+    }
+  ]
+}
