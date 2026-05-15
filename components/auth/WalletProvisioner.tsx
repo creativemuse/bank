@@ -31,9 +31,15 @@ export function WalletProvisioner({ chain }: { chain: SupportedChain }) {
     (async () => {
       try {
         await getWallet({ chain });
-      } catch (err) {
-        const code = (err as { code?: string } | null)?.code;
-        if (code === WALLET_NOT_AVAILABLE_CODE) {
+      } catch (err: any) {
+        // Crossmint getWallet throws when the wallet doesn't exist yet.
+        // The error shape varies by SDK version (404, wallet:wallet-not-available, etc.)
+        const isNotFound =
+          err?.code === WALLET_NOT_AVAILABLE_CODE ||
+          err?.message?.includes("notFound") ||
+          err?.status === 404;
+
+        if (isNotFound) {
           if (!email) {
             console.warn("[WalletProvisioner] No email available for recovery; deferring wallet creation.");
             inFlight.current = false;
