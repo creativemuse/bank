@@ -45,9 +45,7 @@ export function StytchLoginModal() {
     setError(null);
     setIsLoading(true);
     try {
-      await stytch.otps.authenticate({
-        code,
-        method_id: methodId,
+      await stytch.otps.authenticate(code, methodId, {
         session_duration_minutes: 10080, // 7 days
       });
       // Auth context will detect the session and update status
