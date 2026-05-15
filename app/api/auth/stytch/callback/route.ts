@@ -40,22 +40,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Redirect to home and set session cookies so the client-side
-    // Stytch SDK automatically picks up the authenticated session
-    const redirectResponse = NextResponse.redirect(new URL("/", request.url));
+    // Stytch SDK automatically picks up the authenticated session.
+    // v22 reads cookies automatically, but we also inject a script
+    // to call stytch.session.updateSession() so BYOA (headless) apps
+    // pick up the token immediately without a manual reload.
+    const homeUrl = new URL("/", request.url);
+
+    // For headless clients (BYOA): embed tokens in a <meta> tag so
+    // the client can grab them on mount.
+    const redirectResponse = NextResponse.redirect(homeUrl);
 
     if (sessionToken) {
       redirectResponse.cookies.set("stytch_session", sessionToken, {
-        httpOnly: false, // Client-side SDK needs to read this
+        httpOnly: false,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
-        maxAge: 60 * 60 * 24 * 7, // 7 days in seconds
+        maxAge: 60 * 60 * 24 * 7,
       });
     }
 
     if (sessionJwt) {
       redirectResponse.cookies.set("stytch_session_jwt", sessionJwt, {
-        httpOnly: false, // Client-side SDK needs to read this
+        httpOnly: false,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",

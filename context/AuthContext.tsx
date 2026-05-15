@@ -88,6 +88,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (tokens?.session_token) setSessionToken(tokens.session_token);
   }, [session?.session_id, stytch.session]);
 
+  // On mount: if Stytch cookies exist but session is null, bootstrap the
+  // session so BYOA apps pick it up immediately after an OAuth redirect.
+  useEffect(() => {
+    if (session) return;
+    if (!isInitialized) return;
+
+    const cookies = document.cookie.split("; ");
+    const sessionToken = cookies
+      .find((row) => row.startsWith("stytch_session="))
+      ?.split("=")[1];
+    const sessionJwt = cookies
+      .find((row) => row.startsWith("stytch_session_jwt="))
+      ?.split("=")[1];
+
+    if (sessionToken) {
+      try {
+        stytch.session.updateSession({
+          session_token: sessionToken,
+          ...(sessionJwt && { session_jwt: sessionJwt }),
+        });
+      } catch {
+        // Cookie may be stale; ignore and let natural flow continue
+      }
+    }
+  }, [isInitialized, session, stytch.session]);
+
   const login = useCallback(() => {
     setShowLogin(true);
   }, []);

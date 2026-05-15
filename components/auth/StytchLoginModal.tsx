@@ -1,41 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useStytch } from "@stytch/nextjs";
-import { useAccount, useConnect, useDisconnect, useSignMessage, type Connector } from "wagmi";
 import { OTPVerification } from "./OTPVerification";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
 import { useAuth } from "@/context/AuthContext";
 
-type LoginStep = "choose" | "email-input" | "email-otp" | "wallet-pick";
-
-const isMobileDevice = (): boolean => {
-  if (typeof navigator === "undefined") return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-};
-
-const connectorLabel = (connector: Connector): string => {
-  const name = connector.name || connector.id;
-  if (connector.id === "walletConnect") return "WalletConnect (Mobile / Other)";
-  return name;
-};
-
-const sendEmailOtp = async (destination: string): Promise<string> => {
-  const response = await fetch("/api/auth/stytch/otp/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "email", destination }),
-  });
-  const data = (await response.json()) as { methodId?: string; error?: string };
-  if (!response.ok) {
-    throw new Error(data.error || "Failed to send verification code");
-  }
-  if (!data.methodId) {
-    throw new Error("Failed to send verification code");
-  }
-  return data.methodId;
-};
+type LoginStep = "choose" | "email-input" | "email-otp";
 
 export function StytchLoginModal() {
   const stytch = useStytch();
@@ -44,194 +16,97 @@ export function StytchLoginModal() {
   const [email, setEmail] = useState("");
   const [methodId, setMethodId] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [otpError, setOtpError] = useState<string | null>(null);
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [isWalletAuthing, setIsWalletAuthing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { address, isConnected, connector: activeConnector } = useAccount();
-  const { connectors, connectAsync, isPending: isConnectingWallet } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { signMessageAsync } = useSignMessage();
-
-  // Pick connectors that make sense for the current platform.
-  // - Mobile: prefer WalletConnect (deep links to wallet apps)
-  // - Desktop: prefer injected (MetaMask, Rabby, etc.)
-  const orderedConnectors = useMemo(() => {
-    const mobile = isMobileDevice();
-    const list = connectors.filter((c) => c.id === "injected" || c.id === "walletConnect");
-    return list.sort((a, b) => {
-      if (a.id === b.id) return 0;
-      if (mobile) {
-        if (a.id === "walletConnect") return -1;
-        if (b.id === "walletConnect") return 1;
-      } else {
-        if (a.id === "injected") return -1;
-        if (b.id === "injected") return 1;
-      }
-      return 0;
-    });
-  }, [connectors]);
-
+  // Close modal when logged in
   useEffect(() => {
     if (status === "logged-in" && showLogin) {
       setShowLogin(false);
     }
   }, [status, showLogin, setShowLogin]);
 
-  // Reset transient state whenever the modal closes
-  useEffect(() => {
-    if (showLogin) return;
-    setStep("choose");
-    setEmail("");
-    setMethodId("");
-    setError(null);
-    setOtpError(null);
-    setIsSendingEmail(false);
-    setIsWalletAuthing(false);
-  }, [showLogin]);
-
   const handleEmailSubmit = async () => {
-    if (!email.trim() || isSendingEmail) return;
+    if (!email.trim()) return;
     setError(null);
-    setOtpError(null);
-    setIsSendingEmail(true);
+    setIsLoading(true);
 
     try {
-      const id = await sendEmailOtp(email.trim());
-      setMethodId(id);
+      const response = await stytch.otps.email.loginOrCreate(email.trim());
+      setMethodId(response.method_id);
       setStep("email-otp");
-    } catch (err: unknown) {
-      const message =
-        (err as { message?: string } | null)?.message || "Failed to send verification code";
-      setError(message);
+    } catch (err: any) {
+      setError(err.message || "Failed to send verification code");
     } finally {
-      setIsSendingEmail(false);
+      setIsLoading(false);
     }
   };
 
-  const handleOTPVerify = useCallback(
-    async (code: string) => {
-      const response = await fetch("/api/auth/stytch/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ methodId, code, type: "email" }),
+  const handleOTPVerify = async (code: string) => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      await stytch.otps.authenticate({
+        code,
+        method_id: methodId,
+        session_duration_minutes: 10080, // 7 days
       });
-      const data = (await response.json()) as {
-        sessionToken?: string;
-        sessionJwt?: string;
-        error?: string;
-      };
-      if (!response.ok) {
-        throw new Error(data.error || "Invalid or expired code. Please try again.");
+      // Auth context will detect the session and update status
+    } catch (err: any) {
+      setError(err.message || "Invalid verification code. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOTPResend = async () => {
+    const response = await stytch.otps.email.loginOrCreate(email.trim());
+    setMethodId(response.method_id);
+  };
+
+  const handleCryptoWalletLogin = async () => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      // Request signature from connected wallet (EVM)
+      const { ethereum } = window as any;
+      if (!ethereum) {
+        setError("No wallet detected. Please install MetaMask or another wallet.");
+        setIsLoading(false);
+        return;
       }
-      if (!data.sessionToken) {
-        throw new Error("Invalid or expired code. Please try again.");
-      }
 
-      stytch.session.updateSession({
-        session_token: data.sessionToken,
-        session_jwt: data.sessionJwt ?? null,
-      });
-      await stytch.session.authenticate();
-    },
-    [stytch, methodId]
-  );
+      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+      const address = accounts[0];
 
-  const handleOTPResend = useCallback(async () => {
-    if (!email.trim()) throw new Error("Missing email");
-    const id = await sendEmailOtp(email.trim());
-    setMethodId(id);
-  }, [email]);
-
-  // Attempt to authenticate the connected wallet against Stytch.
-  const authenticateWalletWithStytch = useCallback(
-    async (walletAddress: string) => {
+      // Start Stytch crypto wallet auth
       const { challenge } = await stytch.cryptoWallets.authenticateStart({
-        crypto_wallet_address: walletAddress,
+        crypto_wallet_address: address,
         crypto_wallet_type: "ethereum",
       });
 
-      // Use wagmi (works for injected, WalletConnect, etc.) instead of raw window.ethereum,
-      // which is undefined in mobile browsers without a wallet extension.
-      const signature = await signMessageAsync({
-        account: walletAddress as `0x${string}`,
-        message: challenge,
+      // Sign the challenge
+      const signature = await ethereum.request({
+        method: "personal_sign",
+        params: [challenge, address],
       });
 
+      // Complete authentication
       await stytch.cryptoWallets.authenticate({
-        crypto_wallet_address: walletAddress,
+        crypto_wallet_address: address,
         crypto_wallet_type: "ethereum",
         signature,
         session_duration_minutes: 60 * 24 * 7,
       });
-    },
-    [stytch, signMessageAsync]
-  );
-
-  const handleConnectAndAuth = useCallback(
-    async (connector: Connector) => {
-      setError(null);
-      setIsWalletAuthing(true);
-
-      try {
-        let walletAddress = address;
-
-        if (!isConnected || !walletAddress) {
-          const result = await connectAsync({ connector });
-          walletAddress = result.accounts?.[0];
-        }
-
-        if (!walletAddress) {
-          throw new Error("Could not get wallet address. Please try again.");
-        }
-
-        await authenticateWalletWithStytch(walletAddress);
-        // Auth context detects the new session and closes the modal.
-      } catch (err: unknown) {
-        const e = err as { code?: number | string; message?: string } | null;
-        // Codes: 4001 (user rejected), "ACTION_REJECTED" (ethers v6), "USER_REJECTED" (some libs)
-        const rejected =
-          e?.code === 4001 ||
-          e?.code === "ACTION_REJECTED" ||
-          e?.code === "USER_REJECTED" ||
-          /reject/i.test(e?.message ?? "");
-        if (!rejected) {
-          setError(e?.message || "Wallet login failed. Please try again.");
-        }
-        // If we connected the wallet but failed Stytch auth, leave it connected
-        // so the user can simply tap Sign Message again. Disconnect only on
-        // hard error to avoid confusing reconnects.
-      } finally {
-        setIsWalletAuthing(false);
+    } catch (err: any) {
+      if (err.code !== 4001) {
+        // 4001 = user rejected
+        setError(err.message || "Wallet login failed");
       }
-    },
-    [address, isConnected, connectAsync, authenticateWalletWithStytch]
-  );
-
-  const handleConnectWalletClick = useCallback(async () => {
-    setError(null);
-
-    // If only one connector is available, use it directly. Otherwise show picker.
-    if (orderedConnectors.length === 0) {
-      setError(
-        "No wallet connectors available. Please configure WalletConnect or install a browser wallet."
-      );
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    // Already connected? Re-use it for Stytch auth (signing only).
-    if (isConnected && activeConnector) {
-      await handleConnectAndAuth(activeConnector);
-      return;
-    }
-
-    if (orderedConnectors.length === 1) {
-      await handleConnectAndAuth(orderedConnectors[0]);
-      return;
-    }
-
-    setStep("wallet-pick");
-  }, [orderedConnectors, isConnected, activeConnector, handleConnectAndAuth]);
+  };
 
   const handleGoogleLogin = async () => {
     setError(null);
@@ -242,9 +117,8 @@ export function StytchLoginModal() {
         login_redirect_url: redirectUrl,
         signup_redirect_url: redirectUrl,
       });
-    } catch (err: unknown) {
-      const message = (err as { message?: string } | null)?.message || "Google login failed";
-      setError(message);
+    } catch (err: any) {
+      setError(err.message || "Google login failed");
     }
   };
 
@@ -253,10 +127,7 @@ export function StytchLoginModal() {
     setEmail("");
     setMethodId("");
     setError(null);
-    setOtpError(null);
   };
-
-  const isBusy = isSendingEmail || isWalletAuthing || isConnectingWallet;
 
   return (
     <Modal
@@ -273,23 +144,19 @@ export function StytchLoginModal() {
               Sign in to access your account
             </p>
 
-            {error && (
-              <p className="text-center text-sm text-red-700" role="alert">
-                {error}
-              </p>
-            )}
+            {error && <p className="text-center text-sm text-red-500">{error}</p>}
 
             <div className="flex w-full flex-col gap-3">
-              <PrimaryButton onClick={() => setStep("email-input")} disabled={isBusy}>
+              <PrimaryButton onClick={() => setStep("email-input")} disabled={isLoading}>
                 Continue with Email
               </PrimaryButton>
 
               <button
                 onClick={handleGoogleLogin}
-                disabled={isBusy}
+                disabled={isLoading}
                 className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                   <path
                     d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
                     fill="#4285F4"
@@ -317,11 +184,11 @@ export function StytchLoginModal() {
               </div>
 
               <button
-                onClick={handleConnectWalletClick}
-                disabled={isBusy}
+                onClick={handleCryptoWalletLogin}
+                disabled={isLoading}
                 className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
-                {isWalletAuthing || isConnectingWallet ? "Connecting..." : "Connect Wallet"}
+                Connect Wallet
               </button>
             </div>
 
@@ -330,49 +197,12 @@ export function StytchLoginModal() {
               <a
                 href="https://www.crossmint.com/legal/terms-of-service"
                 target="_blank"
-                rel="noreferrer"
                 className="text-blue-600 underline"
               >
                 Wallet&apos;s Terms of Service
               </a>
               , and to receive marketing communications from Creative Org DAO.
             </p>
-          </>
-        )}
-
-        {step === "wallet-pick" && (
-          <>
-            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-              Choose how to connect your wallet
-            </p>
-
-            {error && (
-              <p className="text-center text-sm text-red-700" role="alert">
-                {error}
-              </p>
-            )}
-
-            <div className="flex w-full flex-col gap-3">
-              {orderedConnectors.map((c) => (
-                <button
-                  key={c.uid}
-                  onClick={() => handleConnectAndAuth(c)}
-                  disabled={isBusy}
-                  className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
-                  {connectorLabel(c)}
-                </button>
-              ))}
-              {isConnected && (
-                <button
-                  onClick={() => disconnect()}
-                  disabled={isBusy}
-                  className="text-xs text-gray-500 underline disabled:opacity-50"
-                >
-                  Disconnect current wallet
-                </button>
-              )}
-            </div>
           </>
         )}
 
@@ -386,22 +216,16 @@ export function StytchLoginModal() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && void handleEmailSubmit()}
+              onKeyDown={(e) => e.key === "Enter" && handleEmailSubmit()}
               placeholder="you@example.com"
               autoFocus
-              autoComplete="email"
-              inputMode="email"
               className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
             />
 
-            {error && (
-              <p className="text-center text-sm text-red-700" role="alert">
-                {error}
-              </p>
-            )}
+            {error && <p className="text-center text-sm text-red-500">{error}</p>}
 
-            <PrimaryButton onClick={handleEmailSubmit} disabled={!email.trim() || isSendingEmail}>
-              {isSendingEmail ? "Sending..." : "Send Code"}
+            <PrimaryButton onClick={handleEmailSubmit} disabled={!email.trim() || isLoading}>
+              {isLoading ? "Sending..." : "Send Code"}
             </PrimaryButton>
           </>
         )}
@@ -412,7 +236,8 @@ export function StytchLoginModal() {
             destination={email}
             onVerify={handleOTPVerify}
             onResend={handleOTPResend}
-            error={otpError}
+            error={error}
+            isVerifying={isLoading}
           />
         )}
       </div>
