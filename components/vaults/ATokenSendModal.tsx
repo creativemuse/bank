@@ -121,7 +121,17 @@ export function ATokenSendModal({
         setLoading(false);
       }
     },
-    [recipient, sendAmount, isValidRecipient, isValidAmount, crossmintWallet, wagmiWalletClient, aTokenAddress, userAddress, onSuccess],
+    [
+      recipient,
+      sendAmount,
+      isValidRecipient,
+      isValidAmount,
+      crossmintWallet,
+      wagmiWalletClient,
+      aTokenAddress,
+      userAddress,
+      onSuccess,
+    ]
   );
 
   const handleClose = () => {
@@ -134,7 +144,13 @@ export function ATokenSendModal({
   };
 
   return (
-    <Modal open={open} onClose={handleClose} title="Send aBaseUSDC" showCloseButton className="max-w-lg bg-white text-slate-900">
+    <Modal
+      open={open}
+      onClose={handleClose}
+      title="Send aBaseUSDC"
+      showCloseButton
+      className="max-w-lg bg-white text-slate-900"
+    >
       <div className="mt-4 flex flex-col gap-4 text-sm">
         {txHash ? (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
@@ -161,7 +177,9 @@ export function ATokenSendModal({
             </div>
 
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium uppercase text-slate-500">Recipient Address</span>
+              <span className="text-xs font-medium text-slate-500 uppercase">
+                Recipient Address
+              </span>
               <input
                 type="text"
                 value={recipient}
@@ -172,7 +190,7 @@ export function ATokenSendModal({
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium uppercase text-slate-500">Amount</span>
+              <span className="text-xs font-medium text-slate-500 uppercase">Amount</span>
               <div className="flex gap-2">
                 <input
                   type="text"

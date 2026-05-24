@@ -140,7 +140,10 @@ export function OTPVerification({
 
       {error && <p className="text-center text-sm text-red-700">{error}</p>}
 
-      <PrimaryButton onClick={() => submit(code)} disabled={!isComplete || isVerifying || isSubmitting}>
+      <PrimaryButton
+        onClick={() => submit(code)}
+        disabled={!isComplete || isVerifying || isSubmitting}
+      >
         {isVerifying || isSubmitting ? "Verifying..." : "Verify"}
       </PrimaryButton>
 

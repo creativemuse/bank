@@ -1,0 +1,39 @@
+"use client";
+
+import { useEffect } from "react";
+import { EmbeddedAuthForm } from "@crossmint/client-sdk-react-ui";
+import { Modal } from "@/components/common/Modal";
+import { useAuth } from "@/context/AuthContext";
+
+export function CrossmintLoginModal() {
+  const { showLogin, setShowLogin, status } = useAuth();
+
+  useEffect(() => {
+    if (status === "logged-in" && showLogin) {
+      setShowLogin(false);
+    }
+  }, [status, showLogin, setShowLogin]);
+
+  return (
+    <Modal open={showLogin} onClose={() => setShowLogin(false)} title="Welcome to CREATIVE Finance">
+      <div className="flex flex-col items-center gap-4 py-2">
+        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+          Sign in with email or Google to access your wallet
+        </p>
+        <EmbeddedAuthForm />
+        <p className="text-center text-xs text-gray-500">
+          By continuing, you accept the{" "}
+          <a
+            href="https://www.crossmint.com/legal/terms-of-service"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+          >
+            Wallet&apos;s Terms of Service
+          </a>
+          , and to receive marketing communications from Creative Org DAO.
+        </p>
+      </div>
+    </Modal>
+  );
+}

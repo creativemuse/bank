@@ -8,7 +8,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { useProcessWithdrawal } from "@/hooks/useProcessWithdrawal";
 import { useMembership } from "@/context/MembershipContext";
-import { useWalletProvisioning } from "@/context/WalletProvisioningContext";
 import { upsertUser } from "@/server-actions/getTransactions";
 import { MembershipOnboarding } from "@/components/unlock/MembershipOnboarding";
 import { isInAppBrowser } from "@/lib/passkeySupport";
@@ -16,34 +15,22 @@ import { isInAppBrowser } from "@/lib/passkeySupport";
 const ONBOARDING_DISMISSED_KEY = "has_seen_membership_onboarding";
 
 export function HomeContent() {
-  const { wallet, status: walletStatus } = useWallet();
+  const { wallet, status: walletStatus, getWallet } = useWallet();
   const { status, status: authStatus, user, logout } = useAuth();
   const { tier, isLoading: membershipLoading, refresh: refreshMembership } = useMembership();
-  const {
-    errorMessage: provisioningError,
-    stage: provisioningStage,
-    requestRetry,
-  } = useWalletProvisioning();
 
-  const [hasDismissedOnboarding, setHasDismissedOnboarding] = useState(true); // default true to avoid flash
+  const [hasDismissedOnboarding, setHasDismissedOnboarding] = useState(true);
   const [inAppBrowser, setInAppBrowser] = useState(false);
 
   useProcessWithdrawal(wallet?.address, wallet);
 
   const walletAddress = wallet?.address;
   const isLoggedIn = wallet != null && status === "logged-in";
-  // Only show the spinner while we are actively trying to provision. Once the
-  // provisioner publishes an error, fall through to the recoverable error UI
-  // so the user isn't stuck on a spinner.
   const isLoading =
     authStatus === "initializing" ||
-    (authStatus === "logged-in" &&
-      walletStatus !== "loaded" &&
-      walletStatus !== "error" &&
-      !provisioningError);
+    (authStatus === "logged-in" && walletStatus !== "loaded" && walletStatus !== "error");
   const hasMembership = !membershipLoading && tier !== null;
 
-  // Detect once on mount; UA strings don't change at runtime.
   useEffect(() => {
     setInAppBrowser(isInAppBrowser());
   }, []);
@@ -53,7 +40,6 @@ export function HomeContent() {
     setHasDismissedOnboarding(dismissed === "true");
   }, []);
 
-  // Sync Stytch user identity → CockroachDB on login
   useEffect(() => {
     if (isLoggedIn && user?.id && walletAddress) {
       upsertUser(user.id, walletAddress, user.email, user.phoneNumber);
@@ -75,9 +61,13 @@ export function HomeContent() {
     try {
       await navigator.clipboard.writeText(window.location.href);
     } catch {
-      // Older WebViews don't have clipboard.writeText; users can fall back
-      // to the explicit "Open in browser" instructions in the modal copy.
+      // Clipboard may be unavailable in some WebViews
     }
+  };
+
+  const handleRetryWallet = async () => {
+    const chain = process.env.NEXT_PUBLIC_CHAIN_ID === "base" ? "base" : ("base-sepolia" as const);
+    await getWallet({ chain });
   };
 
   if (isLoading) {
@@ -88,22 +78,16 @@ export function HomeContent() {
     );
   }
 
-  // Show the recoverable wallet-provisioning error screen when either:
-  //  - Crossmint reports a hard `error` status, or
-  //  - our provisioner published an error (e.g. fallback also failed).
-  const showWalletErrorScreen =
-    authStatus === "logged-in" && (walletStatus === "error" || !!provisioningError);
+  const showWalletErrorScreen = authStatus === "logged-in" && walletStatus === "error";
 
   if (showWalletErrorScreen) {
-    const friendlyError =
-      provisioningError ?? "Something went wrong while provisioning your wallet.";
-    const triedFallback = provisioningStage === "email-fallback";
-
     return (
       <div className="mx-auto flex h-full w-full max-w-sm items-center justify-center px-6">
         <div className="bg-card text-card-foreground flex w-full flex-col items-center gap-4 rounded-2xl p-6 text-center shadow-xl">
           <h2 className="text-xl font-semibold">We couldn&apos;t set up your wallet</h2>
-          <p className="text-muted-foreground text-sm">{friendlyError}</p>
+          <p className="text-muted-foreground text-sm">
+            Something went wrong while creating your wallet. Try again or sign out and sign back in.
+          </p>
 
           {inAppBrowser && (
             <div
@@ -128,9 +112,7 @@ export function HomeContent() {
           )}
 
           <div className="flex w-full flex-col gap-2">
-            <PrimaryButton onClick={requestRetry}>
-              {triedFallback ? "Try again" : "Try again with email signer"}
-            </PrimaryButton>
+            <PrimaryButton onClick={handleRetryWallet}>Try again</PrimaryButton>
             <button
               type="button"
               onClick={logout}
@@ -148,7 +130,6 @@ export function HomeContent() {
     return <Login />;
   }
 
-  // Show membership onboarding for first-time non-members
   if (!membershipLoading && !hasMembership && !hasDismissedOnboarding) {
     return (
       <MembershipOnboarding
