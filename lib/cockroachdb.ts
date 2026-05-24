@@ -37,23 +37,44 @@ export function getPool(): Pool {
  * Safe to call multiple times — all statements use IF NOT EXISTS.
  *
  * Schema design:
- * - `users` table: Stytch user_id is the primary key, linked to wallet address
+ * - `users` table: Crossmint user_id is the primary key, linked to wallet address
  * - `transactions` table: Ledger entries keyed by wallet_address for lookups
  */
 export async function runMigration(): Promise<void> {
   const db = getPool();
 
-  // Users table — Stytch user ID is the primary identity
+  // Users table — Crossmint user ID is the primary identity
   await db.query(`
     CREATE TABLE IF NOT EXISTS users (
-      stytch_user_id TEXT PRIMARY KEY,
+      crossmint_user_id TEXT PRIMARY KEY,
       wallet_address TEXT NOT NULL,
       email TEXT,
       phone_number TEXT,
+      phone_number_verified_at TIMESTAMPTZ,
       membership_tier TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+  `);
+
+  // Migrate legacy Stytch column name if present
+  await db.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'stytch_user_id'
+      ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'crossmint_user_id'
+      ) THEN
+        ALTER TABLE users RENAME COLUMN stytch_user_id TO crossmint_user_id;
+      END IF;
+    END $$;
+  `);
+
+  await db.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number_verified_at TIMESTAMPTZ;
   `);
 
   await db.query(`
@@ -66,7 +87,7 @@ export async function runMigration(): Promise<void> {
     CREATE TABLE IF NOT EXISTS transactions (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       wallet_address TEXT NOT NULL,
-      stytch_user_id TEXT,
+      crossmint_user_id TEXT,
       transaction_id TEXT NOT NULL UNIQUE,
       type TEXT NOT NULL DEFAULT 'offramp',
       status TEXT NOT NULL DEFAULT 'unknown',
@@ -89,10 +110,24 @@ export async function runMigration(): Promise<void> {
     ON transactions (wallet_address);
   `);
 
-  // Secondary lookup: by Stytch user ID
   await db.query(`
-    CREATE INDEX IF NOT EXISTS idx_transactions_stytch_user_id
-    ON transactions (stytch_user_id);
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'transactions' AND column_name = 'stytch_user_id'
+      ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'transactions' AND column_name = 'crossmint_user_id'
+      ) THEN
+        ALTER TABLE transactions RENAME COLUMN stytch_user_id TO crossmint_user_id;
+      END IF;
+    END $$;
+  `);
+
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_transactions_crossmint_user_id
+    ON transactions (crossmint_user_id);
   `);
 
   await db.query(`

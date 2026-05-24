@@ -213,7 +213,8 @@ export function AaveVaultModal({
           args: [inputUnits],
         })
         .then((shares) => {
-          if (active) setExpectedShares(formatUnits(shares, resolvedShareDecimals ?? assetDecimals));
+          if (active)
+            setExpectedShares(formatUnits(shares, resolvedShareDecimals ?? assetDecimals));
         })
         .catch(() => {
           if (active) setExpectedShares(null);
@@ -221,8 +222,18 @@ export function AaveVaultModal({
     } else {
       setExpectedShares(null);
     }
-    return () => { active = false; };
-  }, [mode, hasPositiveInput, inputUnits, vaultAddress, publicClient, resolvedShareDecimals, assetDecimals]);
+    return () => {
+      active = false;
+    };
+  }, [
+    mode,
+    hasPositiveInput,
+    inputUnits,
+    vaultAddress,
+    publicClient,
+    resolvedShareDecimals,
+    assetDecimals,
+  ]);
 
   useEffect(() => {
     if (!publicClient || !hasPositiveInput || inputUnits == null) {
@@ -512,7 +523,12 @@ export function AaveVaultModal({
         onSuccess?.();
         handleClose();
       } catch (err) {
-        const message = err instanceof Error ? err.message : mode === "deposit" ? "Deposit failed" : "Withdraw failed";
+        const message =
+          err instanceof Error
+            ? err.message
+            : mode === "deposit"
+              ? "Deposit failed"
+              : "Withdraw failed";
         setErrorMessage(message);
       } finally {
         setIsSubmitting(false);

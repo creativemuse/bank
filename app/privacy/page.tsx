@@ -82,7 +82,8 @@ export default function PrivacyPolicyPage() {
         </p>
         <ul className="list-disc space-y-1 pl-6">
           <li>
-            <strong>Stytch</strong> — authentication, session management, and phone verification
+            <strong>Crossmint</strong> — authentication, wallet infrastructure, and session
+            management
           </li>
           <li>
             <strong>Crossmint</strong> — non-custodial smart wallet infrastructure and passkey

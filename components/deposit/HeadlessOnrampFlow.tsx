@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useStytch } from "@stytch/nextjs";
 import { useAuth } from "@/context/AuthContext";
 import { useOnrampOrder } from "@/hooks/useOnrampOrder";
-import { OTPVerification } from "@/components/auth/OTPVerification";
 import { TermsAcceptance } from "./TermsAcceptance";
 import { OnrampQuoteDisplay } from "./OnrampQuoteDisplay";
 import { PaymentIframe } from "./PaymentIframe";
@@ -13,7 +11,6 @@ import { PrimaryButton } from "@/components/common/PrimaryButton";
 type HeadlessStep =
   | "idle"
   | "phone-input"
-  | "phone-otp"
   | "terms"
   | "quote"
   | "payment"
@@ -33,6 +30,15 @@ interface HeadlessOnrampFlowProps {
   MAX_AMOUNT: number;
 }
 
+const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
+
+const isPhoneVerificationFresh = (verifiedAt?: string | null): boolean => {
+  if (!verifiedAt) return false;
+  const verifiedMs = new Date(verifiedAt).getTime();
+  if (Number.isNaN(verifiedMs)) return false;
+  return Date.now() - verifiedMs < SIXTY_DAYS_MS;
+};
+
 export function HeadlessOnrampFlow({
   amount,
   walletAddress,
@@ -40,12 +46,9 @@ export function HeadlessOnrampFlow({
   onProcessingPayment,
   isAmountValid,
   step: parentStep,
-  goBack,
   receiptEmail,
-  MAX_AMOUNT,
 }: HeadlessOnrampFlowProps) {
-  const stytch = useStytch();
-  const { user } = useAuth();
+  const { user, jwt, refreshUserProfile } = useAuth();
   const {
     quote,
     order,
@@ -59,18 +62,16 @@ export function HeadlessOnrampFlow({
   } = useOnrampOrder();
 
   const [headlessStep, setHeadlessStep] = useState<HeadlessStep>("idle");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [phoneMethodId, setPhoneMethodId] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? "");
   const [phoneVerifiedAt, setPhoneVerifiedAt] = useState<string | null>(
     user?.phoneNumberVerifiedAt || null
   );
   const [agreementAcceptedAt, setAgreementAcceptedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isOtpLoading, setIsOtpLoading] = useState(false);
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
 
   const email = receiptEmail || user?.email || "";
 
-  // Auto-detect payment method based on browser/device
   const paymentMethod =
     typeof window !== "undefined" &&
     /Safari/.test(navigator.userAgent) &&
@@ -78,81 +79,51 @@ export function HeadlessOnrampFlow({
       ? "GUEST_CHECKOUT_APPLE_PAY"
       : "GUEST_CHECKOUT_GOOGLE_PAY";
 
-  // Check if phone is already verified (Warm Start)
-  const hasWarmStartPhone = !!(user?.phoneNumber && user?.phoneNumberVerifiedAt);
+  const hasWarmStartPhone = !!(
+    user?.phoneNumber && isPhoneVerificationFresh(user.phoneNumberVerifiedAt ?? phoneVerifiedAt)
+  );
 
-  // Handle the Warm Start — skip phone OTP for returning users
   const handleStartFlow = useCallback(async () => {
     if (hasWarmStartPhone && user?.phoneNumber) {
-      // Phone already verified within 60 days — skip directly to terms
       setPhoneNumber(user.phoneNumber);
-      setPhoneVerifiedAt(user.phoneNumberVerifiedAt!);
+      setPhoneVerifiedAt(user.phoneNumberVerifiedAt ?? phoneVerifiedAt);
       setHeadlessStep("terms");
-    } else {
-      setHeadlessStep("phone-input");
+      return;
     }
-  }, [hasWarmStartPhone, user]);
+    setHeadlessStep("phone-input");
+  }, [hasWarmStartPhone, user, phoneVerifiedAt]);
 
-  // Send phone OTP
-  const handleSendPhoneOTP = async () => {
-    if (!phoneNumber.trim()) return;
+  const handleSavePhone = async () => {
+    if (!phoneNumber.trim() || !jwt) return;
     setError(null);
-    setIsOtpLoading(true);
+    setIsSavingPhone(true);
 
     try {
-      const response = await fetch("/api/auth/stytch/otp/send", {
+      const response = await fetch("/api/user/phone", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "sms", destination: phoneNumber.trim() }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ phoneNumber: phoneNumber.trim() }),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to send OTP");
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save phone number");
+      }
 
-      setPhoneMethodId(data.methodId);
-      setHeadlessStep("phone-otp");
-    } catch (err: any) {
-      setError(err.message || "Failed to send verification code");
-    } finally {
-      setIsOtpLoading(false);
-    }
-  };
-
-  // Verify phone OTP
-  const handleVerifyPhoneOTP = async (code: string) => {
-    try {
-      const response = await fetch("/api/auth/stytch/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          methodId: phoneMethodId,
-          code,
-          type: "sms",
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Invalid code");
-
-      setPhoneVerifiedAt(new Date().toISOString());
+      setPhoneVerifiedAt(data.phoneNumberVerifiedAt);
+      await refreshUserProfile();
       setHeadlessStep("terms");
-    } catch (err: any) {
-      throw err;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to save phone number";
+      setError(message);
+    } finally {
+      setIsSavingPhone(false);
     }
   };
 
-  // Resend phone OTP
-  const handleResendPhoneOTP = async () => {
-    const response = await fetch("/api/auth/stytch/otp/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "sms", destination: phoneNumber.trim() }),
-    });
-    const data = await response.json();
-    if (response.ok) setPhoneMethodId(data.methodId);
-  };
-
-  // Accept terms
   const handleTermsAccepted = async (timestamp: string) => {
     setAgreementAcceptedAt(timestamp);
     await fetchQuote({
@@ -167,7 +138,6 @@ export function HeadlessOnrampFlow({
     setHeadlessStep("quote");
   };
 
-  // Auto-refresh quote every 15 seconds while on the quote step
   const quoteIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -200,13 +170,11 @@ export function HeadlessOnrampFlow({
     agreementAcceptedAt,
     phoneVerifiedAt,
     fetchQuote,
+    paymentMethod,
   ]);
 
-  // Create order after reviewing quote
   const handleConfirmQuote = async () => {
-    if (!agreementAcceptedAt || !phoneVerifiedAt) return;
-
-    const tokens = stytch.session.getTokens();
+    if (!agreementAcceptedAt || !phoneVerifiedAt || !jwt) return;
 
     await createOrder({
       paymentAmount: amount,
@@ -215,7 +183,7 @@ export function HeadlessOnrampFlow({
       email,
       agreementAcceptedAt,
       phoneNumberVerifiedAt: phoneVerifiedAt,
-      sessionToken: tokens?.session_token,
+      authToken: jwt,
       paymentMethod,
     });
 
@@ -223,29 +191,24 @@ export function HeadlessOnrampFlow({
     onProcessingPayment();
   };
 
-  // Payment completed via iframe postMessage
   const handlePaymentComplete = () => {
     setHeadlessStep("completed");
     onPaymentCompleted();
   };
 
-  // Payment failed
   const handlePaymentFailed = () => {
     setHeadlessStep("failed");
   };
 
-  // Reset entire flow
   const handleReset = () => {
     setHeadlessStep("idle");
-    setPhoneNumber("");
-    setPhoneMethodId("");
+    setPhoneNumber(user?.phoneNumber ?? "");
     setPhoneVerifiedAt(user?.phoneNumberVerifiedAt || null);
     setAgreementAcceptedAt(null);
     setError(null);
     resetOrder();
   };
 
-  // Parent controls processing/completed states
   if (parentStep === "processing" && headlessStep !== "payment") {
     return (
       <div className="flex w-full flex-col items-center justify-center space-y-4">
@@ -265,7 +228,6 @@ export function HeadlessOnrampFlow({
     );
   }
 
-  // Show start button when parent is in "options" and we haven't started the flow
   if (parentStep === "options" && headlessStep === "idle") {
     return (
       <div className="flex w-full flex-col items-center justify-center space-y-4">
@@ -283,7 +245,6 @@ export function HeadlessOnrampFlow({
         <div className="text-center text-sm text-red-500">{error || orderError}</div>
       )}
 
-      {/* Phone number input */}
       {headlessStep === "phone-input" && (
         <div className="flex flex-col items-center gap-4">
           <p className="text-center text-sm text-gray-900">
@@ -293,7 +254,7 @@ export function HeadlessOnrampFlow({
             type="tel"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSendPhoneOTP()}
+            onKeyDown={(e) => e.key === "Enter" && handleSavePhone()}
             placeholder="+1 (555) 555-5555"
             autoFocus
             className="w-full rounded-md border border-gray-600 bg-gray-300 px-4 py-3 text-sm text-black placeholder:text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -302,31 +263,18 @@ export function HeadlessOnrampFlow({
             Enter your phone number in E.164 format (e.g., +12025551234)
           </p>
           <PrimaryButton
-            onClick={handleSendPhoneOTP}
-            disabled={!phoneNumber.trim() || isOtpLoading}
+            onClick={handleSavePhone}
+            disabled={!phoneNumber.trim() || isSavingPhone || !jwt}
           >
-            {isOtpLoading ? "Sending..." : "Send Verification Code"}
+            {isSavingPhone ? "Saving..." : "Continue"}
           </PrimaryButton>
         </div>
       )}
 
-      {/* Phone OTP verification */}
-      {headlessStep === "phone-otp" && (
-        <OTPVerification
-          type="phone"
-          destination={phoneNumber}
-          onVerify={handleVerifyPhoneOTP}
-          onResend={handleResendPhoneOTP}
-          error={error}
-        />
-      )}
-
-      {/* Terms acceptance */}
       {headlessStep === "terms" && (
         <TermsAcceptance onAccept={handleTermsAccepted} isLoading={isLoadingQuote} />
       )}
 
-      {/* Quote display */}
       {headlessStep === "quote" && quote && (
         <OnrampQuoteDisplay
           paymentAmount={amount}
@@ -351,7 +299,6 @@ export function HeadlessOnrampFlow({
         />
       )}
 
-      {/* Payment iframe */}
       {headlessStep === "payment" && order?.paymentLink?.url && (
         <PaymentIframe
           paymentUrl={order.paymentLink.url}
@@ -360,7 +307,6 @@ export function HeadlessOnrampFlow({
         />
       )}
 
-      {/* Polling status */}
       {headlessStep === "payment" && isPolling && (
         <div className="flex items-center justify-center gap-2 text-sm text-gray-900">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-600 border-t-gray-900" />
@@ -368,7 +314,6 @@ export function HeadlessOnrampFlow({
         </div>
       )}
 
-      {/* Completed */}
       {headlessStep === "completed" && (
         <div className="flex flex-col items-center gap-4">
           <div className="text-sm font-medium text-black">Payment completed successfully!</div>
@@ -378,7 +323,6 @@ export function HeadlessOnrampFlow({
         </div>
       )}
 
-      {/* Failed */}
       {headlessStep === "failed" && (
         <div className="flex flex-col items-center gap-4">
           <div className="text-sm font-medium text-red-600">Payment failed or was cancelled.</div>
