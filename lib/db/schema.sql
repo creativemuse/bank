@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT,
   phone_number TEXT,
   phone_number_verified_at TIMESTAMPTZ,
+  email_verified_at TIMESTAMPTZ,
   membership_tier TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

@@ -8,6 +8,7 @@ import { OnrampQuoteDisplay } from "./OnrampQuoteDisplay";
 import { PaymentIframe } from "./PaymentIframe";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { OTPVerification } from "@/components/auth/OTPVerification";
+import { isVerificationFresh } from "@/lib/verificationFreshness";
 
 type HeadlessStep =
   | "idle"
@@ -31,15 +32,6 @@ interface HeadlessOnrampFlowProps {
   receiptEmail?: string;
   MAX_AMOUNT: number;
 }
-
-const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
-
-const isPhoneVerificationFresh = (verifiedAt?: string | null): boolean => {
-  if (!verifiedAt) return false;
-  const verifiedMs = new Date(verifiedAt).getTime();
-  if (Number.isNaN(verifiedMs)) return false;
-  return Date.now() - verifiedMs < SIXTY_DAYS_MS;
-};
 
 export function HeadlessOnrampFlow({
   amount,
@@ -81,11 +73,16 @@ export function HeadlessOnrampFlow({
       ? "GUEST_CHECKOUT_APPLE_PAY"
       : "GUEST_CHECKOUT_GOOGLE_PAY";
 
+  const hasVerifiedEmail = Boolean(email);
   const hasWarmStartPhone = !!(
-    user?.phoneNumber && isPhoneVerificationFresh(user.phoneNumberVerifiedAt ?? phoneVerifiedAt)
+    user?.phoneNumber && isVerificationFresh(user.phoneNumberVerifiedAt ?? phoneVerifiedAt)
   );
 
   const handleStartFlow = useCallback(async () => {
+    if (!hasVerifiedEmail) {
+      setError("Sign in with email to use Express Checkout, or choose All Payment Methods instead.");
+      return;
+    }
     if (hasWarmStartPhone && user?.phoneNumber) {
       setPhoneNumber(user.phoneNumber);
       setPhoneVerifiedAt(user.phoneNumberVerifiedAt ?? phoneVerifiedAt);
@@ -93,7 +90,7 @@ export function HeadlessOnrampFlow({
       return;
     }
     setHeadlessStep("phone-input");
-  }, [hasWarmStartPhone, user, phoneVerifiedAt]);
+  }, [hasVerifiedEmail, hasWarmStartPhone, user, phoneVerifiedAt]);
 
   const handleSendPhoneOTP = async () => {
     if (!phoneNumber.trim() || !jwt) return;
@@ -256,10 +253,16 @@ export function HeadlessOnrampFlow({
 
   if (parentStep === "options" && headlessStep === "idle") {
     return (
-      <div className="flex w-full flex-col items-center justify-center space-y-4">
-        {(error || orderError) && <div className="text-sm text-red-600">{error || orderError}</div>}
-        <PrimaryButton onClick={handleStartFlow} disabled={!isAmountValid}>
-          {hasWarmStartPhone ? "Continue to Deposit" : "Deposit Funds"}
+      <div className="flex w-full flex-col items-center justify-center gap-4">
+        <p className="text-center text-xs text-gray-600">
+          Email <span className="font-medium text-black">{email}</span> is verified from your
+          sign-in. Express Checkout also requires a verified US mobile number.
+        </p>
+        {(error || orderError) && (
+          <div className="text-center text-sm text-red-600">{error || orderError}</div>
+        )}
+        <PrimaryButton onClick={handleStartFlow} disabled={!isAmountValid || !hasVerifiedEmail}>
+          {hasWarmStartPhone ? "Continue to Deposit" : "Verify phone & continue"}
         </PrimaryButton>
       </div>
     );
@@ -309,7 +312,18 @@ export function HeadlessOnrampFlow({
       )}
 
       {headlessStep === "terms" && (
-        <TermsAcceptance onAccept={handleTermsAccepted} isLoading={isLoadingQuote} />
+        <div className="flex flex-col gap-3">
+          <p className="text-center text-xs text-gray-600">
+            Depositing as <span className="font-medium text-black">{email}</span>
+            {phoneNumber ? (
+              <>
+                {" "}
+                · Phone <span className="font-medium text-black">{phoneNumber}</span>
+              </>
+            ) : null}
+          </p>
+          <TermsAcceptance onAccept={handleTermsAccepted} isLoading={isLoadingQuote} />
+        </div>
       )}
 
       {headlessStep === "quote" && quote && (

@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const pool = getPool();
     const { rows } = await pool.query(
-      `SELECT email, phone_number, phone_number_verified_at
+      `SELECT email, email_verified_at, phone_number, phone_number_verified_at
        FROM users WHERE crossmint_user_id = $1 LIMIT 1`,
       [auth.session.userId]
     );
@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     if (rows.length === 0) {
       return NextResponse.json({
         email: null,
+        emailVerifiedAt: null,
         phoneNumber: null,
         phoneNumberVerifiedAt: null,
       });
@@ -29,6 +30,9 @@ export async function GET(request: NextRequest) {
     const row = rows[0];
     return NextResponse.json({
       email: row.email ?? null,
+      emailVerifiedAt: row.email_verified_at
+        ? new Date(row.email_verified_at).toISOString()
+        : null,
       phoneNumber: row.phone_number ?? null,
       phoneNumberVerifiedAt: row.phone_number_verified_at
         ? new Date(row.phone_number_verified_at).toISOString()

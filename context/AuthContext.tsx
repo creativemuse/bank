@@ -16,6 +16,8 @@ type AuthStatus = "logged-out" | "logged-in" | "initializing";
 interface AuthUser {
   id: string;
   email: string;
+  /** Set when the user signed in with Crossmint email OTP (no extra deposit step). */
+  emailVerifiedAt?: string;
   phoneNumber?: string;
   phoneNumberVerifiedAt?: string;
 }
@@ -51,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useCrossmintAuth();
 
   const [showLogin, setShowLogin] = useState(false);
+  const [emailVerifiedAt, setEmailVerifiedAt] = useState<string | undefined>();
   const [phoneNumberVerifiedAt, setPhoneNumberVerifiedAt] = useState<string | undefined>();
 
   const status = mapCrossmintStatus(crossmintStatus);
@@ -61,13 +64,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       id: crossmintUser.id,
       email: crossmintUser.email ?? "",
+      emailVerifiedAt,
       phoneNumber: crossmintUser.phoneNumber,
       phoneNumberVerifiedAt,
     };
-  }, [crossmintUser, phoneNumberVerifiedAt]);
+  }, [crossmintUser, emailVerifiedAt, phoneNumberVerifiedAt]);
 
   const refreshUserProfile = useCallback(async () => {
     if (!jwt) {
+      setEmailVerifiedAt(undefined);
       setPhoneNumberVerifiedAt(undefined);
       return;
     }
@@ -79,6 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!response.ok) return;
 
       const data = await response.json();
+      if (data.emailVerifiedAt) {
+        setEmailVerifiedAt(data.emailVerifiedAt);
+      }
       if (data.phoneNumberVerifiedAt) {
         setPhoneNumberVerifiedAt(data.phoneNumberVerifiedAt);
       }
@@ -92,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getUser();
       void refreshUserProfile();
     } else {
+      setEmailVerifiedAt(undefined);
       setPhoneNumberVerifiedAt(undefined);
     }
   }, [status, getUser, refreshUserProfile]);
@@ -106,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Session may already be expired
     }
+    setEmailVerifiedAt(undefined);
     setPhoneNumberVerifiedAt(undefined);
     setShowLogin(false);
   }, [crossmintLogout]);

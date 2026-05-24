@@ -78,6 +78,10 @@ export async function runMigration(): Promise<void> {
   `);
 
   await db.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+  `);
+
+  await db.query(`
     CREATE TABLE IF NOT EXISTS phone_otp_challenges (
       crossmint_user_id TEXT PRIMARY KEY,
       phone_number TEXT NOT NULL,

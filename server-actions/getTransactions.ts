@@ -58,12 +58,16 @@ export async function upsertUser(
   try {
     const pool = getPool();
     await pool.query(
-      `INSERT INTO users (crossmint_user_id, wallet_address, email, phone_number, updated_at)
-       VALUES ($1, $2, $3, $4, now())
+      `INSERT INTO users (crossmint_user_id, wallet_address, email, phone_number, email_verified_at, updated_at)
+       VALUES ($1, $2, $3, $4, CASE WHEN $3 IS NOT NULL THEN now() ELSE NULL END, now())
        ON CONFLICT (crossmint_user_id) DO UPDATE SET
          wallet_address = EXCLUDED.wallet_address,
          email = COALESCE(EXCLUDED.email, users.email),
          phone_number = COALESCE(EXCLUDED.phone_number, users.phone_number),
+         email_verified_at = CASE
+           WHEN EXCLUDED.email IS NOT NULL THEN COALESCE(users.email_verified_at, now())
+           ELSE users.email_verified_at
+         END,
          updated_at = now()`,
       [crossmintUserId, walletAddress.toLowerCase(), email || null, phoneNumber || null]
     );
@@ -129,7 +133,6 @@ async function syncTransactionsFromAPI(walletAddress: string, crossmintUserId?: 
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const normalizeTransactionsResponse = (data: unknown): any[] => {
   if (Array.isArray(data)) return data;
   if (!data || typeof data !== "object") return [];
