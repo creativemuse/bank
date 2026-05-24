@@ -78,6 +78,16 @@ export async function runMigration(): Promise<void> {
   `);
 
   await db.query(`
+    CREATE TABLE IF NOT EXISTS phone_otp_challenges (
+      crossmint_user_id TEXT PRIMARY KEY,
+      phone_number TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await db.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wallet_address
     ON users (wallet_address);
   `);

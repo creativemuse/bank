@@ -108,9 +108,9 @@ async function fetchTransactionsFromAPI(walletAddress: string, crossmintUserId?:
     }
 
     const data = await response.json();
-    const transactions = data.transactions || data || [];
+    const transactions = normalizeTransactionsResponse(data);
 
-    if (Array.isArray(transactions) && transactions.length > 0) {
+    if (transactions.length > 0) {
       await storeTransactions(walletAddress, transactions, crossmintUserId);
     }
 
@@ -129,55 +129,83 @@ async function syncTransactionsFromAPI(walletAddress: string, crossmintUserId?: 
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const normalizeTransactionsResponse = (data: unknown): any[] => {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== "object") return [];
+
+  const record = data as Record<string, unknown>;
+  const nested = record.transactions;
+
+  if (Array.isArray(nested)) return nested;
+  if (nested && typeof nested === "object") return [nested];
+  return [record];
+};
+
 async function storeTransactions(
   walletAddress: string,
   transactions: any[],
   crossmintUserId?: string
 ) {
+  if (!transactions.length) return;
   if (!process.env.COCKROACHDB_URL) return;
 
-  const pool = getPool();
+  try {
+    const pool = getPool();
+    const normalizedAddress = walletAddress.toLowerCase();
 
-  for (const tx of transactions) {
-    const transactionId = tx.transaction_id || tx.id || tx.transactionId;
-    if (!transactionId) continue;
+    const validTxs = transactions.filter((tx) => tx && (tx.transaction_id || tx.id));
 
-    const sellAmount = tx.sell_amount || tx.sellAmount || {};
-    const buyAmount = tx.buy_amount || tx.buyAmount || {};
+    if (validTxs.length === 0) return;
 
-    try {
-      await pool.query(
-        `
-        INSERT INTO transactions (
-          wallet_address, crossmint_user_id, transaction_id, type, status,
-          to_address, from_address,
-          sell_amount_value, sell_amount_currency,
-          buy_amount_value, buy_amount_currency,
-          onchain_hash, raw_data, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
-        ON CONFLICT (transaction_id) DO UPDATE SET
-          status = EXCLUDED.status,
-          raw_data = EXCLUDED.raw_data,
-          updated_at = now()
-        `,
-        [
-          walletAddress.toLowerCase(),
-          crossmintUserId || null,
-          transactionId,
-          tx.type || "offramp",
-          tx.status || "unknown",
-          tx.to_address || tx.toAddress || null,
-          tx.from_address || tx.fromAddress || null,
-          sellAmount.value || sellAmount.amount || null,
-          sellAmount.currency || null,
-          buyAmount.value || buyAmount.amount || null,
-          buyAmount.currency || null,
-          tx.onchain_hash || tx.onchainHash || tx.hash || null,
-          JSON.stringify(tx),
-        ]
+    const values: unknown[] = [];
+    const placeholders: string[] = [];
+
+    for (let i = 0; i < validTxs.length; i++) {
+      const tx = validTxs[i];
+      const sellAmount = (tx.sell_amount ?? tx.sellAmount ?? {}) as Record<string, unknown>;
+      const buyAmount = (tx.buy_amount ?? tx.buyAmount ?? {}) as Record<string, unknown>;
+      const offset = i * 13;
+
+      placeholders.push(
+        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13}, now())`
       );
-    } catch (error) {
-      console.error(`Failed to store transaction ${transactionId}:`, error);
+
+      values.push(
+        normalizedAddress,
+        crossmintUserId || null,
+        tx.transaction_id || tx.id,
+        tx.type || "offramp",
+        tx.status || "unknown",
+        tx.to_address || tx.toAddress || null,
+        tx.from_address || tx.fromAddress || null,
+        sellAmount.value || sellAmount.amount || null,
+        sellAmount.currency || null,
+        buyAmount.value || buyAmount.amount || null,
+        buyAmount.currency || null,
+        tx.onchain_hash || tx.onchainHash || tx.hash || null,
+        JSON.stringify(tx)
+      );
     }
+
+    await pool.query(
+      `INSERT INTO transactions (
+        wallet_address, crossmint_user_id, transaction_id, type, status,
+        to_address, from_address,
+        sell_amount_value, sell_amount_currency,
+        buy_amount_value, buy_amount_currency,
+        onchain_hash, raw_data, updated_at
+      ) VALUES ${placeholders.join(", ")}
+      ON CONFLICT (transaction_id) DO UPDATE SET
+        status = EXCLUDED.status,
+        onchain_hash = EXCLUDED.onchain_hash,
+        raw_data = EXCLUDED.raw_data,
+        updated_at = now()`,
+      values
+    );
+
+    console.log(`[CockroachDB] Stored ${validTxs.length} transactions for wallet ${walletAddress}`);
+  } catch (error) {
+    console.error("[CockroachDB] Error storing transactions:", error);
   }
 }

@@ -7,10 +7,12 @@ import { TermsAcceptance } from "./TermsAcceptance";
 import { OnrampQuoteDisplay } from "./OnrampQuoteDisplay";
 import { PaymentIframe } from "./PaymentIframe";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
+import { OTPVerification } from "@/components/auth/OTPVerification";
 
 type HeadlessStep =
   | "idle"
   | "phone-input"
+  | "phone-otp"
   | "terms"
   | "quote"
   | "payment"
@@ -68,7 +70,7 @@ export function HeadlessOnrampFlow({
   );
   const [agreementAcceptedAt, setAgreementAcceptedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isSavingPhone, setIsSavingPhone] = useState(false);
+  const [isOtpLoading, setIsOtpLoading] = useState(false);
 
   const email = receiptEmail || user?.email || "";
 
@@ -93,13 +95,13 @@ export function HeadlessOnrampFlow({
     setHeadlessStep("phone-input");
   }, [hasWarmStartPhone, user, phoneVerifiedAt]);
 
-  const handleSavePhone = async () => {
+  const handleSendPhoneOTP = async () => {
     if (!phoneNumber.trim() || !jwt) return;
     setError(null);
-    setIsSavingPhone(true);
+    setIsOtpLoading(true);
 
     try {
-      const response = await fetch("/api/user/phone", {
+      const response = await fetch("/api/user/phone/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -110,18 +112,42 @@ export function HeadlessOnrampFlow({
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "Failed to save phone number");
+        throw new Error(data.error || "Failed to send verification code");
       }
 
-      setPhoneVerifiedAt(data.phoneNumberVerifiedAt);
-      await refreshUserProfile();
-      setHeadlessStep("terms");
+      setHeadlessStep("phone-otp");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to save phone number";
+      const message = err instanceof Error ? err.message : "Failed to send verification code";
       setError(message);
     } finally {
-      setIsSavingPhone(false);
+      setIsOtpLoading(false);
     }
+  };
+
+  const handleVerifyPhoneOTP = async (code: string) => {
+    if (!jwt) return;
+
+    const response = await fetch("/api/user/phone/verify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ phoneNumber: phoneNumber.trim(), code }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Invalid verification code");
+    }
+
+    setPhoneVerifiedAt(data.phoneNumberVerifiedAt);
+    await refreshUserProfile();
+    setHeadlessStep("terms");
+  };
+
+  const handleResendPhoneOTP = async () => {
+    await handleSendPhoneOTP();
   };
 
   const handleTermsAccepted = async (timestamp: string) => {
@@ -254,7 +280,7 @@ export function HeadlessOnrampFlow({
             type="tel"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSavePhone()}
+            onKeyDown={(e) => e.key === "Enter" && handleSendPhoneOTP()}
             placeholder="+1 (555) 555-5555"
             autoFocus
             className="w-full rounded-md border border-gray-600 bg-gray-300 px-4 py-3 text-sm text-black placeholder:text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -263,12 +289,23 @@ export function HeadlessOnrampFlow({
             Enter your phone number in E.164 format (e.g., +12025551234)
           </p>
           <PrimaryButton
-            onClick={handleSavePhone}
-            disabled={!phoneNumber.trim() || isSavingPhone || !jwt}
+            onClick={handleSendPhoneOTP}
+            disabled={!phoneNumber.trim() || isOtpLoading || !jwt}
           >
-            {isSavingPhone ? "Saving..." : "Continue"}
+            {isOtpLoading ? "Sending..." : "Send Verification Code"}
           </PrimaryButton>
         </div>
+      )}
+
+      {headlessStep === "phone-otp" && (
+        <OTPVerification
+          type="phone"
+          destination={phoneNumber}
+          onVerify={handleVerifyPhoneOTP}
+          onResend={handleResendPhoneOTP}
+          error={error}
+          isVerifying={isOtpLoading}
+        />
       )}
 
       {headlessStep === "terms" && (
