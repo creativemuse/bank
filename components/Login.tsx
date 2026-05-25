@@ -13,5 +13,9 @@ export function Login() {
     }
   }, [login, status]);
 
-  return <CrossmintLoginModal />;
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center">
+      <CrossmintLoginModal />
+    </div>
+  );
 }
