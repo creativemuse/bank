@@ -7,6 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 
 export function CrossmintLoginModal() {
   const { showLogin, setShowLogin, status } = useAuth();
+  const isLoggedOut = status === "logged-out";
+  const modalOpen = isLoggedOut || showLogin;
 
   useEffect(() => {
     if (status === "logged-in" && showLogin) {
@@ -14,8 +16,13 @@ export function CrossmintLoginModal() {
     }
   }, [status, showLogin, setShowLogin]);
 
+  const handleClose = () => {
+    if (isLoggedOut) return;
+    setShowLogin(false);
+  };
+
   return (
-    <Modal open={showLogin} onClose={() => setShowLogin(false)} title="Welcome to CREATIVE Finance">
+    <Modal open={modalOpen} onClose={handleClose} title="Welcome to CREATIVE Finance">
       <div className="flex flex-col items-center gap-4 py-2">
         <p className="text-center text-sm text-gray-600 dark:text-gray-400">
           Sign in with email or Google to access your wallet

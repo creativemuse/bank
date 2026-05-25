@@ -117,7 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setEmailVerifiedAt(undefined);
     setPhoneNumberVerifiedAt(undefined);
-    setShowLogin(false);
+    // Show login modal immediately — Login only renders CrossmintLoginModal (no page chrome).
+    setShowLogin(true);
   }, [crossmintLogout]);
 
   const value: AuthContextValue = useMemo(
