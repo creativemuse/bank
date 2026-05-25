@@ -1,0 +1,15 @@
+/**
+ * Crossmint EmbeddedAuthForm header override
+ *
+ * @crossmint/client-sdk-react-ui@4.1.5 does not expose hideHeader / showTitle on
+ * EmbeddedAuthForm. The form always renders authModalTitle + the hardcoded subtitle
+ * "Access using one of the options below." when step === "initial".
+ *
+ * We use a custom Modal title (with Conthrax on CREATIVE), so this hides that block.
+ *
+ * DOM assumption (re-test login modal after any @crossmint/client-sdk-react-ui upgrade):
+ * - Root > div > div (header block, no button/input) immediately precedes the Google sign-in block.
+ */
+.crossmintFormWrap > div > div:not(:has(button)):not(:has(input)):has(+ * button) {
+  display: none;
+}

@@ -4,6 +4,14 @@ import { useEffect } from "react";
 import { EmbeddedAuthForm } from "@crossmint/client-sdk-react-ui";
 import { Modal } from "@/components/common/Modal";
 import { useAuth } from "@/context/AuthContext";
+import styles from "./CrossmintLoginModal.module.css";
+
+const loginModalTitle = (
+  <>
+    Welcome to <span style={{ fontFamily: "var(--font-conthrax), sans-serif" }}>CREATIVE</span>{" "}
+    Finance
+  </>
+);
 
 export function CrossmintLoginModal() {
   const { showLogin, setShowLogin, status } = useAuth();
@@ -22,12 +30,12 @@ export function CrossmintLoginModal() {
   };
 
   return (
-    <Modal open={modalOpen} onClose={handleClose} title="Welcome to CREATIVE Finance">
+    <Modal open={modalOpen} onClose={handleClose} title={loginModalTitle}>
       <div className="flex flex-col items-center gap-4 py-2">
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-          Sign in with email or Google to access your wallet
-        </p>
-        <EmbeddedAuthForm />
+        <p className="text-center text-sm text-gray-600 dark:text-gray-400">Google or Email</p>
+        <div className={`${styles.crossmintFormWrap} w-full`}>
+          <EmbeddedAuthForm />
+        </div>
         <p className="text-center text-xs text-gray-500">
           By continuing, you accept the{" "}
           <a

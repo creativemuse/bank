@@ -88,10 +88,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <WagmiProvider config={wagmiConfig}>
         <AaveProvider client={aaveClient}>
           <CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}>
-            <CrossmintAuthProvider
-              loginMethods={["email", "google"]}
-              authModalTitle="Welcome to CREATIVE Finance"
-            >
+            <CrossmintAuthProvider loginMethods={["email", "google"]}>
               <AuthProvider>
                 <CrossmintWalletProvider
                   showPasskeyHelpers={true}
