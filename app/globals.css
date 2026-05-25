@@ -75,13 +75,6 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* Hide Crossmint EmbeddedAuthForm duplicate title when custom modal header is shown */
-.crossmint-embedded-auth-hide-header
-  > div
-  > div:not(:has(button)):not(:has(input)):has(+ * button) {
-  display: none;
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;

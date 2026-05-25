@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { EmbeddedAuthForm } from "@crossmint/client-sdk-react-ui";
 import { Modal } from "@/components/common/Modal";
 import { useAuth } from "@/context/AuthContext";
+import styles from "./CrossmintLoginModal.module.css";
 
 const loginModalTitle = (
   <>
@@ -32,7 +33,7 @@ export function CrossmintLoginModal() {
     <Modal open={modalOpen} onClose={handleClose} title={loginModalTitle}>
       <div className="flex flex-col items-center gap-4 py-2">
         <p className="text-center text-sm text-gray-600 dark:text-gray-400">Google or Email</p>
-        <div className="crossmint-embedded-auth-hide-header w-full">
+        <div className={`${styles.crossmintFormWrap} w-full`}>
           <EmbeddedAuthForm />
         </div>
         <p className="text-center text-xs text-gray-500">
