@@ -23,7 +23,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 
   const textarea = document.createElement("textarea");
   textarea.value = text;
-  textarea.setAttribute("readonly", "");
+  textarea.readOnly = true;
   textarea.style.position = "fixed";
   textarea.style.top = "0";
   textarea.style.left = "0";
@@ -35,10 +35,11 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   textarea.style.boxShadow = "none";
   textarea.style.background = "transparent";
   textarea.style.opacity = "0";
+  textarea.style.fontSize = "16px";
   textarea.setAttribute("aria-hidden", "true");
 
   document.body.appendChild(textarea);
-  textarea.focus();
+  textarea.focus({ preventScroll: true });
   textarea.select();
   textarea.setSelectionRange(0, text.length);
 
