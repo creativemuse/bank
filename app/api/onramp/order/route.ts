@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateJWT } from "@/utils/coinbase-sdk";
-import { getStytchClient } from "@/lib/stytch";
+import { getUserIdFromCrossmintJwt } from "@/lib/crossmint-session";
 
 /**
  * POST /api/onramp/order
  * Creates a Coinbase Onramp v2 order and returns the paymentLink.
- * Validates Stytch session before accepting the order.
+ * Validates Crossmint Auth session before accepting the order.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -37,14 +37,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate Stytch session server-side (mandatory for protected actions)
     if (!sessionToken) {
       return NextResponse.json({ error: "Session token is required" }, { status: 401 });
     }
 
     try {
-      const stytch = getStytchClient();
-      await stytch.sessions.authenticate({ session_token: sessionToken });
+      await getUserIdFromCrossmintJwt(sessionToken);
     } catch {
       return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
     }

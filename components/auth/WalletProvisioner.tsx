@@ -19,7 +19,7 @@ function isPasskeyGestureError(err: any): boolean {
 type SupportedChain = "base" | "base-sepolia";
 
 /**
- * Loads or creates the user's Crossmint wallet after BYOA (Stytch) login.
+ * Loads or creates the user's Crossmint wallet after Crossmint Auth login.
  *
  * CRITICAL: `getWallet` from the Crossmint SDK swallows 404 errors internally
  * (returns `undefined` instead of throwing). Do NOT rely on try/catch — check

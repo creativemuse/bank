@@ -4,17 +4,16 @@
 
 Creative Bank is a fintech-grade DeFi platform on Base. The architecture separates three concerns:
 
-### Identity Layer (Stytch)
+### Identity Layer (Crossmint Auth)
 
-- Stytch Headless SDK handles login (Email OTP, Google OAuth, EVM Crypto Wallet)
-- Stytch Node SDK on backend for session validation, OTP send/verify
-- JwtSync component bridges Stytch JWT → Crossmint via `useCrossmint().setJwt()`
-- Phone verification stores `phoneNumberVerifiedAt` in Stytch `trusted_metadata` for Coinbase "Warm Start"
+- Crossmint Auth handles login (Email OTP, Google OAuth) via `CrossmintAuthProvider` + `EmbeddedAuthForm`
+- Server routes: `/api/auth/crossmint/refresh`, `/api/auth/crossmint/logout` (`CROSSMINT_SERVER_API_KEY`)
+- Protected APIs validate the Crossmint session JWT via `@crossmint/server-sdk`
+- User webhooks (`users.created`, `users.updated`) sync profile data to CockroachDB
 
-### Wallet Infrastructure (Crossmint BYOA)
+### Wallet Infrastructure (Crossmint)
 
-- Crossmint provides non-custodial smart wallets with passkey signers
-- Configured for BYOA — accepts Stytch JWTs, no internal auth
+- Crossmint provides non-custodial smart wallets with passkey signers and email recovery
 - Wallet address is the stable user identifier across all systems
 
 ### Membership Layer (Unlock Protocol)

@@ -4,12 +4,11 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-import { useStytch, useStytchSession, useStytchUser } from "@stytch/nextjs";
+import { useCrossmintAuth } from "@crossmint/client-sdk-react-ui";
 
 type AuthStatus = "logged-out" | "logged-in" | "initializing";
 
@@ -17,13 +16,14 @@ interface AuthUser {
   id: string;
   email: string;
   phoneNumber?: string;
-  phoneNumberVerifiedAt?: string;
 }
 
 interface AuthContextValue {
   status: AuthStatus;
   user: AuthUser | null;
+  /** Crossmint session JWT for Authorization: Bearer headers */
   jwt: string | null;
+  /** @deprecated Use jwt — kept for API routes that still read sessionToken from the body */
   sessionToken: string | null;
   login: () => void;
   logout: () => void;
@@ -33,114 +33,58 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const stytch = useStytch();
-  const { session } = useStytchSession();
-  const { user: stytchUser, isInitialized } = useStytchUser();
-  const [showLogin, setShowLogin] = useState(false);
-  const [jwt, setJwt] = useState<string | null>(null);
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
+function mapAuthStatus(
+  crossmintStatus: "logged-in" | "logged-out" | "in-progress" | "initializing"
+): AuthStatus {
+  if (crossmintStatus === "logged-in") return "logged-in";
+  if (crossmintStatus === "initializing" || crossmintStatus === "in-progress") {
+    return "initializing";
+  }
+  return "logged-out";
+}
 
-  const status: AuthStatus = useMemo(() => {
-    if (!isInitialized) return "initializing";
-    if (session && stytchUser) return "logged-in";
-    return "logged-out";
-  }, [isInitialized, session, stytchUser]);
+/**
+ * Bridges Crossmint Auth into the app-wide useAuth() interface.
+ * Must be rendered inside CrossmintAuthProvider.
+ */
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const crossmintAuth = useCrossmintAuth();
+  const [showLogin, setShowLogin] = useState(false);
 
   const user: AuthUser | null = useMemo(() => {
-    if (!stytchUser) return null;
-
-    const primaryEmail =
-      stytchUser.emails?.find((e) => e.verified)?.email ?? stytchUser.emails?.[0]?.email ?? "";
-
-    const verifiedPhone = stytchUser.phone_numbers?.find((p) => p.verified);
-    const phoneNumberVerifiedAt = stytchUser.trusted_metadata?.phoneNumberVerifiedAt as
-      | string
-      | undefined;
-
+    if (!crossmintAuth.user) return null;
     return {
-      id: stytchUser.user_id,
-      email: primaryEmail,
-      phoneNumber: verifiedPhone?.phone_number,
-      phoneNumberVerifiedAt,
+      id: crossmintAuth.user.id,
+      email: crossmintAuth.user.email ?? "",
+      phoneNumber: crossmintAuth.user.phoneNumber,
     };
-  }, [stytchUser]);
+  }, [crossmintAuth.user]);
 
-  // Fetch session tokens for Crossmint BYOA (JWT) and server API calls (opaque token)
-  useEffect(() => {
-    if (!session) {
-      setJwt(null);
-      setSessionToken(null);
-      return;
-    }
-
-    const tokens = stytch.session.getTokens();
-    if (tokens?.session_jwt) setJwt(tokens.session_jwt);
-    if (tokens?.session_token) setSessionToken(tokens.session_token);
-  }, [session, stytch.session]);
-
-  // Refresh tokens when session ID changes (handles background refreshes)
-  useEffect(() => {
-    if (!session?.session_id) return;
-
-    const tokens = stytch.session.getTokens();
-    if (tokens?.session_jwt) setJwt(tokens.session_jwt);
-    if (tokens?.session_token) setSessionToken(tokens.session_token);
-  }, [session?.session_id, stytch.session]);
-
-  // On mount: if Stytch cookies exist but session is null, bootstrap the
-  // session so BYOA apps pick it up immediately after an OAuth redirect.
-  useEffect(() => {
-    if (session) return;
-    if (!isInitialized) return;
-
-    const cookies = document.cookie.split("; ");
-    const sessionToken = cookies
-      .find((row) => row.startsWith("stytch_session="))
-      ?.split("=")[1];
-    const sessionJwt = cookies
-      .find((row) => row.startsWith("stytch_session_jwt="))
-      ?.split("=")[1];
-
-    if (sessionToken) {
-      try {
-        stytch.session.updateSession({
-          session_token: sessionToken,
-          ...(sessionJwt && { session_jwt: sessionJwt }),
-        });
-      } catch {
-        // Cookie may be stale; ignore and let natural flow continue
-      }
-    }
-  }, [isInitialized, session, stytch.session]);
+  const status = mapAuthStatus(crossmintAuth.status);
+  const jwt = crossmintAuth.jwt ?? null;
 
   const login = useCallback(() => {
     setShowLogin(true);
-  }, []);
+    crossmintAuth.login();
+  }, [crossmintAuth]);
 
   const logout = useCallback(async () => {
-    try {
-      await stytch.session.revoke();
-    } catch {
-      // Session may already be expired
-    }
-    setJwt(null);
-    setSessionToken(null);
     setShowLogin(false);
-  }, [stytch.session]);
+    await crossmintAuth.logout();
+  }, [crossmintAuth]);
 
   const value: AuthContextValue = useMemo(
     () => ({
       status,
       user,
       jwt,
-      sessionToken,
+      sessionToken: jwt,
       login,
       logout,
       showLogin,
       setShowLogin,
     }),
-    [status, user, jwt, sessionToken, login, logout, showLogin]
+    [status, user, jwt, login, logout, showLogin]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

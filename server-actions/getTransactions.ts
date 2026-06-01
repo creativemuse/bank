@@ -8,7 +8,7 @@ import { getPool } from "@/lib/cockroachdb";
  * Primary lookup is by wallet_address (stable identifier across auth migrations).
  * Stytch user ID is stored alongside for identity correlation.
  */
-export async function getTransactions(walletAddress: string, stytchUserId?: string) {
+export async function getTransactions(walletAddress: string, crossmintUserId?: string) {
   if (!walletAddress) {
     throw new Error("Wallet address is required to fetch transactions");
   }
@@ -30,7 +30,7 @@ export async function getTransactions(walletAddress: string, stytchUserId?: stri
         );
 
         // Background sync (don't await)
-        syncTransactionsFromAPI(walletAddress, stytchUserId).catch((err) =>
+        syncTransactionsFromAPI(walletAddress, crossmintUserId).catch((err) =>
           console.error("Background sync failed:", err)
         );
 
@@ -44,14 +44,14 @@ export async function getTransactions(walletAddress: string, stytchUserId?: stri
     }
   }
 
-  return await fetchTransactionsFromAPI(walletAddress, stytchUserId);
+  return await fetchTransactionsFromAPI(walletAddress, crossmintUserId);
 }
 
 /**
- * Upserts a user record linking Stytch identity to wallet address.
+ * Upserts a user record linking Crossmint Auth identity to wallet address.
  */
 export async function upsertUser(
-  stytchUserId: string,
+  crossmintUserId: string,
   walletAddress: string,
   email?: string,
   phoneNumber?: string
@@ -61,21 +61,22 @@ export async function upsertUser(
   try {
     const pool = getPool();
     await pool.query(
-      `INSERT INTO users (stytch_user_id, wallet_address, email, phone_number, updated_at)
-       VALUES ($1, $2, $3, $4, now())
+      `INSERT INTO users (stytch_user_id, crossmint_user_id, wallet_address, email, phone_number, updated_at)
+       VALUES ($1, $1, $2, $3, $4, now())
        ON CONFLICT (stytch_user_id) DO UPDATE SET
+         crossmint_user_id = EXCLUDED.crossmint_user_id,
          wallet_address = EXCLUDED.wallet_address,
          email = COALESCE(EXCLUDED.email, users.email),
          phone_number = COALESCE(EXCLUDED.phone_number, users.phone_number),
          updated_at = now()`,
-      [stytchUserId, walletAddress.toLowerCase(), email || null, phoneNumber || null]
+      [crossmintUserId, walletAddress.toLowerCase(), email || null, phoneNumber || null]
     );
   } catch (error) {
     console.error("[CockroachDB] Failed to upsert user:", error);
   }
 }
 
-async function fetchTransactionsFromAPI(walletAddress: string, stytchUserId?: string) {
+async function fetchTransactionsFromAPI(walletAddress: string, crossmintUserId?: string) {
   if (!process.env.COINBASE_API_KEY_ID || !process.env.COINBASE_API_KEY_SECRET) {
     console.warn("Coinbase API keys not configured, skipping transaction fetch");
     return [];
@@ -126,7 +127,7 @@ async function fetchTransactionsFromAPI(walletAddress: string, stytchUserId?: st
     const data = await response.json();
     const transactions = data.transactions || [];
 
-    await storeTransactions(walletAddress, transactions, stytchUserId);
+    await storeTransactions(walletAddress, transactions, crossmintUserId);
 
     console.log(
       `Fetched and stored ${transactions.length} transactions for wallet ${walletAddress}`
@@ -143,9 +144,9 @@ async function fetchTransactionsFromAPI(walletAddress: string, stytchUserId?: st
   }
 }
 
-async function syncTransactionsFromAPI(walletAddress: string, stytchUserId?: string) {
+async function syncTransactionsFromAPI(walletAddress: string, crossmintUserId?: string) {
   try {
-    await fetchTransactionsFromAPI(walletAddress, stytchUserId);
+    await fetchTransactionsFromAPI(walletAddress, crossmintUserId);
   } catch (error) {
     console.error("Error syncing transactions:", error);
   }
@@ -154,7 +155,7 @@ async function syncTransactionsFromAPI(walletAddress: string, stytchUserId?: str
 async function storeTransactions(
   walletAddress: string,
   transactions: any[],
-  stytchUserId?: string
+  crossmintUserId?: string
 ) {
   if (!transactions || transactions.length === 0) return;
   if (!process.env.COCKROACHDB_URL) return;
@@ -180,7 +181,7 @@ async function storeTransactions(
       );
       values.push(
         normalizedAddress,
-        stytchUserId || null,
+        crossmintUserId || null,
         tx.transaction_id || tx.id,
         tx.type || "offramp",
         tx.status || "unknown",

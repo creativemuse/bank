@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStytchClient } from "@/lib/stytch";
 import { getPool } from "@/lib/cockroachdb";
+import { getUserIdFromCrossmintJwt } from "@/lib/crossmint-session";
 
 export type AuthedSession = {
   userId: string;
@@ -12,14 +12,11 @@ type AuthResult =
   | { ok: false; response: NextResponse };
 
 /**
- * Validates a Stytch session and resolves the authed user's wallet from
- * CockroachDB. Session token is read from (in order):
- *   1. `Authorization: Bearer <token>` header
- *   2. `x-stytch-session-token` header
- *   3. `bodySessionToken` argument (for POST/PATCH that put it in the body)
- *
- * Returns the session's canonical wallet (lowercased) — never trust a
- * wallet address from the client; always use the one returned here.
+ * Validates a Crossmint Auth JWT and resolves the user's wallet from CockroachDB.
+ * Token is read from (in order):
+ *   1. `Authorization: Bearer <jwt>` header
+ *   2. `x-crossmint-session-jwt` header
+ *   3. `bodySessionToken` argument (legacy body field name)
  */
 export async function requireAuthedWallet(
   request: NextRequest,
@@ -27,7 +24,7 @@ export async function requireAuthedWallet(
 ): Promise<AuthResult> {
   const token =
     extractBearer(request.headers.get("authorization")) ??
-    request.headers.get("x-stytch-session-token") ??
+    request.headers.get("x-crossmint-session-jwt") ??
     (typeof bodySessionToken === "string" ? bodySessionToken : null);
 
   if (!token) {
@@ -39,9 +36,7 @@ export async function requireAuthedWallet(
 
   let userId: string;
   try {
-    const stytch = getStytchClient();
-    const res = await stytch.sessions.authenticate({ session_token: token });
-    userId = res.session.user_id;
+    userId = await getUserIdFromCrossmintJwt(token);
   } catch {
     return {
       ok: false,
@@ -58,7 +53,9 @@ export async function requireAuthedWallet(
 
   const pool = getPool();
   const { rows } = await pool.query(
-    `SELECT wallet_address FROM users WHERE stytch_user_id = $1 LIMIT 1`,
+    `SELECT wallet_address FROM users
+     WHERE crossmint_user_id = $1 OR stytch_user_id = $1
+     LIMIT 1`,
     [userId]
   );
 
@@ -75,12 +72,6 @@ export async function requireAuthedWallet(
   };
 }
 
-/**
- * If the client passed a wallet address (query param or body field), confirm
- * it matches the session's canonical wallet. Returns a 403 response if not.
- * Callers should still use `session.walletAddress` — this only guards against
- * accidental cross-wallet requests from the client.
- */
 export function assertWalletMatches(
   sessionWallet: string,
   claimed: unknown
