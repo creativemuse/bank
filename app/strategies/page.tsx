@@ -144,7 +144,7 @@ function StrategiesContent({
           }
         />
 
-        <PremiumGuard requiredTier="Creative Brand">
+        <PremiumGuard requiredTier="Creative Creator">
           <YearnVaultCard
             vaultAddress={CREATIVE_BANK_VAULT.address}
             assetAddress={CREATIVE_BANK_VAULT.asset}
