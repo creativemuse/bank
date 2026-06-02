@@ -3,7 +3,14 @@
 import { FormEvent, useCallback, useMemo, useState } from "react";
 import { useAccount, useWalletClient, useReadContract } from "wagmi";
 import { useWallet, EVMWallet } from "@crossmint/client-sdk-react-ui";
-import { createWalletClient, custom, encodeFunctionData, type WalletClient, type Address, formatUnits } from "viem";
+import {
+  createWalletClient,
+  custom,
+  encodeFunctionData,
+  type WalletClient,
+  type Address,
+  formatUnits,
+} from "viem";
 import { base, baseSepolia } from "viem/chains";
 import {
   bigDecimal,
@@ -89,7 +96,13 @@ type VaultManagementModalProps = {
 
 type TabId = "fee" | "withdraw-fees" | "transfer";
 
-export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManagerAddress }: VaultManagementModalProps) {
+export function VaultManagementModal({
+  open,
+  onClose,
+  vault,
+  onSuccess,
+  feeManagerAddress,
+}: VaultManagementModalProps) {
   const { data: wagmiWalletClient } = useWalletClient();
   const { wallet: crossmintWallet } = useWallet();
 
@@ -170,7 +183,10 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
         });
         const addrs = await walletClient.getAddresses();
         await walletClient.sendTransaction({
-          to: feeManagerAddress, data, chain: base, account: addrs[0] as Address,
+          to: feeManagerAddress,
+          data,
+          chain: base,
+          account: addrs[0] as Address,
         });
       }
       console.log("[VaultManagement] splitRevenue succeeded — fees distributed to recipients");
@@ -197,7 +213,15 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
   // Check if the fee manager holds undistributed aTokens
   const { data: feeManagerATokenBalance, refetch: refetchFeeManagerBalance } = useReadContract({
     address: aTokenAddress,
-    abi: [{ inputs: [{ internalType: "address", name: "account", type: "address" }], name: "balanceOf", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" }] as const,
+    abi: [
+      {
+        inputs: [{ internalType: "address", name: "account", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ] as const,
     functionName: "balanceOf",
     args: feeManagerAddress ? [feeManagerAddress] : undefined,
     chainId: 8453,
@@ -212,11 +236,11 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
   const chainId = aaveChainId(Number(vault.chainId));
 
   // Use API data when available, fall back to on-chain reads
-  const currentFee = vault.fee?.formatted
-    ?? (onChainFee != null ? (Number(onChainFee) / 1e18 * 100).toFixed(0) : "—");
-  const claimableFeesRaw = onChainClaimableFees != null
-    ? formatUnits(onChainClaimableFees as bigint, 6)
-    : null;
+  const currentFee =
+    vault.fee?.formatted ??
+    (onChainFee != null ? ((Number(onChainFee) / 1e18) * 100).toFixed(0) : "—");
+  const claimableFeesRaw =
+    onChainClaimableFees != null ? formatUnits(onChainClaimableFees as bigint, 6) : null;
   const feesBalanceValue = vault.feesBalance?.amount?.value ?? claimableFeesRaw ?? "0";
   const totalFeeRevenueValue = vault.totalFeeRevenue?.amount?.value ?? "0";
 
@@ -249,9 +273,11 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
         }).andThen(sendTransaction);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        setErrorMessage(msg.includes("Service panicked")
-          ? "The Aave API is temporarily unavailable. Please try again in a few minutes."
-          : `Set fee failed: ${msg}`);
+        setErrorMessage(
+          msg.includes("Service panicked")
+            ? "The Aave API is temporarily unavailable. Please try again in a few minutes."
+            : `Set fee failed: ${msg}`
+        );
         return;
       }
       if (result.isErr()) {
@@ -272,9 +298,7 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
         setErrorMessage("Wallet not connected");
         return;
       }
-      const amount = withdrawMax
-        ? { max: true as const }
-        : { exact: bigDecimal(withdrawAmount) };
+      const amount = withdrawMax ? { max: true as const } : { exact: bigDecimal(withdrawAmount) };
 
       const userAddr = crossmintWallet?.address ?? (await walletClient.getAddresses())?.[0];
 
@@ -324,7 +348,10 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
             onClose();
             return;
           }
-          console.warn("[VaultManagement] Layer 2 failed (no valid response). Trying Layer 3…", gqlData);
+          console.warn(
+            "[VaultManagement] Layer 2 failed (no valid response). Trying Layer 3…",
+            gqlData
+          );
         } catch (gqlErr) {
           console.warn("[VaultManagement] Layer 2 failed:", gqlErr);
         }
@@ -334,7 +361,10 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
         // The fee manager's owner IS the user, so these calls succeed without AA issues.
         if (feeManagerAddress) {
           try {
-            console.log("[VaultManagement] Layer 3: Calling fee manager withdrawFees() at", feeManagerAddress);
+            console.log(
+              "[VaultManagement] Layer 3: Calling fee manager withdrawFees() at",
+              feeManagerAddress
+            );
             if (crossmintWallet) {
               const evmWallet = EVMWallet.from(crossmintWallet);
               const txResult = await evmWallet.sendTransaction({
@@ -349,7 +379,10 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
                 functionName: "withdrawFees",
               });
               const hash = await walletClient.sendTransaction({
-                to: feeManagerAddress, data, chain: base, account: userAddr as Address,
+                to: feeManagerAddress,
+                data,
+                chain: base,
+                account: userAddr as Address,
               });
               console.log("[VaultManagement] Layer 3 success:", hash);
             }
@@ -363,7 +396,10 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
             console.warn("[VaultManagement] Layer 3 failed:", l3Err);
             // Try claimRewards on fee manager as well
             try {
-              console.log("[VaultManagement] Layer 3b: Calling fee manager claimRewards() at", feeManagerAddress);
+              console.log(
+                "[VaultManagement] Layer 3b: Calling fee manager claimRewards() at",
+                feeManagerAddress
+              );
               if (crossmintWallet) {
                 const evmWallet = EVMWallet.from(crossmintWallet);
                 const txResult = await evmWallet.sendTransaction({
@@ -378,7 +414,10 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
                   functionName: "claimRewards",
                 });
                 const hash = await walletClient.sendTransaction({
-                  to: feeManagerAddress, data, chain: base, account: userAddr as Address,
+                  to: feeManagerAddress,
+                  data,
+                  chain: base,
+                  account: userAddr as Address,
                 });
                 console.log("[VaultManagement] Layer 3b success:", hash);
               }
@@ -418,7 +457,10 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
               args: [userAddr as Address],
             });
             const hash = await walletClient.sendTransaction({
-              to: vault.address as Address, data, chain: base, account: userAddr as Address,
+              to: vault.address as Address,
+              data,
+              chain: base,
+              account: userAddr as Address,
             });
             console.log("[VaultManagement] Layer 4 success:", hash);
           }
@@ -432,16 +474,15 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
           // ── Layer 5: All fallbacks exhausted — show instructions ──
           setErrorMessage(
             "All fee withdrawal methods failed. The Aave API is currently down, and Crossmint's " +
-            "transaction simulation doesn't support owner-gated vault calls yet. " +
-            "You can try withdrawing directly on Basescan: " +
-            `https://basescan.org/address/${vault.address}#writeProxyContract`
+              "transaction simulation doesn't support owner-gated vault calls yet. " +
+              "You can try withdrawing directly on Basescan: " +
+              `https://basescan.org/address/${vault.address}#writeProxyContract`
           );
         } finally {
           setDirectTxLoading(false);
         }
         return;
       }
-
 
       if (result.isErr()) {
         setErrorMessage(result.error?.message ?? "Withdraw fees failed");
@@ -450,8 +491,22 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
       onSuccess?.();
       onClose();
     },
-    [withdrawMax, withdrawAmount, walletClient, crossmintWallet, chainId, vault.address, feeManagerAddress,
-      withdrawFees, sendTransaction, onChainClaimableFees, refetchClaimable, callSplitRevenue, onSuccess, onClose],
+    [
+      withdrawMax,
+      withdrawAmount,
+      walletClient,
+      crossmintWallet,
+      chainId,
+      vault.address,
+      feeManagerAddress,
+      withdrawFees,
+      sendTransaction,
+      onChainClaimableFees,
+      refetchClaimable,
+      callSplitRevenue,
+      onSuccess,
+      onClose,
+    ]
   );
 
   const handleTransferOwnership = useCallback(
@@ -476,9 +531,11 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
         }).andThen(sendTransaction);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        setErrorMessage(msg.includes("Service panicked")
-          ? "The Aave API is temporarily unavailable. Please try again in a few minutes."
-          : `Transfer ownership failed: ${msg}`);
+        setErrorMessage(
+          msg.includes("Service panicked")
+            ? "The Aave API is temporarily unavailable. Please try again in a few minutes."
+            : `Transfer ownership failed: ${msg}`
+        );
         return;
       }
       if (result.isErr()) {
@@ -637,13 +694,16 @@ export function VaultManagementModal({ open, onClose, vault, onSuccess, feeManag
                 disabled={isBusy || (!withdrawMax && !withdrawAmount.trim())}
                 className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:border-slate-700 hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-400"
               >
-                {withdrawFeesState.loading || sendState.loading || directTxLoading ? "Processing…" : "Withdraw fees"}
+                {withdrawFeesState.loading || sendState.loading || directTxLoading
+                  ? "Processing…"
+                  : "Withdraw fees"}
               </button>
 
               {hasUndistributedFees && (
                 <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                   <p className="text-xs text-amber-800">
-                    <strong>{formatUnits(undistributedFees!, 6)} aBaseUSDC</strong> in the fee manager is waiting to be distributed to recipients.
+                    <strong>{formatUnits(undistributedFees!, 6)} aBaseUSDC</strong> in the fee
+                    manager is waiting to be distributed to recipients.
                   </p>
                   <button
                     type="button"

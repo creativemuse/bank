@@ -14,9 +14,6 @@ import { AaveProvider, AaveClient, production } from "@aave/react";
 import { wagmiConfig } from "@/lib/wagmiConfig";
 import { MembershipProvider } from "@/context/MembershipContext";
 import { AuthProvider } from "@/context/AuthContext";
-import { WalletProvisioner } from "@/components/auth/WalletProvisioner";
-import { WalletRecoveryBootstrap } from "@/components/auth/WalletRecoveryBootstrap";
-import { WalletProvisioningProvider } from "@/context/WalletProvisioningContext";
 
 const aaveClient = AaveClient.create({
   environment: {
@@ -97,15 +94,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
               logoutRoute="/api/auth/crossmint/logout"
             >
               <AuthProvider>
-                <CrossmintWalletProvider showPasskeyHelpers={true}>
-                  <WalletProvisioningProvider>
-                    <WalletProvisioner chain={chain} />
-                    <WalletRecoveryBootstrap />
-                    <MembershipProvider>
-                      {children}
-                      <Toaster richColors position="top-center" closeButton />
-                    </MembershipProvider>
-                  </WalletProvisioningProvider>
+                <CrossmintWalletProvider
+                  showPasskeyHelpers={true}
+                  createOnLogin={{
+                    chain,
+                    signers: [{ type: "passkey" }],
+                    recovery: { type: "email" },
+                  }}
+                >
+                  <MembershipProvider>
+                    {children}
+                    <Toaster richColors position="top-center" closeButton />
+                  </MembershipProvider>
                 </CrossmintWalletProvider>
               </AuthProvider>
             </CrossmintAuthProvider>

@@ -249,7 +249,7 @@ export async function handleCrossmintTransferEvent(
 
   await pool.query(
     `INSERT INTO transactions (
-        wallet_address, stytch_user_id, transaction_id, type, status,
+        wallet_address, crossmint_user_id, transaction_id, type, status,
         to_address, from_address,
         buy_amount_value, buy_amount_currency,
         sell_amount_value, sell_amount_currency,
@@ -312,10 +312,9 @@ export async function handleCrossmintUserEvent(
     if (!crossmintUserId) return;
 
     await pool.query(
-      `INSERT INTO users (stytch_user_id, crossmint_user_id, email, phone_number, updated_at)
-       VALUES ($1, $1, $2, $3, now())
-       ON CONFLICT (stytch_user_id) DO UPDATE SET
-         crossmint_user_id = EXCLUDED.crossmint_user_id,
+      `INSERT INTO users (crossmint_user_id, email, phone_number, updated_at)
+       VALUES ($1, $2, $3, now())
+       ON CONFLICT (crossmint_user_id) DO UPDATE SET
          email = COALESCE(EXCLUDED.email, users.email),
          phone_number = COALESCE(EXCLUDED.phone_number, users.phone_number),
          updated_at = now()`,

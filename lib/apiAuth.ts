@@ -1,31 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/cockroachdb";
-import { getUserIdFromCrossmintJwt } from "@/lib/crossmint-session";
+import { verifyCrossmintJwt } from "@/lib/crossmintAuth";
 
 export type AuthedSession = {
   userId: string;
   walletAddress: string;
 };
 
-type AuthResult =
-  | { ok: true; session: AuthedSession }
-  | { ok: false; response: NextResponse };
+type AuthResult = { ok: true; session: AuthedSession } | { ok: false; response: NextResponse };
 
 /**
- * Validates a Crossmint Auth JWT and resolves the user's wallet from CockroachDB.
+ * Validates a Crossmint JWT and resolves the authed user's wallet from CockroachDB.
  * Token is read from (in order):
  *   1. `Authorization: Bearer <jwt>` header
- *   2. `x-crossmint-session-jwt` header
- *   3. `bodySessionToken` argument (legacy body field name)
+ *   2. `x-crossmint-auth-token` header
+ *   3. `bodyAuthToken` argument (legacy sessionToken field in POST bodies)
  */
 export async function requireAuthedWallet(
   request: NextRequest,
-  bodySessionToken?: unknown
+  bodyAuthToken?: unknown
 ): Promise<AuthResult> {
   const token =
     extractBearer(request.headers.get("authorization")) ??
-    request.headers.get("x-crossmint-session-jwt") ??
-    (typeof bodySessionToken === "string" ? bodySessionToken : null);
+    request.headers.get("x-crossmint-auth-token") ??
+    (typeof bodyAuthToken === "string" ? bodyAuthToken : null);
 
   if (!token) {
     return {
@@ -36,7 +34,8 @@ export async function requireAuthedWallet(
 
   let userId: string;
   try {
-    userId = await getUserIdFromCrossmintJwt(token);
+    const verified = await verifyCrossmintJwt(token);
+    userId = verified.userId;
   } catch {
     return {
       ok: false,
@@ -53,9 +52,7 @@ export async function requireAuthedWallet(
 
   const pool = getPool();
   const { rows } = await pool.query(
-    `SELECT wallet_address FROM users
-     WHERE crossmint_user_id = $1 OR stytch_user_id = $1
-     LIMIT 1`,
+    `SELECT wallet_address FROM users WHERE crossmint_user_id = $1 LIMIT 1`,
     [userId]
   );
 
@@ -72,10 +69,11 @@ export async function requireAuthedWallet(
   };
 }
 
-export function assertWalletMatches(
-  sessionWallet: string,
-  claimed: unknown
-): NextResponse | null {
+/**
+ * If the client passed a wallet address (query param or body field), confirm
+ * it matches the session's canonical wallet.
+ */
+export function assertWalletMatches(sessionWallet: string, claimed: unknown): NextResponse | null {
   if (claimed == null || claimed === "") return null;
   if (typeof claimed !== "string") {
     return NextResponse.json({ error: "Invalid wallet address" }, { status: 400 });
