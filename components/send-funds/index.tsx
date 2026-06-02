@@ -71,7 +71,9 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
       }
 
       if (isEmail(recipient)) {
-        await wallet.send(`email:${recipient}`, "usdc", amount);
+        // Crossmint resolves email recipients via a UserLocator object.
+        // Passing a raw "email:..." string is treated as an address and rejected.
+        await wallet.send({ email: recipient }, "usdc", amount);
       } else {
         await wallet.send(recipient, "usdc", amount);
       }
