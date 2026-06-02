@@ -6,10 +6,12 @@ Creative Bank is a fintech-grade DeFi platform on Base. The architecture separat
 
 ### Identity & Wallet (Crossmint)
 
-- Crossmint Auth handles login (Email OTP, Google OAuth)
-- Crossmint Wallet Provider creates passkey wallets on login (`createOnLogin`)
+- Crossmint Auth handles login (Email OTP, Google OAuth) via `CrossmintAuthProvider` + `EmbeddedAuthForm`
+- Wallets are created on login (`createOnLogin` with passkey + email recovery)
+- Optional server session routes: `/api/auth/crossmint/refresh`, `/api/auth/crossmint/logout` (`@crossmint/server-sdk`)
 - Server APIs validate Crossmint JWTs via JWKS (`lib/crossmintAuth.ts`)
 - Phone verification for Coinbase warm-start is stored in CockroachDB (`phone_number_verified_at`)
+- Wallet transfer webhooks sync the ledger (`lib/crossmint-webhook.ts`); see `docs/CROSSMINT_WEBHOOKS.md`
 - Wallet address is the stable user identifier across all systems
 
 ### Membership Layer (Unlock Protocol)
@@ -44,7 +46,7 @@ Creative Bank is a fintech-grade DeFi platform on Base. The architecture separat
 
 ### Completed
 
-- **Phase 1**: Crossmint Auth + Wallet (replaced legacy Stytch BYOA)
+- **Phase 1**: Stytch BYOA Auth + Crossmint Wallet Separation
 - **Phase 2**: Coinbase Headless Onramp (v2 API) + Card Fallback
 - **Phase 3**: CockroachDB Serverless Ledger (GCP us-east1)
 - **Phase 3b**: Vault Fee Tiers (20% non-member / 10% member floor, Aave/Yearn/Manager split)
@@ -62,19 +64,19 @@ Creative Bank is a fintech-grade DeFi platform on Base. The architecture separat
 
 - Default branch: `prod`
 - **Always fetch and pull before branching:**
-  ```bash
-  git fetch origin
-  git checkout prod
-  git pull origin prod
-  ```
+ ```bash
+ git fetch origin
+ git checkout prod
+ git pull origin prod
+ ```
 - **Create feature branches from up-to-date `prod`:**
-  ```bash
-  git checkout -b feature/<description> prod
-  ```
+ ```bash
+ git checkout -b feature/<description> prod
+ ```
 - **Branch naming:** `feature/*`, `fix/*`, `chore/*`
 - **Rebase before pushing:**
-  ```bash
-  git fetch origin
-  git rebase origin/prod
-  ```
+ ```bash
+ git fetch origin
+ git rebase origin/prod
+ ```
 - **Never commit directly to `prod`** — always use feature branches + PRs

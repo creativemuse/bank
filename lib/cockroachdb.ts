@@ -96,6 +96,20 @@ export async function runMigration(): Promise<void> {
     ON users (wallet_address);
   `);
 
+  await db.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS crossmint_user_id TEXT;
+  `);
+
+  await db.query(`
+    ALTER TABLE users ALTER COLUMN wallet_address DROP NOT NULL;
+  `);
+
+  await db.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_crossmint_user_id
+    ON users (crossmint_user_id)
+    WHERE crossmint_user_id IS NOT NULL;
+  `);
+
   // Transactions table — the bank ledger
   await db.query(`
     CREATE TABLE IF NOT EXISTS transactions (

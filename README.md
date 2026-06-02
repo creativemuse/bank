@@ -243,7 +243,13 @@ NEXT_PUBLIC_USDC_MINT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 # Coinbase Onramp/Offramp Configuration (Required for Deposits and Withdrawals)
 COINBASE_API_KEY_ID=your_coinbase_api_key_id_here
 COINBASE_API_KEY_SECRET=your_coinbase_api_key_secret_here
+
+# Crossmint Auth + Webhooks (server key for session routes; webhook secret in production)
+CROSSMINT_SERVER_API_KEY=your_crossmint_server_api_key_here
+CROSSMINT_WEBHOOK_SECRET=whsec_your_webhook_signing_secret
 ```
+
+Authentication uses **Crossmint Auth** (`CrossmintAuthProvider` + `EmbeddedAuthForm`). Configure webhooks in the Crossmint Console — see [docs/CROSSMINT_WEBHOOKS.md](./docs/CROSSMINT_WEBHOOKS.md).
 
 **USDC Contract Addresses:**
 
