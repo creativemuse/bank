@@ -15,10 +15,9 @@ export function WalletDetails({ onClose, open }: { onClose: () => void; open: bo
           {
             label: "Address",
             value: (
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm">{shortenAddress(wallet?.address || "")}</span>
-                <CopyWrapper toCopy={wallet?.address} iconOnly />
-              </div>
+              <CopyWrapper toCopy={wallet?.address} iconPosition="right">
+                <span>{shortenAddress(wallet?.address || "")}</span>
+              </CopyWrapper>
             ),
           },
           {
