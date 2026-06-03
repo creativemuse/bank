@@ -37,7 +37,13 @@ export const NEXUS_MIN_COVER_USD = 100;
 export function toBigIntSafe(value: string | number | bigint | undefined | null): bigint {
   if (value == null) return 0n;
   if (typeof value === "bigint") return value;
-  const str = String(value).trim();
+  // Numbers must be handled before String(): large wei values (>= 1e21)
+  // stringify to scientific notation (e.g. "1e+21"), which BigInt() rejects.
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return 0n;
+    return BigInt(Math.floor(value));
+  }
+  const str = value.trim();
   if (str === "") return 0n;
   // Drop any fractional component: base units must be integers.
   const integerPart = str.split(".")[0];

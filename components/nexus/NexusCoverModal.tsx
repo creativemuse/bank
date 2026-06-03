@@ -56,12 +56,17 @@ export function NexusCoverModal({
   const coverAssetId = getNexusCoverAssetId(assetSymbol);
 
   const minWei = useMemo(() => {
+    // Approximate the $100 USD minimum in the cover asset's own units. Stablecoins
+    // (USDC/DAI) map ~1:1; ETH/cbBTC use rough fixed approximations so we don't
+    // require 100 whole ETH/cbBTC of cover.
+    const symbol = assetSymbol.toUpperCase();
+    const minAmount = symbol === "ETH" ? "0.03" : symbol === "CBBTC" ? "0.001" : "100";
     try {
-      return parseUnits(String(NEXUS_MIN_COVER_USD), assetDecimals);
+      return parseUnits(minAmount, assetDecimals);
     } catch {
       return parseUnits("100", 6);
     }
-  }, [assetDecimals]);
+  }, [assetSymbol, assetDecimals]);
 
   const amountWeiBig = useMemo(() => {
     try {
