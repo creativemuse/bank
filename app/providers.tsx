@@ -90,6 +90,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}>
             <CrossmintAuthProvider
               loginMethods={["email", "google"]}
+              authModalTitle="Sign in via Crossmint"
               refreshRoute="/api/auth/crossmint/refresh"
               logoutRoute="/api/auth/crossmint/logout"
             >
