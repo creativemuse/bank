@@ -12,7 +12,15 @@ const CROSSMINT_AUTH_COOKIES = ["crossmint-jwt", "crossmint-refresh-token"];
 function clearAuthCookies(status: number): NextResponse {
   const response = NextResponse.json({ success: status === 200 }, { status });
   for (const name of CROSSMINT_AUTH_COOKIES) {
-    response.cookies.set(name, "", { path: "/", maxAge: 0 });
+    // Match the attributes the SDK uses when setting these cookies, otherwise
+    // browsers may ignore the deletion of a Secure/httpOnly cookie over HTTPS.
+    response.cookies.set(name, "", {
+      path: "/",
+      maxAge: 0,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
   }
   return response;
 }
