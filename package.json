@@ -9,7 +9,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "yearn:query": "tsx scripts/queryYearnRegistry.ts",
-    "kalani:verify": "tsx scripts/verifyKalaniVault.ts"
+    "kalani:verify": "tsx scripts/verifyKalaniVault.ts",
+    "db:migrate": "tsx scripts/migrateCockroach.ts"
   },
   "dependencies": {
     "@aave/react": "^0.8.2",
