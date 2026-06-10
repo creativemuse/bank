@@ -43,6 +43,29 @@ export function getPool(): Pool {
 export async function runMigration(): Promise<void> {
   const db = getPool();
 
+  const renameColumnIfNeeded = async (
+    table: string,
+    fromColumn: string,
+    toColumn: string
+  ): Promise<void> => {
+    const { rows } = await db.query<{ from_exists: boolean; to_exists: boolean }>(
+      `SELECT
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+        ) AS from_exists,
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = $1 AND column_name = $3
+        ) AS to_exists`,
+      [table, fromColumn, toColumn]
+    );
+    const { from_exists, to_exists } = rows[0] ?? {};
+    if (from_exists && !to_exists) {
+      await db.query(`ALTER TABLE ${table} RENAME COLUMN ${fromColumn} TO ${toColumn}`);
+    }
+  };
+
   // Users table — Crossmint user ID is the primary identity
   await db.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -57,21 +80,8 @@ export async function runMigration(): Promise<void> {
     );
   `);
 
-  // Migrate legacy Stytch column name if present
-  await db.query(`
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'users' AND column_name = 'stytch_user_id'
-      ) AND NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'users' AND column_name = 'crossmint_user_id'
-      ) THEN
-        ALTER TABLE users RENAME COLUMN stytch_user_id TO crossmint_user_id;
-      END IF;
-    END $$;
-  `);
+  // Migrate legacy Stytch column name if present (CockroachDB rejects ALTER in DO blocks)
+  await renameColumnIfNeeded("users", "stytch_user_id", "crossmint_user_id");
 
   await db.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number_verified_at TIMESTAMPTZ;
@@ -138,20 +148,7 @@ export async function runMigration(): Promise<void> {
     ON transactions (wallet_address);
   `);
 
-  await db.query(`
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'transactions' AND column_name = 'stytch_user_id'
-      ) AND NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'transactions' AND column_name = 'crossmint_user_id'
-      ) THEN
-        ALTER TABLE transactions RENAME COLUMN stytch_user_id TO crossmint_user_id;
-      END IF;
-    END $$;
-  `);
+  await renameColumnIfNeeded("transactions", "stytch_user_id", "crossmint_user_id");
 
   await db.query(`
     CREATE INDEX IF NOT EXISTS idx_transactions_crossmint_user_id
