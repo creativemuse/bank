@@ -4,6 +4,7 @@
  */
 import dotenv from "dotenv";
 import { resolve } from "path";
+import { getPool, runMigration } from "../lib/cockroachdb";
 
 dotenv.config({ path: resolve(process.cwd(), ".env.local") });
 
@@ -14,14 +15,15 @@ async function main() {
     process.exit(1);
   }
 
-  const hostMatch = url.match(/@([^/]+)/);
-  console.log(`Connecting to ${hostMatch?.[1] ?? "unknown host"}…`);
+  let host = "unknown host";
+  try {
+    host = new URL(url).host;
+  } catch {
+    // Fallback if URL parsing fails
+  }
+  console.log(`Connecting to ${host}…`);
 
-  const { Pool } = await import("pg");
-  const pool = new Pool({
-    connectionString: url,
-    ssl: { rejectUnauthorized: true },
-  });
+  const pool = getPool();
 
   try {
     const { rows } = await pool.query<{ db: string; user: string }>(
@@ -29,7 +31,6 @@ async function main() {
     );
     console.log(`Connected as ${rows[0]?.user} on database ${rows[0]?.db}`);
 
-    const { runMigration } = await import("../lib/cockroachdb");
     await runMigration();
     console.log("Migration complete.");
   } finally {
