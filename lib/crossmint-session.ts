@@ -1,9 +1,14 @@
-import { verifyStytchJwt } from "@/lib/stytchAuth";
+import { getCrossmintAuth } from "@/lib/crossmint-server";
 
 /**
- * Validates a Stytch session JWT from Authorization headers and returns the user id.
+ * Validates a Crossmint Auth JWT from Authorization headers and returns the user id.
  */
-export async function getUserIdFromStytchJwt(jwt: string): Promise<string> {
-  const { userId } = await verifyStytchJwt(jwt);
+export async function getUserIdFromCrossmintJwt(jwt: string): Promise<string> {
+  const crossmintAuth = getCrossmintAuth();
+  const payload = await crossmintAuth.verifyCrossmintJwt(jwt);
+  const userId = (payload.sub ?? payload.userId) as string | undefined;
+  if (!userId) {
+    throw new Error("JWT missing user identifier");
+  }
   return userId;
 }

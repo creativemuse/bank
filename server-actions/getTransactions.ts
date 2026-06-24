@@ -45,86 +45,23 @@ export async function getTransactions(walletAddress: string, crossmintUserId?: s
 }
 
 /**
- * Upserts a user record linking auth identity to wallet address.
+ * Upserts a user record linking Crossmint identity to wallet address.
  */
 export async function upsertUser(
-  authUserId: string,
+  crossmintUserId: string,
   walletAddress: string,
   email?: string,
   phoneNumber?: string
 ) {
   if (!process.env.COCKROACHDB_URL) return;
 
-  const pool = getPool();
-  const normalizedWallet = walletAddress.toLowerCase();
-  const normalizedEmail = email?.trim().toLowerCase() || null;
-
-  const client = await pool.connect();
-
   try {
-    await client.query("BEGIN");
-
-    let walletToStore = normalizedWallet;
-    let phoneToStore = phoneNumber || null;
-
-    // Link existing rows created under Crossmint Auth when the same email signs in via Stytch.
-    if (normalizedEmail) {
-      const { rows: legacyRows } = await client.query<{
-        crossmint_user_id: string;
-        wallet_address: string | null;
-        phone_number: string | null;
-      }>(
-        `SELECT crossmint_user_id, wallet_address, phone_number
-         FROM users
-         WHERE lower(email) = $1
-           AND crossmint_user_id <> $2
-         LIMIT 1`,
-        [normalizedEmail, authUserId]
-      );
-
-      if (legacyRows.length > 0) {
-        const legacy = legacyRows[0];
-        if (legacy.wallet_address) {
-          walletToStore = legacy.wallet_address.toLowerCase();
-        }
-        if (!phoneToStore && legacy.phone_number) {
-          phoneToStore = legacy.phone_number;
-        }
-
-        await client.query(
-          `UPDATE transactions SET crossmint_user_id = $1 WHERE crossmint_user_id = $2`,
-          [authUserId, legacy.crossmint_user_id]
-        );
-        await client.query(`DELETE FROM users WHERE crossmint_user_id = $1`, [
-          legacy.crossmint_user_id,
-        ]);
-      }
-    }
-
-    // If this wallet is already linked to a different auth user, re-key that row first.
-    const { rows: walletOwnerRows } = await client.query<{ crossmint_user_id: string }>(
-      `SELECT crossmint_user_id
-       FROM users
-       WHERE lower(wallet_address) = $1
-         AND crossmint_user_id <> $2
-       LIMIT 1`,
-      [walletToStore, authUserId]
-    );
-
-    if (walletOwnerRows.length > 0) {
-      const priorOwnerId = walletOwnerRows[0].crossmint_user_id;
-      await client.query(
-        `UPDATE transactions SET crossmint_user_id = $1 WHERE crossmint_user_id = $2`,
-        [authUserId, priorOwnerId]
-      );
-      await client.query(`DELETE FROM users WHERE crossmint_user_id = $1`, [priorOwnerId]);
-    }
-
-    await client.query(
+    const pool = getPool();
+    await pool.query(
       `INSERT INTO users (crossmint_user_id, wallet_address, email, phone_number, email_verified_at, updated_at)
        VALUES ($1, $2, $3, $4, CASE WHEN $3 IS NOT NULL THEN now() ELSE NULL END, now())
        ON CONFLICT (crossmint_user_id) DO UPDATE SET
-         wallet_address = COALESCE(NULLIF(users.wallet_address, ''), EXCLUDED.wallet_address),
+         wallet_address = EXCLUDED.wallet_address,
          email = COALESCE(EXCLUDED.email, users.email),
          phone_number = COALESCE(EXCLUDED.phone_number, users.phone_number),
          email_verified_at = CASE
@@ -132,19 +69,10 @@ export async function upsertUser(
            ELSE users.email_verified_at
          END,
          updated_at = now()`,
-      [authUserId, walletToStore, normalizedEmail, phoneToStore]
+      [crossmintUserId, walletAddress.toLowerCase(), email || null, phoneNumber || null]
     );
-
-    await client.query("COMMIT");
   } catch (error) {
-    try {
-      await client.query("ROLLBACK");
-    } catch (rollbackError) {
-      console.error("[CockroachDB] Rollback failed:", rollbackError);
-    }
     console.error("[CockroachDB] Failed to upsert user:", error);
-  } finally {
-    client.release();
   }
 }
 

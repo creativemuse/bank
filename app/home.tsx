@@ -42,9 +42,7 @@ export function HomeContent() {
 
   useEffect(() => {
     if (isLoggedIn && user?.id && walletAddress) {
-      void upsertUser(user.id, walletAddress, user.email, user.phoneNumber).catch((error) => {
-        console.error("[home] Failed to upsert user:", error);
-      });
+      upsertUser(user.id, walletAddress, user.email, user.phoneNumber);
     }
   }, [isLoggedIn, user?.id, walletAddress, user?.email, user?.phoneNumber]);
 

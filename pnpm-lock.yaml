@@ -41,9 +41,6 @@ importers:
       '@react-native-async-storage/async-storage':
         specifier: ^2.2.0
         version: 2.2.0(react-native@0.74.0(@babel/core@7.28.3)(@babel/preset-env@7.28.3(@babel/core@7.28.3))(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.5)(utf-8-validate@5.0.10))
-      '@stytch/nextjs':
-        specifier: ^22.0.9
-        version: 22.0.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@tableland/sdk':
         specifier: ^7.2.1
         version: 7.2.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
@@ -98,9 +95,6 @@ importers:
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      stytch:
-        specifier: ^14.1.0
-        version: 14.1.0
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
@@ -3389,12 +3383,6 @@ packages:
   '@stablelib/wipe@1.0.1':
     resolution: {integrity: sha512-WfqfX/eXGiAd3RJe4VU2snh/ZPwtSjLG4ynQ/vYzvghTh7dHFcI1wl+nrkWG6lGhukOxOsUHfv8dUXr58D0ayg==}
 
-  '@stytch/nextjs@22.0.9':
-    resolution: {integrity: sha512-48SO6bz2YuPMZp+vq8fwKSKcljSd825uv3PH5Ykf03LO8vCwx5R0PWbPYCbp+5ismQ2mBacYRIX7uCedKRdZbg==}
-    peerDependencies:
-      react: '>= 17.0.2'
-      react-dom: '>= 17.0.2'
-
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
 
@@ -5425,9 +5413,6 @@ packages:
   joi@17.13.3:
     resolution: {integrity: sha512-otDA4ldcIx+ZXsKHWmp0YizCweVRZG96J10b0FevjfuncLO1oX59THoAmHkNubYJ+9gWsYsp5k8v4ib6oDv1fA==}
 
-  jose@5.10.0:
-    resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
-
   jose@5.9.6:
     resolution: {integrity: sha512-AMlnetc9+CV9asI19zHmrgS/WYsWUwCn2R7RzlbJWD7F9eWYUTGyBmU9o6PxngtLGOiDGPRu+Uc4fhKzbpteZQ==}
 
@@ -7042,10 +7027,6 @@ packages:
   stylis@4.2.0:
     resolution: {integrity: sha512-Orov6g6BB1sDfYgzWfTHDOxamtX1bE/zo104Dh9e6fqJ3PooipYyfJ0pUmrZO2wAvO8YbEyeFrkV91XTsGMSrw==}
 
-  stytch@14.1.0:
-    resolution: {integrity: sha512-qMMEPi5s4Pv7v1xjnqEMrGqu9KLO3WeQitpMzC3f+CTcDplsbyc9gdUMfVLzJyPQ/kttp7hNifZldMA71+SK3Q==}
-    engines: {node: '>= 18.0.0'}
-
   sudo-prompt@9.2.1:
     resolution: {integrity: sha512-Mu7R0g4ig9TUuGSxJavny5Rv0egCEtpZRNMrZaYS1vxkiIxGiGUwoezU3LazIQ+KE04hTrTfNPgxU5gzi7F5Pw==}
     deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
@@ -7289,10 +7270,6 @@ packages:
 
   undici-types@7.22.0:
     resolution: {integrity: sha512-RKZvifiL60xdsIuC80UY0dq8Z7DbJUV8/l2hOVbyZAxBzEeQU4Z58+4ZzJ6WN2Lidi9KzT5EbiGX+PI/UGYuRw==}
-
-  undici@6.27.0:
-    resolution: {integrity: sha512-YmfV3YnEDzXRC5lZ2jWtWWHKGUm1zIt8AhesR1tens+HTNv+YZlN/dp6G727LOvMJ8xjP9Be7Y2Sdr96LDm+pg==}
-    engines: {node: '>=18.17'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
     resolution: {integrity: sha512-dA8WbNeb2a6oQzAQ55YlT5vQAWGV9WXOsi3SskE3bcCdM0P4SDd+24zS/OCacdRq5BkdsRj9q3Pg6YyQoxIGqg==}
@@ -13147,11 +13124,6 @@ snapshots:
 
   '@stablelib/wipe@1.0.1': {}
 
-  '@stytch/nextjs@22.0.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
-    dependencies:
-      react: 19.2.5
-      react-dom: 19.2.5(react@19.2.5)
-
   '@swc/helpers@0.5.15':
     dependencies:
       tslib: 2.8.1
@@ -16696,8 +16668,6 @@ snapshots:
       '@sideway/formula': 3.0.1
       '@sideway/pinpoint': 2.0.0
 
-  jose@5.10.0: {}
-
   jose@5.9.6: {}
 
   jose@6.2.2: {}
@@ -18616,11 +18586,6 @@ snapshots:
 
   stylis@4.2.0: {}
 
-  stytch@14.1.0:
-    dependencies:
-      jose: 5.10.0
-      undici: 6.27.0
-
   sudo-prompt@9.2.1: {}
 
   superstruct@1.0.4: {}
@@ -18850,8 +18815,6 @@ snapshots:
   undici-types@6.19.8: {}
 
   undici-types@7.22.0: {}
-
-  undici@6.27.0: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 

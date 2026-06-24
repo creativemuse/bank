@@ -6,7 +6,7 @@ Creative Bank is a fintech-grade DeFi platform on Base. The architecture separat
 
 ### Identity & Wallet (Crossmint)
 
-- Stytch handles login (Email OTP, Google OAuth); session JWT is bridged to Crossmint via `JwtSync` / `setJwt`
+- Crossmint Auth handles login (Email OTP, Google OAuth) via `CrossmintAuthProvider` + `EmbeddedAuthForm`
 - Wallets are created on login (`createOnLogin` with passkey + email recovery)
 - Optional server session routes: `/api/auth/crossmint/refresh`, `/api/auth/crossmint/logout` (`@crossmint/server-sdk`)
 - Server APIs validate Crossmint JWTs via JWKS (`lib/crossmintAuth.ts`)
