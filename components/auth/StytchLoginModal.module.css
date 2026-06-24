@@ -1,8 +1,0 @@
-/**
- * StytchLogin header alignment — mirrors CrossmintLoginModal.module.css pattern.
- */
-.stytchFormWrap :global([data-testid="stytch-header"]),
-.stytchFormWrap :global(h1),
-.stytchFormWrap :global(h2) {
-  text-align: center !important;
-}
