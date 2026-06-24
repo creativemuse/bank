@@ -1,59 +1,96 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useStytch, useStytchUser } from "@stytch/nextjs";
+import { StytchEventType, StytchLogin, useStytch, useStytchSession, useStytchUser } from "@stytch/nextjs";
 
-const SESSION_DURATION_MINUTES = 60 * 24 * 30;
+import {
+  getAuthRedirectUrl,
+  getStytchLoginConfig,
+  SESSION_DURATION_MINUTES,
+} from "@/lib/stytchLoginConfig";
+import styles from "@/components/auth/StytchLoginModal.module.css";
 
 type AuthState = "loading" | "error";
 
 export default function AuthenticatePage() {
   const stytch = useStytch();
-  const { user, isInitialized } = useStytchUser();
+  const { user, isInitialized: userInitialized } = useStytchUser();
+  const { session, isInitialized: sessionInitialized } = useStytchSession();
   const router = useRouter();
   const [state, setState] = useState<AuthState>("loading");
+  const authStartedRef = useRef(false);
+  const initialHrefRef = useRef<string | undefined>(undefined);
+
+  if (typeof window !== "undefined" && initialHrefRef.current === undefined) {
+    initialHrefRef.current = window.location.href;
+  }
+
+  const authRedirectUrl = useMemo(() => getAuthRedirectUrl(), []);
+  const stytchLoginConfig = useMemo(
+    () => getStytchLoginConfig(authRedirectUrl),
+    [authRedirectUrl]
+  );
 
   useEffect(() => {
-    if (!isInitialized) return;
+    const unsubscribe = stytch.session.onChange((nextSession) => {
+      if (nextSession) {
+        router.replace("/");
+      }
+    });
+    return unsubscribe;
+  }, [stytch, router]);
 
-    if (user) {
+  useEffect(() => {
+    if (!userInitialized || !sessionInitialized) return;
+
+    if (user && session) {
       router.replace("/");
       return;
     }
 
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    const tokenType = params.get("stytch_token_type");
+    if (authStartedRef.current) return;
+    authStartedRef.current = true;
 
-    if (!token || !tokenType) {
+    const href = initialHrefRef.current ?? window.location.href;
+    const parsed = stytch.parseAuthenticateUrl(href);
+
+    if (!parsed) {
+      setState("error");
+      return;
+    }
+
+    if (!parsed.handled) {
+      console.error("[Stytch] Unsupported callback token type:", parsed.tokenType);
       setState("error");
       return;
     }
 
     const handleAuthenticate = async () => {
       try {
-        if (tokenType === "oauth") {
-          await stytch.oauth.authenticate(token, {
-            session_duration_minutes: SESSION_DURATION_MINUTES,
-          });
-        } else if (tokenType === "magic_links") {
-          await stytch.magicLinks.authenticate(token, {
-            session_duration_minutes: SESSION_DURATION_MINUTES,
-          });
-        } else {
+        const result = await stytch.authenticateByUrl(
+          { session_duration_minutes: SESSION_DURATION_MINUTES },
+          href
+        );
+
+        if (!result?.handled) {
           setState("error");
           return;
         }
+
         router.replace("/");
       } catch (error) {
-        console.error("[Stytch] OAuth/magic link authenticate failed:", error);
+        console.error("[Stytch] authenticateByUrl failed:", error);
         setState("error");
       }
     };
 
     void handleAuthenticate();
-  }, [isInitialized, user, stytch, router]);
+  }, [userInitialized, sessionInitialized, user, session, stytch, router]);
+
+  const handleAuthComplete = () => {
+    router.replace("/");
+  };
 
   if (state === "error") {
     return (
@@ -64,12 +101,24 @@ export default function AuthenticatePage() {
             This authentication link is missing required parameters or could not be completed. Please
             try signing in again.
           </p>
+          <div className={`${styles.stytchFormWrap} w-full`}>
+            <StytchLogin
+              config={stytchLoginConfig}
+              callbacks={{
+                onEvent: ({ type }) => {
+                  if (type === StytchEventType.AuthenticateFlowComplete) {
+                    handleAuthComplete();
+                  }
+                },
+              }}
+            />
+          </div>
           <button
             type="button"
             onClick={() => router.replace("/")}
-            className="bg-primary text-primary-foreground w-full rounded-full px-4 py-3 text-sm font-medium"
+            className="text-muted-foreground text-sm underline"
           >
-            Back to sign in
+            Back to home
           </button>
         </div>
       </div>
