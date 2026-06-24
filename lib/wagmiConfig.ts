@@ -15,7 +15,9 @@ const DATA_SUFFIX = BUILDER_CODE ? Attribution.toDataSuffix({ codes: [BUILDER_CO
 const configuredChain = process.env.NEXT_PUBLIC_CHAIN_ID;
 
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "https://finance.creativeplatform.xyz";
+  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+  "https://bank.creativeplatform.xyz";
 
 export const appChain = (() => {
   // Only use base-sepolia when explicitly configured; default to base mainnet

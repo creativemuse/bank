@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { StytchLogin, OAuthProviders, OTPMethods, Products } from "@stytch/nextjs";
+import { StytchLogin } from "@stytch/nextjs";
 import { Modal } from "@/components/common/Modal";
 import { useAuth } from "@/context/AuthContext";
+import { getAuthRedirectUrl, getStytchLoginConfig } from "@/lib/stytchLoginConfig";
 import styles from "./StytchLoginModal.module.css";
 
 const loginModalTitle = (
@@ -13,40 +14,14 @@ const loginModalTitle = (
   </>
 );
 
-const getDefaultRedirectUrl = () => {
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.NODE_ENV === "production"
-      ? "https://bank.creativeplatform.xyz"
-      : "http://localhost:3000");
-  return `${siteUrl}/authenticate`;
-};
-
 export function StytchLoginModal() {
   const { showLogin, setShowLogin, status } = useAuth();
   const isLoggedOut = status === "logged-out";
   const modalOpen = isLoggedOut || showLogin;
 
-  const authRedirectUrl = useMemo(() => {
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}/authenticate`;
-    }
-    return getDefaultRedirectUrl();
-  }, []);
-
+  const authRedirectUrl = useMemo(() => getAuthRedirectUrl(), []);
   const stytchLoginConfig = useMemo(
-    () => ({
-      products: [Products.otp, Products.oauth],
-      otpOptions: {
-        methods: [OTPMethods.Email],
-        expirationMinutes: 10,
-      },
-      oauthOptions: {
-        providers: [{ type: OAuthProviders.Google }],
-        loginRedirectURL: authRedirectUrl,
-        signupRedirectURL: authRedirectUrl,
-      },
-    }),
+    () => getStytchLoginConfig(authRedirectUrl),
     [authRedirectUrl]
   );
 
