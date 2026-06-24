@@ -4,13 +4,10 @@ import { OAuthProviders, OTPMethods, Products } from "@stytch/nextjs";
 export const SESSION_DURATION_MINUTES = 60 * 24 * 30;
 
 export const getAuthRedirectUrl = () => {
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}/authenticate`;
-  }
-
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+    (typeof window !== "undefined" ? window.location.origin : "") ||
     (process.env.NODE_ENV === "production"
       ? "https://bank.creativeplatform.xyz"
       : "http://localhost:3000");

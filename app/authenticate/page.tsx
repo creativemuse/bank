@@ -56,12 +56,8 @@ export default function AuthenticatePage() {
     const parsed = stytch.parseAuthenticateUrl(href);
 
     if (!parsed) {
-      const timeoutId = window.setTimeout(() => {
-        if (!stytch.session.getTokens()) {
-          setState("error");
-        }
-      }, 3000);
-      return () => window.clearTimeout(timeoutId);
+      setState("error");
+      return;
     }
 
     if (!parsed.handled) {

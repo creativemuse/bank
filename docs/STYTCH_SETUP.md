@@ -24,7 +24,7 @@ Add both **Login** and **Sign-up** redirect URLs in the **same environment** as 
 | Local (Test) | `http://localhost:3000/authenticate` |
 | Production (Live) | `https://bank.creativeplatform.xyz/authenticate` |
 
-Use the **exact** URL above — no trailing slash, no `/callback` path. The app sends `window.location.origin + "/authenticate"` from [`StytchLoginModal.tsx`](../components/auth/StytchLoginModal.tsx).
+Use the **exact** URL above — no trailing slash, no `/callback` path. Redirect URLs come from `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_APP_URL` in [`lib/stytchLoginConfig.ts`](../lib/stytchLoginConfig.ts) (not the Vercel preview hostname).
 
 #### Fix "Sign-in link invalid or expired" on `/authenticate`
 

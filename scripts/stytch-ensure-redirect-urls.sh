@@ -28,7 +28,7 @@ BASE="https://management.stytch.com/pwa/v3/projects/${STYTCH_PROJECT_SLUG}/envir
 add_redirect() {
   local url="$1"
   echo "Adding redirect URL: ${url}"
-  curl -sS -X POST "${BASE}" \
+  curl -sSf -X POST "${BASE}" \
     -u "${STYTCH_WORKSPACE_KEY_ID}:${STYTCH_WORKSPACE_SECRET}" \
     -H "Content-Type: application/json" \
     -d "{
