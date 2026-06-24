@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  CrossmintProvider,
-  CrossmintAuthProvider,
-  CrossmintWalletProvider,
-} from "@crossmint/client-sdk-react-ui";
+import { CrossmintProvider } from "@crossmint/client-sdk-react-ui";
+import { StytchProvider } from "@stytch/nextjs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
@@ -14,6 +11,9 @@ import { AaveProvider, AaveClient, production } from "@aave/react";
 import { wagmiConfig } from "@/lib/wagmiConfig";
 import { MembershipProvider } from "@/context/MembershipContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { getStytchUIClient } from "@/lib/stytch-client";
+import { JwtSync } from "@/components/auth/JwtSync";
+import { CrossmintWalletWithPasskey } from "@/components/auth/CrossmintWalletWithPasskey";
 
 const aaveClient = AaveClient.create({
   environment: {
@@ -42,6 +42,10 @@ if (walletConnectMissing) {
 
 if (!process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY) {
   throw new Error("NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY is not set");
+}
+
+if (!process.env.NEXT_PUBLIC_STYTCH_PUBLIC_TOKEN) {
+  throw new Error("NEXT_PUBLIC_STYTCH_PUBLIC_TOKEN is not set");
 }
 
 const VALID_CHAINS = ["base", "base-sepolia"] as const;
@@ -87,30 +91,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <WagmiProvider config={wagmiConfig}>
         <AaveProvider client={aaveClient}>
-          <CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}>
-            <CrossmintAuthProvider
-              loginMethods={["email", "google"]}
-              authModalTitle="Sign in via Crossmint"
-              refreshRoute="/api/auth/crossmint/refresh"
-              logoutRoute="/api/auth/crossmint/logout"
-            >
+          <StytchProvider stytch={getStytchUIClient()} assumeHydrated>
+            <CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}>
+              <JwtSync />
               <AuthProvider>
-                <CrossmintWalletProvider
-                  showPasskeyHelpers={true}
-                  createOnLogin={{
-                    chain,
-                    signers: [{ type: "passkey" }],
-                    recovery: { type: "email" },
-                  }}
-                >
+                <CrossmintWalletWithPasskey chain={chain}>
                   <MembershipProvider>
                     {children}
                     <Toaster richColors position="top-center" closeButton />
                   </MembershipProvider>
-                </CrossmintWalletProvider>
+                </CrossmintWalletWithPasskey>
               </AuthProvider>
-            </CrossmintAuthProvider>
-          </CrossmintProvider>
+            </CrossmintProvider>
+          </StytchProvider>
         </AaveProvider>
       </WagmiProvider>
     </QueryClientProvider>

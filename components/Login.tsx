@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { CrossmintLoginModal } from "@/components/auth/CrossmintLoginModal";
+import { StytchLoginModal } from "@/components/auth/StytchLoginModal";
 import { useEffect } from "react";
 
 export function Login() {
@@ -15,7 +15,7 @@ export function Login() {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center">
-      <CrossmintLoginModal />
+      <StytchLoginModal />
     </div>
   );
 }

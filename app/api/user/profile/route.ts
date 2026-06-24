@@ -4,7 +4,7 @@ import { getPool } from "@/lib/cockroachdb";
 
 /**
  * GET /api/user/profile
- * Returns stored profile fields for the authenticated Crossmint user.
+ * Returns stored profile fields for the authenticated user (Stytch session).
  */
 export async function GET(request: NextRequest) {
   const auth = await requireAuthedWallet(request);

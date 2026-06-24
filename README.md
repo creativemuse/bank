@@ -235,6 +235,14 @@ Create a `.env` file in your project root with the following variables:
 # Crossmint Configuration (Required)
 NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY=your_crossmint_client_api_key_here
 
+# Stytch Authentication (Required)
+NEXT_PUBLIC_STYTCH_PUBLIC_TOKEN=public-token-test-...
+STYTCH_PROJECT_ID=project-test-...
+STYTCH_SECRET=secret-test-...
+
+# Site URL (recommended for Stytch OAuth redirects)
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
 # Chain Configuration (Required)
 # Supported values: base, base-sepolia
 NEXT_PUBLIC_CHAIN_ID=base-sepolia
@@ -249,7 +257,7 @@ CROSSMINT_SERVER_API_KEY=your_crossmint_server_api_key_here
 CROSSMINT_WEBHOOK_SECRET=whsec_your_webhook_signing_secret
 ```
 
-Authentication uses **Crossmint Auth** (`CrossmintAuthProvider` + `EmbeddedAuthForm`). Configure webhooks in the Crossmint Console — see [docs/CROSSMINT_WEBHOOKS.md](./docs/CROSSMINT_WEBHOOKS.md).
+Authentication uses **Stytch** (email OTP + Google) bridged to Crossmint wallets via `setJwt`. See [docs/STYTCH_SETUP.md](./docs/STYTCH_SETUP.md) and [docs/CROSSMINT_WEBHOOKS.md](./docs/CROSSMINT_WEBHOOKS.md).
 
 **USDC Contract Addresses:**
 

@@ -48,7 +48,7 @@ export async function getTransactions(walletAddress: string, crossmintUserId?: s
  * Upserts a user record linking Crossmint identity to wallet address.
  */
 export async function upsertUser(
-  crossmintUserId: string,
+  authUserId: string,
   walletAddress: string,
   email?: string,
   phoneNumber?: string
@@ -57,6 +57,30 @@ export async function upsertUser(
 
   try {
     const pool = getPool();
+    const normalizedWallet = walletAddress.toLowerCase();
+    const normalizedEmail = email?.trim().toLowerCase() || null;
+
+    // Link existing rows created under Crossmint Auth when the same email signs in via Stytch.
+    if (normalizedEmail) {
+      const { rows: legacyRows } = await pool.query<{ crossmint_user_id: string }>(
+        `SELECT crossmint_user_id
+         FROM users
+         WHERE lower(email) = $1
+           AND crossmint_user_id <> $2
+         LIMIT 1`,
+        [normalizedEmail, authUserId]
+      );
+
+      if (legacyRows.length > 0) {
+        const legacyUserId = legacyRows[0].crossmint_user_id;
+        await pool.query(
+          `UPDATE transactions SET crossmint_user_id = $1 WHERE crossmint_user_id = $2`,
+          [authUserId, legacyUserId]
+        );
+        await pool.query(`DELETE FROM users WHERE crossmint_user_id = $1`, [legacyUserId]);
+      }
+    }
+
     await pool.query(
       `INSERT INTO users (crossmint_user_id, wallet_address, email, phone_number, email_verified_at, updated_at)
        VALUES ($1, $2, $3, $4, CASE WHEN $3 IS NOT NULL THEN now() ELSE NULL END, now())
@@ -69,7 +93,7 @@ export async function upsertUser(
            ELSE users.email_verified_at
          END,
          updated_at = now()`,
-      [crossmintUserId, walletAddress.toLowerCase(), email || null, phoneNumber || null]
+      [authUserId, normalizedWallet, normalizedEmail, phoneNumber || null]
     );
   } catch (error) {
     console.error("[CockroachDB] Failed to upsert user:", error);
