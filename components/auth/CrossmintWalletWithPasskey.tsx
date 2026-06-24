@@ -17,24 +17,41 @@ type CrossmintWalletWithPasskeyProps = {
   children: ReactNode;
 };
 
+const buildCreateOnLoginConfig = (
+  chain: ValidChain,
+  skipPasskey: boolean
+): CreateOnLoginConfig => ({
+  chain,
+  signers: skipPasskey ? [{ type: "email" }] : [{ type: "passkey" }],
+  recovery: { type: "email" },
+});
+
 export const CrossmintWalletWithPasskey = ({
   chain,
   children,
 }: CrossmintWalletWithPasskeyProps) => {
   const [createOnLogin, setCreateOnLogin] = useState<CreateOnLoginConfig | null>(null);
+  const [isResolving, setIsResolving] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
     const resolveConfig = async () => {
-      const skipPasskey = await shouldSkipPasskey();
-      if (cancelled) return;
+      setIsResolving(true);
 
-      setCreateOnLogin({
-        chain,
-        signers: skipPasskey ? [{ type: "email" }] : [{ type: "passkey" }],
-        recovery: { type: "email" },
-      });
+      try {
+        const skipPasskey = await shouldSkipPasskey();
+        if (cancelled) return;
+        setCreateOnLogin(buildCreateOnLoginConfig(chain, skipPasskey));
+      } catch (error) {
+        console.error("[CrossmintWallet] Passkey detection failed, using email signer:", error);
+        if (cancelled) return;
+        setCreateOnLogin(buildCreateOnLoginConfig(chain, true));
+      } finally {
+        if (!cancelled) {
+          setIsResolving(false);
+        }
+      }
     };
 
     void resolveConfig();
@@ -44,8 +61,12 @@ export const CrossmintWalletWithPasskey = ({
     };
   }, [chain]);
 
-  if (!createOnLogin) {
-    return null;
+  if (isResolving || !createOnLogin) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
+      </div>
+    );
   }
 
   const usesPasskey = createOnLogin.signers[0]?.type === "passkey";

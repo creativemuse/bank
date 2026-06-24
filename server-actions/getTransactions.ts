@@ -55,14 +55,18 @@ export async function upsertUser(
 ) {
   if (!process.env.COCKROACHDB_URL) return;
 
+  const pool = getPool();
+  const normalizedWallet = walletAddress.toLowerCase();
+  const normalizedEmail = email?.trim().toLowerCase() || null;
+
+  const client = await pool.connect();
+
   try {
-    const pool = getPool();
-    const normalizedWallet = walletAddress.toLowerCase();
-    const normalizedEmail = email?.trim().toLowerCase() || null;
+    await client.query("BEGIN");
 
     // Link existing rows created under Crossmint Auth when the same email signs in via Stytch.
     if (normalizedEmail) {
-      const { rows: legacyRows } = await pool.query<{ crossmint_user_id: string }>(
+      const { rows: legacyRows } = await client.query<{ crossmint_user_id: string }>(
         `SELECT crossmint_user_id
          FROM users
          WHERE lower(email) = $1
@@ -73,15 +77,15 @@ export async function upsertUser(
 
       if (legacyRows.length > 0) {
         const legacyUserId = legacyRows[0].crossmint_user_id;
-        await pool.query(
+        await client.query(
           `UPDATE transactions SET crossmint_user_id = $1 WHERE crossmint_user_id = $2`,
           [authUserId, legacyUserId]
         );
-        await pool.query(`DELETE FROM users WHERE crossmint_user_id = $1`, [legacyUserId]);
+        await client.query(`DELETE FROM users WHERE crossmint_user_id = $1`, [legacyUserId]);
       }
     }
 
-    await pool.query(
+    await client.query(
       `INSERT INTO users (crossmint_user_id, wallet_address, email, phone_number, email_verified_at, updated_at)
        VALUES ($1, $2, $3, $4, CASE WHEN $3 IS NOT NULL THEN now() ELSE NULL END, now())
        ON CONFLICT (crossmint_user_id) DO UPDATE SET
@@ -95,8 +99,13 @@ export async function upsertUser(
          updated_at = now()`,
       [authUserId, normalizedWallet, normalizedEmail, phoneNumber || null]
     );
+
+    await client.query("COMMIT");
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("[CockroachDB] Failed to upsert user:", error);
+  } finally {
+    client.release();
   }
 }
 
