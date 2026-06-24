@@ -350,16 +350,163 @@ Keep [`lib/crossmint-server.ts`](../lib/crossmint-server.ts) only if still neede
 
 ## Phase 4 — User ledger and migration
 
-### [`server-actions/getTransactions.ts`](../server-actions/getTransactions.ts) `upsertUser`
+### Schema constraint (read before changing `upsertUser`)
 
-- Continue passing `user.id` from AuthContext — now Stytch `user_id`.
-- **Email-based re-linking** (important for existing users): on upsert, if no row matches Stytch id but email matches an existing row, update `crossmint_user_id` to the new Stytch id while preserving `wallet_address`. Transactions are already keyed by `wallet_address`, so ledger history survives.
+The `users` table has **two uniqueness guarantees** ([`lib/cockroachdb.ts`](../lib/cockroachdb.ts)):
+
+- `crossmint_user_id` — PRIMARY KEY
+- `idx_users_wallet_address` — UNIQUE on `wallet_address`
+
+Current [`upsertUser`](../server-actions/getTransactions.ts) only handles `ON CONFLICT (crossmint_user_id)`. That works for repeat logins with the same auth id, but **breaks on migration**:
+
+1. Existing row: `crossmint_user_id = cm_old`, `wallet_address = 0xabc`, `email = user@example.com`
+2. User signs in via Stytch: new id `user-test-xyz`, Crossmint returns the **same** wallet `0xabc`
+3. Naive `INSERT (user-test-xyz, 0xabc, …)` → **`unique_violation` on `idx_users_wallet_address`** because `0xabc` is already owned by `cm_old`
+
+Email-only re-linking described as "insert if no Stytch id match" is **not sufficient** — you must update the existing row in place, not insert a duplicate wallet.
+
+### Recommended `upsertUser` algorithm
+
+Use a **multi-step, wallet-first** flow inside a **single pinned connection** transaction. [`getPool()`](../lib/cockroachdb.ts) returns a shared `pg` `Pool` — `pool.query("BEGIN")` and subsequent queries may run on **different connections**, so they are not one atomic transaction. Pin a client with `pool.connect()` and run all statements on that client.
+
+When `crossmint_user_id` changes during re-link, also update or remove rows in [`phone_otp_challenges`](../lib/cockroachdb.ts) (PK = `crossmint_user_id`). Otherwise in-flight Coinbase phone OTP lookups ([`/api/user/phone/send`](../app/api/user/phone/send/route.ts), [`verify`](../app/api/user/phone/verify/route.ts)) will miss the legacy id.
+
+```ts
+// Pseudocode — implement in upsertUser (server-actions/getTransactions.ts)
+async function upsertUser(authUserId, walletAddress, email?, phone?) {
+  const wallet = walletAddress.toLowerCase();
+  const pool = getPool();
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1. Already linked to this auth id? (happy path)
+    const byId = await client.query(
+      "SELECT 1 FROM users WHERE crossmint_user_id = $1",
+      [authUserId]
+    );
+    if (byId.rows.length) {
+      await client.query(
+        `UPDATE users SET
+           wallet_address = $2,
+           email = COALESCE($3, email),
+           phone_number = COALESCE($4, phone_number),
+           updated_at = now()
+         WHERE crossmint_user_id = $1`,
+        [authUserId, wallet, email ?? null, phone ?? null]
+      );
+      await client.query("COMMIT");
+      return;
+    }
+
+    // 2. Migration: same wallet, new auth id (BYOA re-link)
+    const byWallet = await client.query(
+      "SELECT crossmint_user_id FROM users WHERE wallet_address = $1",
+      [wallet]
+    );
+    if (byWallet.rows.length) {
+      const legacyAuthId = byWallet.rows[0].crossmint_user_id as string;
+      if (legacyAuthId !== authUserId) {
+        await relinkAuthUserId(client, legacyAuthId, authUserId);
+      }
+      await client.query(
+        `UPDATE users SET
+           crossmint_user_id = $1,
+           email = COALESCE($2, email),
+           phone_number = COALESCE($3, phone_number),
+           updated_at = now()
+         WHERE wallet_address = $4`,
+        [authUserId, email ?? null, phone ?? null, wallet]
+      );
+      await client.query("COMMIT");
+      return;
+    }
+
+    // 3. Migration: same email, possibly new wallet (less common)
+    if (email) {
+      const byEmail = await client.query(
+        "SELECT crossmint_user_id, wallet_address FROM users WHERE lower(email) = lower($1)",
+        [email]
+      );
+      if (byEmail.rows.length === 1) {
+        const legacyAuthId = byEmail.rows[0].crossmint_user_id as string;
+        if (legacyAuthId !== authUserId) {
+          await relinkAuthUserId(client, legacyAuthId, authUserId);
+        }
+        await client.query(
+          `UPDATE users SET
+             crossmint_user_id = $1,
+             wallet_address = $2,
+             phone_number = COALESCE($3, phone_number),
+             updated_at = now()
+           WHERE lower(email) = lower($4)`,
+          [authUserId, wallet, phone ?? null, email]
+        );
+        await client.query("COMMIT");
+        return;
+      }
+      if (byEmail.rows.length > 1) {
+        console.error("[upsertUser] Multiple users share email; skipping email re-link", email);
+      }
+    }
+
+    // 4. Brand-new user
+    await client.query(
+      `INSERT INTO users (crossmint_user_id, wallet_address, email, phone_number, email_verified_at, updated_at)
+       VALUES ($1, $2, $3, $4, CASE WHEN $3 IS NOT NULL THEN now() ELSE NULL END, now())
+       ON CONFLICT (crossmint_user_id) DO UPDATE SET
+         wallet_address = EXCLUDED.wallet_address,
+         email = COALESCE(EXCLUDED.email, users.email),
+         phone_number = COALESCE(EXCLUDED.phone_number, users.phone_number),
+         updated_at = now()`,
+      [authUserId, wallet, email ?? null, phone ?? null]
+    );
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+/** Move or clear phone OTP challenges when auth user id changes (same transaction). */
+async function relinkAuthUserId(
+  client: PoolClient,
+  legacyAuthId: string,
+  newAuthId: string
+) {
+  // OTP challenges are short-lived; delete legacy row so user re-sends under new id.
+  // Alternative: UPDATE phone_otp_challenges SET crossmint_user_id = $2 WHERE crossmint_user_id = $1
+  // if you need in-flight OTP to survive re-link (rare during login).
+  await client.query(
+    `DELETE FROM phone_otp_challenges WHERE crossmint_user_id = $1`,
+    [legacyAuthId]
+  );
+}
+```
+
+**Alternative (single statement):** add `ON CONFLICT (wallet_address) DO UPDATE SET crossmint_user_id = EXCLUDED.crossmint_user_id, …` to the INSERT. The unique index `idx_users_wallet_address` supports this. Still call `relinkAuthUserId` inside the same pinned-client transaction when the conflict updates the auth id. Prefer the explicit multi-step flow when email and wallet could diverge.
+
+### Migration test cases (add to Phase 6)
+
+| Scenario | Expected DB outcome |
+| -------- | ------------------- |
+| New Stytch user, new wallet | One INSERT, no conflict |
+| Same Stytch user re-login | UPDATE via `ON CONFLICT (crossmint_user_id)` |
+| Crossmint Auth user → Stytch, **same wallet** | UPDATE `crossmint_user_id` on existing row (no INSERT) |
+| Crossmint Auth user → Stytch, **new wallet**, same email | UPDATE both `crossmint_user_id` and `wallet_address` on email match |
+| Re-link with pending phone OTP | `phone_otp_challenges` row for legacy auth id deleted (user re-sends OTP under Stytch id) |
+| Two rows same email (data bug) | Skip email path; log error; do not corrupt |
+
+Transactions remain keyed by `wallet_address`, so ledger history survives as long as the wallet row is updated in place rather than duplicated.
 
 ### Existing Crossmint Auth users
 
 1. **Hybrid JWT verification** for 2–4 weeks in production.
-2. **Email-based account linking** on first Stytch login so wallet + transaction history follow the user.
-3. Users who only used Google on Crossmint must sign in with the same Google account on Stytch to link.
+2. **Wallet-first re-linking** on first Stytch login (see algorithm above).
+3. Users who only used Google on Crossmint must sign in with the same Google account on Stytch to link (email match path).
 
 ---
 
@@ -382,6 +529,7 @@ Keep [`lib/crossmint-server.ts`](../lib/crossmint-server.ts) only if still neede
 5. Logout → `setJwt(null)` → wallet unloaded → login modal reappears.
 6. **Re-login** → same Stytch user → same Crossmint wallet (owner = Stytch `user_id`).
 7. If hybrid: existing Crossmint Auth user can still use old session until expiry.
+8. **Migration:** existing Crossmint Auth row + Stytch login with same wallet → no `unique_violation`; `crossmint_user_id` updated in place.
 
 ---
 
@@ -400,7 +548,10 @@ Keep [`lib/crossmint-server.ts`](../lib/crossmint-server.ts) only if still neede
 
 | Risk                              | Mitigation                                                                       |
 | --------------------------------- | -------------------------------------------------------------------------------- |
-| User gets new wallet after switch | Email-based upsert linking + same Google account                                 |
+| User gets new wallet after switch | Wallet-first + email re-link in `upsertUser`; same Google account for OAuth users |
+| `unique_violation` on migration   | Never INSERT when `wallet_address` already exists — UPDATE `crossmint_user_id` on existing row ([Phase 4](#phase-4--user-ledger-and-migration)) |
+| Non-atomic migration writes       | Use `pool.connect()` + single client for BEGIN/COMMIT; do not call `pool.query("BEGIN")` on a shared pool |
+| Orphaned phone OTP challenges     | Call `relinkAuthUserId()` to DELETE (or UPDATE) `phone_otp_challenges` when auth id changes |
 | Server rejects JWT                | Register Stytch Project ID in Crossmint Console; verify correct Test vs Live env |
 | `createOnLogin` doesn't fire      | Ensure `StytchJwtSync` runs before wallet hooks; check JWT is non-null           |
 | Passkey recovery email            | Pass Stytch user email into `recovery: { type: "email" }` if needed explicitly   |
