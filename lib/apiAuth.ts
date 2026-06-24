@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/cockroachdb";
-import { verifyCrossmintJwt } from "@/lib/crossmintAuth";
+import { verifyStytchJwt } from "@/lib/stytchAuth";
 
 export type AuthedSession = {
   userId: string;
@@ -10,7 +10,7 @@ export type AuthedSession = {
 type AuthResult = { ok: true; session: AuthedSession } | { ok: false; response: NextResponse };
 
 /**
- * Validates a Crossmint JWT and resolves the authed user's wallet from CockroachDB.
+ * Validates a Stytch session JWT and resolves the authed user's wallet from CockroachDB.
  * Token is read from (in order):
  *   1. `Authorization: Bearer <jwt>` header
  *   2. `x-crossmint-auth-token` header
@@ -34,7 +34,7 @@ export async function requireAuthedWallet(
 
   let userId: string;
   try {
-    const verified = await verifyCrossmintJwt(token);
+    const verified = await verifyStytchJwt(token);
     userId = verified.userId;
   } catch {
     return {
