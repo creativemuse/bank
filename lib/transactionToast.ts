@@ -87,8 +87,20 @@ export const extractTxHash = (value: unknown): string | undefined => {
 };
 
 export const normalizeTxErrorMessage = (error: unknown, fallback: string): string => {
-  const message =
-    error instanceof Error ? error.message : typeof error === "string" ? error : fallback;
+  let message = fallback;
+  if (error instanceof Error) {
+    message = error.message;
+  } else if (typeof error === "string") {
+    message = error;
+  } else if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message: unknown }).message === "string"
+  ) {
+    message = (error as { message: string }).message;
+  }
+
   const lower = message.toLowerCase();
 
   if (

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useMemo, useState } from "react";
-import { useAccount, useWalletClient, useReadContract } from "wagmi";
+import { useAccount, useWalletClient, useReadContract, usePublicClient } from "wagmi";
 import { useWallet, EVMWallet } from "@crossmint/client-sdk-react-ui";
 import {
   createWalletClient,
@@ -102,6 +102,8 @@ type VaultManagementModalProps = {
 
 type TabId = "fee" | "withdraw-fees" | "transfer";
 
+const TX_CONFIRMATION_TIMEOUT_MS = 120_000;
+
 export function VaultManagementModal({
   open,
   onClose,
@@ -111,6 +113,7 @@ export function VaultManagementModal({
 }: VaultManagementModalProps) {
   const { data: wagmiWalletClient } = useWalletClient();
   const { wallet: crossmintWallet } = useWallet();
+  const publicClient = usePublicClient();
 
   const walletClient = useMemo((): WalletClient | undefined => {
     if (crossmintWallet) {
@@ -166,6 +169,19 @@ export function VaultManagementModal({
     setErrorMessage(message);
     showTxErrorToast({ title, description: message });
   }, []);
+
+  const waitForReceipt = useCallback(
+    async (hash: string) => {
+      if (!publicClient) {
+        throw new Error("Network unavailable");
+      }
+      await publicClient.waitForTransactionReceipt({
+        hash: hash as `0x${string}`,
+        timeout: TX_CONFIRMATION_TIMEOUT_MS,
+      });
+    },
+    [publicClient]
+  );
 
   const completeVaultAction = useCallback(
     (title: string, description?: string, txHash?: string) => {
@@ -375,6 +391,7 @@ export function VaultManagementModal({
               account: userAddr as Address,
             });
             console.log("[VaultManagement] Layer 2 success:", hash);
+            await waitForReceipt(hash);
             await refetchClaimable();
             completeVaultAction("Fees withdrawn", "Vault fees withdrawn successfully.", hash);
             return;
@@ -419,6 +436,9 @@ export function VaultManagementModal({
               });
               console.log("[VaultManagement] Layer 3 success:", layer3Hash);
             }
+            if (layer3Hash) {
+              await waitForReceipt(layer3Hash);
+            }
             await callSplitRevenue();
             await refetchClaimable();
             completeVaultAction("Fees withdrawn", "Vault fees withdrawn successfully.", layer3Hash);
@@ -453,6 +473,9 @@ export function VaultManagementModal({
                   account: userAddr as Address,
                 });
                 console.log("[VaultManagement] Layer 3b success:", layer3bHash);
+              }
+              if (layer3bHash) {
+                await waitForReceipt(layer3bHash);
               }
               await callSplitRevenue();
               await refetchClaimable();
@@ -501,6 +524,9 @@ export function VaultManagementModal({
             });
             console.log("[VaultManagement] Layer 4 success:", layer4Hash);
           }
+          if (layer4Hash) {
+            await waitForReceipt(layer4Hash);
+          }
           await refetchClaimable();
           completeVaultAction("Fees withdrawn", "Vault fees withdrawn successfully.", layer4Hash);
           return;
@@ -545,6 +571,7 @@ export function VaultManagementModal({
       callSplitRevenue,
       completeVaultAction,
       reportVaultError,
+      waitForReceipt,
     ]
   );
 
