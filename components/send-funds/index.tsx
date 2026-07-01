@@ -9,6 +9,12 @@ import { Modal } from "../common/Modal";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { PrimaryButton } from "../common/PrimaryButton";
 import { isEmail, isValidAddress } from "@/lib/utils";
+import {
+  formatRecipientLabel,
+  normalizeTxErrorMessage,
+  showTxErrorToast,
+  showTxSuccessToast,
+} from "@/lib/transactionToast";
 
 interface SendFundsModalProps {
   open: boolean;
@@ -70,19 +76,27 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
         return;
       }
 
-      if (isEmail(recipient)) {
-        // Crossmint resolves email recipients via a UserLocator object.
-        // Passing a raw "email:..." string is treated as an address and rejected.
-        await wallet.send({ email: recipient }, "usdc", amount);
-      } else {
-        await wallet.send(recipient, "usdc", amount);
-      }
+      const sendResult = isEmail(recipient)
+        ? await wallet.send({ email: recipient }, "usdc", amount)
+        : await wallet.send(recipient, "usdc", amount);
+
+      showTxSuccessToast({
+        title: "Successfully sent",
+        description: `Sent $${displayableAmount} USDC to ${formatRecipientLabel(recipient)}`,
+        txHash: sendResult?.hash,
+        explorerLink: sendResult?.explorerLink,
+      });
 
       refetchBalance();
       refetchActivityFeed();
       handleDone();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = normalizeTxErrorMessage(err, "Send failed");
+      setError(message);
+      showTxErrorToast({
+        title: message === "Transaction was cancelled" ? "Transaction cancelled" : "Send failed",
+        description: message,
+      });
     } finally {
       setIsLoading(false);
     }

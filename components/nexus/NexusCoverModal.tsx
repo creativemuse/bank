@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Address, formatUnits, parseUnits } from "viem";
 import { Modal } from "@/components/common/Modal";
 import { useNexusCoverQuote } from "@/hooks/useNexusCoverQuote";
@@ -14,6 +14,12 @@ import {
   toBigIntSafe,
 } from "@/lib/config/nexus-mutual";
 import { toast } from "sonner";
+import { mainnet } from "viem/chains";
+import {
+  normalizeTxErrorMessage,
+  showTxErrorToast,
+  showTxSuccessToast,
+} from "@/lib/transactionToast";
 
 export type NexusCoverProduct = "aave" | "yearn";
 
@@ -99,6 +105,7 @@ export function NexusCoverModal({
     buyCover,
     isPending: buyPending,
     isSuccess: buySuccess,
+    txHash: buyTxHash,
     error: buyError,
     reset: resetBuy,
     isCorrectChain,
@@ -118,10 +125,27 @@ export function NexusCoverModal({
 
   useEffect(() => {
     if (buySuccess) {
-      toast.success("Cover purchased. Your position is protected by Nexus Mutual.");
+      showTxSuccessToast({
+        title: "Cover purchased",
+        description: "Your position is protected by Nexus Mutual.",
+        txHash: buyTxHash,
+        chainId: mainnet.id,
+      });
       handleClose();
     }
-  }, [buySuccess, handleClose]);
+  }, [buySuccess, buyTxHash, handleClose]);
+
+  const shownBuyErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!buyError) {
+      shownBuyErrorRef.current = null;
+      return;
+    }
+    const message = normalizeTxErrorMessage(buyError, "Cover purchase failed");
+    if (shownBuyErrorRef.current === message) return;
+    shownBuyErrorRef.current = message;
+    showTxErrorToast({ title: "Cover purchase failed", description: message });
+  }, [buyError]);
 
   const suggestedFormatted = useMemo(() => {
     if (suggestedAmountWei == null || suggestedAmountWei <= 0n) return "";

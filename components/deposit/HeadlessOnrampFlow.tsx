@@ -9,6 +9,7 @@ import { PaymentIframe } from "./PaymentIframe";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { OTPVerification } from "@/components/auth/OTPVerification";
 import { isVerificationFresh } from "@/lib/verificationFreshness";
+import { showTxErrorToast, showTxSuccessToast } from "@/lib/transactionToast";
 
 type HeadlessStep =
   | "idle"
@@ -80,7 +81,9 @@ export function HeadlessOnrampFlow({
 
   const handleStartFlow = useCallback(async () => {
     if (!hasVerifiedEmail) {
-      setError("Sign in with email to use Express Checkout, or choose All Payment Methods instead.");
+      setError(
+        "Sign in with email to use Express Checkout, or choose All Payment Methods instead."
+      );
       return;
     }
     if (hasWarmStartPhone && user?.phoneNumber) {
@@ -216,11 +219,21 @@ export function HeadlessOnrampFlow({
 
   const handlePaymentComplete = () => {
     setHeadlessStep("completed");
+    showTxSuccessToast({
+      title: "Deposit complete",
+      description: amount
+        ? `$${Number(amount).toFixed(2)} USDC is on its way to your wallet.`
+        : "Your USDC is on its way to your wallet.",
+    });
     onPaymentCompleted();
   };
 
   const handlePaymentFailed = () => {
     setHeadlessStep("failed");
+    showTxErrorToast({
+      title: "Payment failed",
+      description: "Payment failed or was cancelled.",
+    });
   };
 
   const handleReset = () => {

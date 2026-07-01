@@ -92,6 +92,7 @@ type UseNexusBuyCoverReturn = {
   buyCover: (() => void) | undefined;
   isPending: boolean;
   isSuccess: boolean;
+  txHash?: `0x${string}`;
   error: Error | null;
   reset: () => void;
   isCorrectChain: boolean;
@@ -125,6 +126,7 @@ export function useNexusBuyCover({
     writeContract,
     isPending,
     isSuccess,
+    data: txHash,
     error: writeError,
     reset,
   } = useWriteContract({
@@ -173,6 +175,7 @@ export function useNexusBuyCover({
     buyCover: params && poolRequests ? buyCover : undefined,
     isPending,
     isSuccess,
+    txHash,
     error: writeError ?? null,
     reset,
     isCorrectChain,
