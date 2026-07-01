@@ -16,9 +16,12 @@ import { useWallet, EVMWallet } from "@crossmint/client-sdk-react-ui";
 import { createWalletClient, custom, type WalletClient } from "viem";
 import { base, baseSepolia } from "viem/chains";
 
-import { toast } from "sonner";
-
 import { Modal } from "@/components/common/Modal";
+import {
+  normalizeTxErrorMessage,
+  showTxErrorToast,
+  showTxSuccessToast,
+} from "@/lib/transactionToast";
 import { USDC_DECIMALS } from "@/lib/config/aave";
 import { formatPercent } from "@/lib/formatters";
 import { useMembership } from "@/context/MembershipContext";
@@ -370,16 +373,19 @@ export function VaultDeployModal({
         if (planResult.isErr()) {
           const msg = planResult.error.message;
           setSubmitState({ status: "error", message: msg, retryable: isTransientError(msg) });
+          showTxErrorToast({ title: "Vault deployment failed", description: msg });
           return;
         }
 
         const plan = planResult.value;
 
         if (plan.__typename === "InsufficientBalanceError") {
+          const message = `Insufficient balance. Required: ${plan.required.value} ${assetSymbol}.`;
           setSubmitState({
             status: "error",
-            message: `Insufficient balance. Required: ${plan.required.value} ${assetSymbol}.`,
+            message,
           });
+          showTxErrorToast({ title: "Vault deployment failed", description: message });
           return;
         }
 
@@ -391,28 +397,34 @@ export function VaultDeployModal({
           setSubmitState({ status: "approval" });
           const approvalResult = await sendTransaction(plan.approval);
           if (approvalResult.isErr()) {
+            const message = approvalResult.error.message;
             setSubmitState({
               status: "error",
-              message: approvalResult.error.message,
+              message,
             });
+            showTxErrorToast({ title: "Vault deployment failed", description: message });
             return;
           }
 
           setSubmitState({ status: "deploying" });
           transactionResult = await sendTransaction(plan.originalTransaction);
         } else {
+          const message = "Unsupported execution plan returned by Aave SDK.";
           setSubmitState({
             status: "error",
-            message: "Unsupported execution plan returned by Aave SDK.",
+            message,
           });
+          showTxErrorToast({ title: "Vault deployment failed", description: message });
           return;
         }
 
         if (transactionResult.isErr()) {
+          const message = transactionResult.error.message;
           setSubmitState({
             status: "error",
-            message: transactionResult.error.message,
+            message,
           });
+          showTxErrorToast({ title: "Vault deployment failed", description: message });
           return;
         }
 
@@ -505,10 +517,12 @@ export function VaultDeployModal({
               }
             }
 
-            toast.success("Vault deployed", {
+            showTxSuccessToast({
+              title: "Vault deployed",
               description: vaultAddress
                 ? `Vault is live at ${shortenAddress(vaultAddress)}. It will appear in your list below.`
                 : "Transaction confirmed. View on Basescan for vault address.",
+              txHash,
             });
             onSuccess?.(txHash, vaultAddress);
             if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
@@ -524,8 +538,10 @@ export function VaultDeployModal({
               message:
                 "Vault deployment transaction submitted. Check Basescan to find the vault address in the transaction logs.",
             });
-            toast.success("Vault deployed", {
+            showTxSuccessToast({
+              title: "Vault deployed",
               description: "Transaction confirmed. View on Basescan for vault address.",
+              txHash,
             });
             onSuccess?.(txHash, undefined);
             if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
@@ -543,8 +559,10 @@ export function VaultDeployModal({
             message:
               "Vault deployment transaction submitted. Check Basescan to find the vault address.",
           });
-          toast.success("Vault deployed", {
+          showTxSuccessToast({
+            title: "Vault deployed",
             description: "Transaction submitted. View on Basescan to find the vault address.",
+            txHash,
           });
           onSuccess?.(txHash, undefined);
           if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
@@ -554,15 +572,14 @@ export function VaultDeployModal({
           }, 2000);
         }
       } catch (outerError) {
-        // Catch any unhandled errors from deployVault/sendTransaction that throw
-        // instead of returning an error result (e.g. Crossmint wallet adapter errors)
-        const message = outerError instanceof Error ? outerError.message : String(outerError);
+        const message = normalizeTxErrorMessage(outerError, "Deployment failed");
         console.error("Vault deployment failed:", outerError);
         setSubmitState({
           status: "error",
           message: `Deployment failed: ${message}`,
           retryable: isTransientError(message),
         });
+        showTxErrorToast({ title: "Vault deployment failed", description: message });
       }
     },
     [

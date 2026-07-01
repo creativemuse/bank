@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { PrimaryButton } from "../common/PrimaryButton";
 import createCoinbaseSessionToken from "@/server-actions/createCoinbaseSessionToken";
+import { showTxErrorToast, showTxSuccessToast } from "@/lib/transactionToast";
 
 export type CoinbaseOnrampCheckoutProps = {
   amount: string;
@@ -250,6 +251,12 @@ export function CoinbaseOnrampCheckout({
           }
           paymentInitiatedRef.current = false;
           popupOpenTimeRef.current = null;
+          showTxSuccessToast({
+            title: "Deposit complete",
+            description: amount
+              ? `$${Number(amount).toFixed(2)} USDC is on its way to your wallet.`
+              : "Your USDC is on its way to your wallet.",
+          });
           onPaymentCompleted();
           return;
         }
@@ -292,6 +299,10 @@ export function CoinbaseOnrampCheckout({
           paymentInitiatedRef.current = false;
           paymentCompletedRef.current = false;
           popupOpenTimeRef.current = null;
+          showTxErrorToast({
+            title: "Payment cancelled",
+            description: "Payment failed or was cancelled.",
+          });
           // Reset to options when payment is cancelled
           goBack();
           return;
@@ -355,9 +366,8 @@ export function CoinbaseOnrampCheckout({
     <div className="flex w-full flex-col items-center justify-center gap-4">
       {receiptEmail && (
         <p className="text-center text-sm text-gray-600">
-          Using your sign-in email{" "}
-          <span className="font-medium text-black">{receiptEmail}</span>. Coinbase will handle
-          identity verification in their secure checkout — no extra steps here.
+          Using your sign-in email <span className="font-medium text-black">{receiptEmail}</span>.
+          Coinbase will handle identity verification in their secure checkout — no extra steps here.
         </p>
       )}
       {error && <div className="text-center text-sm text-red-500">{error}</div>}
