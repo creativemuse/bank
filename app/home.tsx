@@ -12,12 +12,15 @@ import { upsertUser } from "@/server-actions/getTransactions";
 import { MembershipOnboarding } from "@/components/unlock/MembershipOnboarding";
 import { isInAppBrowser } from "@/lib/passkeySupport";
 import { provisionCrossmintWallet } from "@/lib/walletProvisioning";
+import { useWalletProvisioning } from "@/context/WalletProvisioningContext";
 
 const ONBOARDING_DISMISSED_KEY = "has_seen_membership_onboarding";
 
 export function HomeContent() {
   const { wallet, status: walletStatus, getWallet, createWallet } = useWallet();
   const { status, status: authStatus, user, logout } = useAuth();
+  const { provisioningError, setProvisioningError, clearProvisioningError } =
+    useWalletProvisioning();
   const { tier, isLoading: membershipLoading, refresh: refreshMembership } = useMembership();
 
   const [hasDismissedOnboarding, setHasDismissedOnboarding] = useState(true);
@@ -27,9 +30,10 @@ export function HomeContent() {
 
   const walletAddress = wallet?.address;
   const isLoggedIn = wallet != null && status === "logged-in";
+  const hasWalletSetupError = walletStatus === "error" || provisioningError != null;
   const isLoading =
     authStatus === "initializing" ||
-    (authStatus === "logged-in" && walletStatus !== "loaded" && walletStatus !== "error");
+    (authStatus === "logged-in" && walletStatus !== "loaded" && !hasWalletSetupError);
   const hasMembership = !membershipLoading && tier !== null;
 
   useEffect(() => {
@@ -67,7 +71,13 @@ export function HomeContent() {
   };
 
   const handleRetryWallet = async () => {
-    await provisionCrossmintWallet({ getWallet, createWallet }, user?.email);
+    clearProvisioningError();
+
+    try {
+      await provisionCrossmintWallet({ getWallet, createWallet }, user?.email);
+    } catch (error) {
+      setProvisioningError(error);
+    }
   };
 
   if (isLoading) {
@@ -78,7 +88,7 @@ export function HomeContent() {
     );
   }
 
-  const showWalletErrorScreen = authStatus === "logged-in" && walletStatus === "error";
+  const showWalletErrorScreen = authStatus === "logged-in" && hasWalletSetupError;
 
   if (showWalletErrorScreen) {
     return (
@@ -86,7 +96,8 @@ export function HomeContent() {
         <div className="bg-card text-card-foreground flex w-full flex-col items-center gap-4 rounded-2xl p-6 text-center shadow-xl">
           <h2 className="text-xl font-semibold">We couldn&apos;t set up your wallet</h2>
           <p className="text-muted-foreground text-sm">
-            Something went wrong while creating your wallet. Try again or sign out and sign back in.
+            {provisioningError ??
+              "Something went wrong while creating your wallet. Try again or sign out and sign back in."}
           </p>
 
           {inAppBrowser && (

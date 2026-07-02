@@ -16,6 +16,7 @@ import { MembershipProvider } from "@/context/MembershipContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { WalletProvisioner } from "@/components/auth/WalletProvisioner";
 import { WalletRecoveryBootstrap } from "@/components/auth/WalletRecoveryBootstrap";
+import { WalletProvisioningProvider } from "@/context/WalletProvisioningContext";
 
 const aaveClient = AaveClient.create({
   environment: {
@@ -83,12 +84,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
             >
               <AuthProvider>
                 <CrossmintWalletProvider showPasskeyHelpers={true}>
-                  <WalletProvisioner />
-                  <WalletRecoveryBootstrap />
-                  <MembershipProvider>
-                    {children}
-                    <Toaster richColors position="top-center" closeButton />
-                  </MembershipProvider>
+                  <WalletProvisioningProvider>
+                    <WalletProvisioner />
+                    <WalletRecoveryBootstrap />
+                    <MembershipProvider>
+                      {children}
+                      <Toaster richColors position="top-center" closeButton />
+                    </MembershipProvider>
+                  </WalletProvisioningProvider>
                 </CrossmintWalletProvider>
               </AuthProvider>
             </CrossmintAuthProvider>
