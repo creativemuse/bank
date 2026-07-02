@@ -11,11 +11,12 @@ import { useMembership } from "@/context/MembershipContext";
 import { upsertUser } from "@/server-actions/getTransactions";
 import { MembershipOnboarding } from "@/components/unlock/MembershipOnboarding";
 import { isInAppBrowser } from "@/lib/passkeySupport";
+import { provisionCrossmintWallet } from "@/lib/walletProvisioning";
 
 const ONBOARDING_DISMISSED_KEY = "has_seen_membership_onboarding";
 
 export function HomeContent() {
-  const { wallet, status: walletStatus, getWallet } = useWallet();
+  const { wallet, status: walletStatus, getWallet, createWallet } = useWallet();
   const { status, status: authStatus, user, logout } = useAuth();
   const { tier, isLoading: membershipLoading, refresh: refreshMembership } = useMembership();
 
@@ -66,8 +67,7 @@ export function HomeContent() {
   };
 
   const handleRetryWallet = async () => {
-    const chain = process.env.NEXT_PUBLIC_CHAIN_ID === "base" ? "base" : ("base-sepolia" as const);
-    await getWallet({ chain });
+    await provisionCrossmintWallet({ getWallet, createWallet }, user?.email);
   };
 
   if (isLoading) {
