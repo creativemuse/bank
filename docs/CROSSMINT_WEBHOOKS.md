@@ -41,7 +41,10 @@ Protected API routes accept `Authorization: Bearer <jwt>` from `useAuth().jwt`.
 
 ## Email recovery
 
-New wallets use `recovery: { type: "email", email }` in [`components/auth/WalletProvisioner.tsx`](../components/auth/WalletProvisioner.tsx), with email from the Crossmint Auth user profile. Preemptive recovery: [`components/auth/WalletRecoveryBootstrap.tsx`](../components/auth/WalletRecoveryBootstrap.tsx).
+Wallet provisioning and recovery are handled client-side:
+
+- [`components/auth/WalletProvisioner.tsx`](../components/auth/WalletProvisioner.tsx) — creates the wallet after login with `recovery: { type: "email", email }` from the Crossmint Auth user profile. Tries a passkey operational signer first; falls back to the default device signer when WebAuthn is unavailable (in-app browsers, etc.).
+- [`components/auth/WalletRecoveryBootstrap.tsx`](../components/auth/WalletRecoveryBootstrap.tsx) — preemptive `wallet.needsRecovery()` / `wallet.recover()` on load so OTP verification happens before the first transaction.
 
 See [Crossmint recovery docs](https://docs.crossmint.com/wallets/concepts/recovery).
 

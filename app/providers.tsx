@@ -14,6 +14,9 @@ import { AaveProvider, AaveClient, production } from "@aave/react";
 import { wagmiConfig } from "@/lib/wagmiConfig";
 import { MembershipProvider } from "@/context/MembershipContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { WalletProvisioner } from "@/components/auth/WalletProvisioner";
+import { WalletRecoveryBootstrap } from "@/components/auth/WalletRecoveryBootstrap";
+import { WalletProvisioningProvider } from "@/context/WalletProvisioningContext";
 
 const aaveClient = AaveClient.create({
   environment: {
@@ -44,23 +47,8 @@ if (!process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY) {
   throw new Error("NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY is not set");
 }
 
-const VALID_CHAINS = ["base", "base-sepolia"] as const;
-type ValidChain = (typeof VALID_CHAINS)[number];
-
-const isProduction = process.env.NODE_ENV === "production";
-const configuredChain = process.env.NEXT_PUBLIC_CHAIN_ID;
-
-let chain: ValidChain;
-
-if (isProduction) {
-  if (configuredChain === "base-sepolia") {
-    console.warn("⚠️ Base Sepolia detected in production. Forcing Base mainnet.");
-  }
-  chain = "base";
-} else {
-  chain = VALID_CHAINS.includes(configuredChain as ValidChain)
-    ? (configuredChain as ValidChain)
-    : "base-sepolia";
+if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_CHAIN_ID === "base-sepolia") {
+  console.warn("⚠️ Base Sepolia detected in production. Forcing Base mainnet.");
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -95,18 +83,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
               logoutRoute="/api/auth/crossmint/logout"
             >
               <AuthProvider>
-                <CrossmintWalletProvider
-                  showPasskeyHelpers={true}
-                  createOnLogin={{
-                    chain,
-                    signers: [{ type: "passkey" }],
-                    recovery: { type: "email" },
-                  }}
-                >
-                  <MembershipProvider>
-                    {children}
-                    <Toaster richColors position="top-center" closeButton />
-                  </MembershipProvider>
+                <CrossmintWalletProvider showPasskeyHelpers={true}>
+                  <WalletProvisioningProvider>
+                    <WalletProvisioner />
+                    <WalletRecoveryBootstrap />
+                    <MembershipProvider>
+                      {children}
+                      <Toaster richColors position="top-center" closeButton />
+                    </MembershipProvider>
+                  </WalletProvisioningProvider>
                 </CrossmintWalletProvider>
               </AuthProvider>
             </CrossmintAuthProvider>
